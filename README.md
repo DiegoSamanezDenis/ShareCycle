@@ -2,7 +2,7 @@
 - Pritthiraj Dey, 40273416, dpritthiraj@gmail.com, github: rajdey03, Frontend
 - Diego Samanez Denis, 40286385, dsamanezdenis@gmail.com, github: DiegoSamanezDenis, Backend
 - Minh Huy Tran, 40263743, willhuy03@gmail.com, github: valvatorezbraveheart, Backend
-- Huu Khoa Kevin Tran, 40283037, t_huukho@live.concordia.ca, github: hkevintD, Frontend
+- Huu Khoa Kevin Tran, 40283037, t_huukho@live.concordia.ca, github: hkevint, Frontend
 - Bhaskar Das, 40325270, bh_das@live.concordia.ca, github: das-bhaskar, Frontend
 - Leon Kojakian, 40282267, l_kojak@live.concordia.ca, github: leonlolleonlol, Backend
 
