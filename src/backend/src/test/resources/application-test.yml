@@ -1,0 +1,10 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:sharecycle;MODE=MySQL;DB_CLOSE_DELAY=-1
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: none    # we aren’t using Hibernate to make tables; that’s fine
+  flyway:
+    enabled: false      # do not run Flyway in tests

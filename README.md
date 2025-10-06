@@ -11,3 +11,39 @@ ShareCycle is a bike sharing application providing docking stations and bikes av
 
 
 
+## Quick Start (Real App)
+- Start DB + API: `cd src && docker compose up -d --build`
+- Verify API: open `http://localhost:8080/health` → should return `ok`
+- Frontend: `cd src/frontend && cp .env.example .env` then set `VITE_API_URL=http://localhost:8080`
+- Install + run: `npm install && npm run dev` → open `http://localhost:5173`
+- Stop: Ctrl+C (frontend). To stop backend/DB: `cd ../.. && cd src && docker compose down`
+
+Notes
+- Uses real MySQL (not tests). Credentials are defined in `src/docker-compose.yml`.
+- If port 3306 or 8080 is occupied, change the mapping in `src/docker-compose.yml`.
+- For a production-like frontend bundle: `npm run build && npm run preview` (serves at `http://localhost:4173`).
+
+## Backend Quickstart
+- Full guide: see `docs/README.md` (Backend Guide section)
+- One command (from `src/`): `docker compose up -d --build`
+  - Starts MySQL and the Spring Boot API at `http://localhost:8080`
+- Local (no Docker): `cd src/backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
+
+## Prerequisites
+- Java 21 (for backend)
+- Node.js 18+ and npm 9+ (for frontend)
+- Docker Desktop (to run MySQL and optionally the backend)
+
+## Dev Commands
+
+Frontend
+- Install: `cd src/frontend && npm install`
+- Dev server: `npm run dev` (http://localhost:5173)
+
+Backend
+- Local (H2, no Docker): `cd src/backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
+- With MySQL via Docker Compose: `cd src && docker compose up -d --build`
+
+Database
+- Start only DB: `cd src && docker compose up -d db`
+- Stop services: `cd src && docker compose down` (add `-v` to reset data)
