@@ -1,0 +1,40 @@
+name: Frontend CI
+
+on:
+  pull_request:
+    branches: [ main, develop ]
+
+jobs:
+  build:
+    name: Frontend Build & Test
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+        working-directory: src/frontend
+
+      - name: Type check
+        run: npm run type-check
+        working-directory: src/frontend
+
+      - name: Lint
+        run: npm run lint
+        working-directory: src/frontend
+
+      - name: Run tests
+        run: npm test -- --ci --watch=false
+        working-directory: src/frontend
+
+      - name: Build
+        run: npm run build
+        working-directory: src/frontend
