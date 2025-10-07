@@ -1,12 +1,16 @@
 package com.sharecycle;
 
-import com.sharecycle.model.entity.Operator;
+import com.sharecycle.application.RegisterRiderUseCase;
+import com.sharecycle.infrastructure.JpaUserRepository;
 import com.sharecycle.model.entity.Rider;
+import com.sharecycle.service.BcryptHasher;
+import com.sharecycle.service.BcryptHasher;
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import jakarta.persistence.Persistence;
-import java.time.LocalDateTime;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
 
+@SpringBootApplication
 public class SharecycleApplication {
 
   public static void main(String[] args) {
@@ -15,32 +19,27 @@ public class SharecycleApplication {
 
     em.getTransaction().begin();
 
-    Rider rider = new Rider(
+    // Setup repository and password hasher
+    JpaUserRepository userRepository = new JpaUserRepository(em);
+    BcryptHasher passwordHasher = new BcryptHasher();
+
+    // Create use case
+    RegisterRiderUseCase registerRiderUseCase = new RegisterRiderUseCase(userRepository, passwordHasher);
+
+    // Register a rider
+    Rider rider = registerRiderUseCase.register(
             "Bhaskar",
             "Concordia",
-            "bhaskar@example.com",
-            "bd",
-            "hashedPassword",
-            null
+            "bhaskar4@example.com",
+            "bhaskar4",
+            "securePassword123",
+            "tok_visa_123"
     );
 
-    Operator operator = new Operator(
-            "BhaskarDas",
-            "Concordia",
-            "bhaskard@example.com",
-            "bdop",
-            "hashedPassword",
-            null
-    );
-
-    em.persist(rider);   // Hibernate assigns ID automatically
-    em.persist(operator);
+    System.out.println("Registered Rider: " + rider.getFullName() + ", email: " + rider.getEmail());
 
     em.getTransaction().commit();
-
     em.close();
     emf.close();
-
-    System.out.println("Rider and Operator successfully persisted!");
   }
 }
