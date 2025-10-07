@@ -3,11 +3,15 @@ package com.sharecycle.infrastructure;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.model.entity.User;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
+import jakarta.transaction.Transactional;
 
 // this implements the UserREpository interface
+@Transactional
 public class JpaUserRepository implements UserRepository {
 
+    @PersistenceContext
     private final EntityManager em;
 
     public JpaUserRepository(EntityManager em) {
