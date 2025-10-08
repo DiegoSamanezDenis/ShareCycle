@@ -7,6 +7,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 
+import java.util.Optional;
 // this implements the UserREpository interface
 @Transactional
 public class JpaUserRepository implements UserRepository {
@@ -41,5 +42,13 @@ public class JpaUserRepository implements UserRepository {
     public void save(User user) {
 
         em.persist(user);
+    }
+
+    @Override
+    public Optional<User> findByUsername(String username) {
+        TypedQuery<User> query = em.createQuery(
+                "select u from User u where u.username = :username", User.class);
+        query.setParameter("username", username);
+        return query.getResultStream().findFirst();
     }
 }

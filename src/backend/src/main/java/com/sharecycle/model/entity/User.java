@@ -29,6 +29,9 @@ public class User {
     @Column(name = "username", nullable = false)
     private String username;
 
+    @Column(name = "role", nullable = false)
+    private String role;
+
     @Column(name = "password_hash",nullable = false)
     private String passwordHash;
 
@@ -99,13 +102,13 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
-//    public String getRole() {
-//        return role;
-//    }
-//
-//    public void setRole(String role) {
-//        this.role = role;
-//    }
+   public String getRole() {
+       return role;
+   }
+
+   public void setRole(String role) {
+       this.role = role;
+   }
 
     public String getPaymentMethodToken() {
         return paymentMethodToken;
@@ -139,7 +142,7 @@ public class User {
         this.email = email;
         this.username = username;
         this.passwordHash = passwordHash;
-        //this.role = role;
+        this.role = role;
         this.paymentMethodToken = paymentMethodToken;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
