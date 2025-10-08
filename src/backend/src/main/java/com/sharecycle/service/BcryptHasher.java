@@ -1,7 +1,10 @@
 package com.sharecycle.service;
 
+import jakarta.websocket.server.ServerEndpoint;
 import org.springframework.security.crypto.bcrypt.BCrypt;
+import org.springframework.stereotype.Service;
 
+@Service
 public class BcryptHasher implements PasswordHasher{
 
     @Override

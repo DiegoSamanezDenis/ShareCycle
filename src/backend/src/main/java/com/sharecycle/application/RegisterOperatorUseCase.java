@@ -1,24 +1,25 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.model.entity.Rider;
+import com.sharecycle.model.entity.Operator;
+import com.sharecycle.model.entity.Operator;
 import com.sharecycle.service.PasswordHasher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class RegisterRiderUseCase {
+public class RegisterOperatorUseCase {
     private final UserRepository userRepository;
     private final PasswordHasher passwordHasher;
 
     //constructor
     @Autowired
-    public RegisterRiderUseCase(UserRepository userRepository, PasswordHasher passwordHasher) {
+    public RegisterOperatorUseCase(UserRepository userRepository, PasswordHasher passwordHasher) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
     }
 
-    public Rider register(String fullName,String address,  String email, String username, String password, String paymentToken) {
+    public Operator register(String fullName, String address, String email, String username, String password, String paymentToken) {
         //validate email
         if(email == null || !email.contains("@")) {
             throw new IllegalArgumentException("Email address is invalid");
@@ -40,13 +41,13 @@ public class RegisterRiderUseCase {
         //hashing the password
         String hashedpassword = passwordHasher.hash(password);
 
-        //creating the rider
-        Rider rider = new Rider(fullName, address, email, username, hashedpassword, paymentToken);
+        //creating the operator
+        Operator operator = new Operator(fullName, address, email, username, hashedpassword, paymentToken);
 
-        userRepository.save(rider);
+        userRepository.save(operator);
 
         // reutrning with password null so as to not expose it
-        return new Rider(rider.getFullName(), rider.getStreetAddress(), rider.getEmail(), rider.getUsername(), null, rider.getPaymentMethodToken());
+        return new Operator(operator.getFullName(), operator.getStreetAddress(), operator.getEmail(), operator.getUsername(), null, null);
 
     }
 
