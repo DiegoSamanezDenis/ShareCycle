@@ -8,6 +8,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import org.springframework.stereotype.Repository;
 
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
@@ -42,7 +43,7 @@ public class JpaReservationRepository implements ReservationRepository {
     public List<Reservation> findExpiredReservations() {
         String jpql = "SELECT r FROM Reservation r WHERE r.expiresAt <= :now AND r.active = true";
         return entityManager.createQuery(jpql, Reservation.class)
-                .setParameter("now", LocalDateTime.now())
+                .setParameter("now", Instant.now())
                 .getResultList();
     }
 
