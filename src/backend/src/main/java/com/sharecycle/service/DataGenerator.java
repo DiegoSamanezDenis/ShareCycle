@@ -24,7 +24,7 @@ public class DataGenerator {
         // Generate random location around Montreal
         for (int i = 1; i <= 10; i++) { // 10 stations
             double latitude = 45.50 + rand.nextDouble() * (45.70 - 45.42);
-            double longtitude = -73.63 + rand.nextDouble() * (-73.50 + 73.98);
+            double longitude = -73.63 + rand.nextDouble() * (-73.50 + 73.98);
             List<Dock> newDocks = new ArrayList<>();
             for (int j = 0; j < 5; j++) { //Each station has 5 dock
                 Dock dock = new Dock();
@@ -40,7 +40,7 @@ public class DataGenerator {
             station.setName("Station #" + i);
             station.setDocks(newDocks);
             station.setLatitude(latitude);
-            station.setLongitude(longtitude);
+            station.setLongitude(longitude);
             stations.add(station);
         }
         File dir = new File(dirPath);
