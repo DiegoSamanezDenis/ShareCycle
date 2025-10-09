@@ -16,13 +16,13 @@ public class Reservation {
     @JoinColumn(name = "rider_id")
     private Rider rider;
 
-    // @ManyToOne
-    // @JoinColumn(name = "station_id")
-    // private Station station;
+    @ManyToOne
+    @JoinColumn(name = "station_id")
+    private Station station;
 
-    // @ManyToOne
-    // @JoinColumn(name = "bike_id")
-    // private Bike bike;
+    @ManyToOne
+    @JoinColumn(name = "bike_id")
+    private Bike bike;
 
     private Instant reservedAt;
     private Instant expiresAt;
@@ -32,9 +32,11 @@ public class Reservation {
     // Required by JPA
     public Reservation() {}
 
-    public Reservation(UUID reservationId, Rider rider, Instant reservedAt, Instant expiresAt, int expiresAfterMinutes, boolean active) {
+    public Reservation(UUID reservationId, Rider rider, Station station, Bike bike, Instant reservedAt, Instant expiresAt, int expiresAfterMinutes, boolean active) {
         this.reservationId = reservationId;
         this.rider = rider;
+        this.station = station;
+        this.bike = bike;
         this.reservedAt = reservedAt;
         this.expiresAt = expiresAt;
         this.expiresAfterMinutes = expiresAfterMinutes;
@@ -91,4 +93,11 @@ public class Reservation {
     }
 
     // Getters for station and bike can be added later
+    public Station getStation() {
+        return station;
+    }
+
+    public Bike getBike() {
+        return bike;
+    }
 }

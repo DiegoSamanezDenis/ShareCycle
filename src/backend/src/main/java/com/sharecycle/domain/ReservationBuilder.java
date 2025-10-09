@@ -2,13 +2,16 @@ package com.sharecycle.domain;
 
 import java.time.Instant;
 import java.util.UUID;
+
+import com.sharecycle.model.entity.Bike;
 import com.sharecycle.model.entity.Rider;
 import com.sharecycle.model.entity.Reservation;
+import com.sharecycle.model.entity.Station;
 
 public class ReservationBuilder {
     private Rider rider;
-    //private Station station;
-    //private Bike bike;
+    private Station station;
+    private Bike bike;
     private int expiresAfterMinutes;
 
     public ReservationBuilder rider(Rider rider) {
@@ -16,7 +19,15 @@ public class ReservationBuilder {
         return this;
     }
 
-    // ReservationBuilder station and RerservationBuilder bike will be added later
+    public ReservationBuilder station(Station station) {
+        this.station = station;
+        return this;
+    }
+
+    public ReservationBuilder bike(Bike bike) {
+        this.bike = bike;
+        return this;
+    }
 
     public ReservationBuilder expiresAfterMinutes(int expiresAfterMinutes) {
         this.expiresAfterMinutes = expiresAfterMinutes;
@@ -34,6 +45,6 @@ public class ReservationBuilder {
         Instant reservedAt = Instant.now();
         Instant expiresAt = reservedAt.plusSeconds(expiresAfterMinutes * 60L);
 
-        return new Reservation(UUID.randomUUID(), rider, reservedAt, expiresAt, expiresAfterMinutes, true);
+        return new Reservation(UUID.randomUUID(), rider, station, bike, reservedAt, expiresAt, expiresAfterMinutes, true);
     }
 }

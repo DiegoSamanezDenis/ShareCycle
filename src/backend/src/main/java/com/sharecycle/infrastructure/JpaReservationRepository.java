@@ -7,6 +7,8 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import org.springframework.stereotype.Repository;
+
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -34,6 +36,14 @@ public class JpaReservationRepository implements ReservationRepository {
 
         List<Reservation> results = query.getResultList();
         return results.isEmpty() ? null : results.get(0);
+    }
+
+    @Override
+    public List<Reservation> findExpiredReservations() {
+        String jpql = "SELECT r FROM Reservation r WHERE r.expiresAt <= :now AND r.active = true";
+        return entityManager.createQuery(jpql, Reservation.class)
+                .setParameter("now", LocalDateTime.now())
+                .getResultList();
     }
 
     @Override
