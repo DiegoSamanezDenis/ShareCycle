@@ -42,7 +42,7 @@ public class DataSeeder {
         } else {
             logger.warn("Data files not existed");
             logger.info("Creating random data files");
-            com.sharecycle.service.StationGenerator.generateRandomDataFiles();
+            com.sharecycle.service.DataGenerator.generateRandomDataFiles();
         }
         loadBikes();
         loadDocks();

@@ -13,8 +13,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class StationGenerator {
-    private static final Logger logger = LoggerFactory.getLogger(com.sharecycle.service.StationGenerator.class);
+public class DataGenerator {
+    private static final Logger logger = LoggerFactory.getLogger(com.sharecycle.service.DataGenerator.class);
     public static void generateRandomDataFiles() {
         String dirPath = System.getProperty("user.dir") + "/src/main/resources/db/data";
         Random rand = new Random();
