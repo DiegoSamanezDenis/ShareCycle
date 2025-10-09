@@ -133,6 +133,7 @@ public class Station {
 
     public void setDocks(List<Dock> docks) {
         this.docks = docks;
+        this.capacity = docks.size();
         updateBikesDocked();
     }
 
