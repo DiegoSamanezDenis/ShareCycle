@@ -43,7 +43,6 @@ public class JpaUserRepository implements UserRepository {
 
     @Override
     public void save(User user) {
-
         em.persist(user);
     }
 
