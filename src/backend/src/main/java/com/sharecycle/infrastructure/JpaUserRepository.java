@@ -6,9 +6,13 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
+import org.springframework.stereotype.Repository;
+
+import java.util.UUID;
 
 // this implements the UserREpository interface
 @Transactional
+@Repository
 public class JpaUserRepository implements UserRepository {
 
     @PersistenceContext
@@ -42,4 +46,11 @@ public class JpaUserRepository implements UserRepository {
 
         em.persist(user);
     }
+
+    @Override
+    public User findById(UUID id) {
+        return em.find(User.class, id);
+    }
+
+
 }
