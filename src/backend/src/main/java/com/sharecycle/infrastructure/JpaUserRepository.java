@@ -8,6 +8,7 @@ import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.util.Optional;
 // this implements the UserREpository interface
 @Transactional
 @Repository
@@ -43,5 +44,13 @@ public class JpaUserRepository implements UserRepository {
     public void save(User user) {
 
         em.persist(user);
+    }
+
+    @Override
+    public Optional<User> findByUsername(String username) {
+        TypedQuery<User> query = em.createQuery(
+                "select u from User u where u.username = :username", User.class);
+        query.setParameter("username", username);
+        return query.getResultStream().findFirst();
     }
 }
