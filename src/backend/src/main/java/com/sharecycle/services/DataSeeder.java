@@ -35,7 +35,15 @@ public class DataSeeder {
     }
 
     @PostConstruct
-    private void init(){
+    private void init(){ String dirPath = System.getProperty("user.dir") + "/src/main/resources/db/data";
+        System.out.println(dirPath);
+        if (new File(dirPath+"/stations.json").exists()) {
+            logger.info("Data files already existed");
+        } else {
+            logger.warn("Data files not existed");
+            logger.info("Creating random data files");
+            com.sharecycle.service.StationGenerator.generateRandomDataFiles();
+        }
         loadBikes();
         loadDocks();
         loadStations();
