@@ -1,4 +1,4 @@
-package com.sharecycle.services;
+package com.sharecycle.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
