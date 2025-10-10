@@ -8,6 +8,8 @@ import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.util.UUID;
+
 import java.util.Optional;
 // this implements the UserREpository interface
 @Transactional
@@ -15,11 +17,11 @@ import java.util.Optional;
 public class JpaUserRepository implements UserRepository {
 
     @PersistenceContext
-    private EntityManager em;
+    private final EntityManager em;
 
-//    public JpaUserRepository(EntityManager em) {
-//        this.em = em;
-//    }
+    public JpaUserRepository(EntityManager em) {
+        this.em = em;
+    }
 
 
     @Override
@@ -42,11 +44,15 @@ public class JpaUserRepository implements UserRepository {
 
     @Override
     public void save(User user) {
-
         em.persist(user);
     }
 
     @Override
+    public User findById(UUID id) {
+        return em.find(User.class, id);
+    }
+
+
     public Optional<User> findByUsername(String username) {
         TypedQuery<User> query = em.createQuery(
                 "select u from User u where u.username = :username", User.class);
