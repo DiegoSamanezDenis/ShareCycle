@@ -1,6 +1,6 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.infrastructure.JpaStationRepositoryImpl;
 import com.sharecycle.model.dto.StationSummaryDto;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Service;
@@ -9,9 +9,9 @@ import java.util.List;
 
 @Service
 public class ListStationSummariesUseCase {
-    private final JpaStationRepository stationRepo;
+    private final JpaStationRepositoryImpl stationRepo;
 
-    public ListStationSummariesUseCase(JpaStationRepository stationRepo) {
+    public ListStationSummariesUseCase(JpaStationRepositoryImpl stationRepo) {
         this.stationRepo = stationRepo;
     }
 
