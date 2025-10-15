@@ -18,8 +18,8 @@ import java.io.IOException;
 import java.util.List;
 
 @Service
-public class DataSeeder {
-    private final Logger logger = LoggerFactory.getLogger(DataSeeder.class);
+public class TempNameDataSeeder {
+    private final Logger logger = LoggerFactory.getLogger(TempNameDataSeeder.class);
 
     private final JpaBikeRepository bikeRepository;
     private final JpaDockRepository dockRepository;
@@ -28,7 +28,7 @@ public class DataSeeder {
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final String dirPath = System.getProperty("user.dir") +  "/src/main/resources/db/data";
 
-    public DataSeeder(JpaBikeRepository bikeRepository, JpaDockRepository dockRepository, JpaStationRepository stationRepository) {
+    public TempNameDataSeeder(JpaBikeRepository bikeRepository, JpaDockRepository dockRepository, JpaStationRepository stationRepository) {
         this.bikeRepository = bikeRepository;
         this.dockRepository = dockRepository;
         this.stationRepository = stationRepository;
