@@ -6,6 +6,7 @@ import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -21,5 +22,10 @@ public class JpaBikeRepositoryImpl implements JpaBikeRepository {
     @Override
     public void save(Bike bike) {
         em.merge(bike);
+    }
+
+    @Override
+    public List<Bike> findAll() {
+        return em.createQuery("from Bike", Bike.class).getResultList();
     }
 }
