@@ -1,14 +1,16 @@
 spring:
   datasource:
-    url: jdbc:h2:mem:sharecycle;MODE=MySQL;DB_CLOSE_DELAY=-1
-    username: sa
-    password:
+    url: jdbc:mysql://localhost:3306/sharecycle?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
+    username: sharecycle
+    password: devpw
+    driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:
-      ddl-auto: none
+      ddl-auto: none  # Flyway manages schema
     open-in-view: false
   flyway:
-    enabled: false
+    enabled: true
+    locations: classpath:db/migration
 
 server:
-  port: 8080
+  port: 8081

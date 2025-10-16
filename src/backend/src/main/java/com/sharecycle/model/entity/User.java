@@ -1,9 +1,19 @@
 package com.sharecycle.model.entity;
 
-import jakarta.persistence.*;
-
 import java.time.LocalDateTime;
 import java.util.UUID;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.DiscriminatorColumn;
+import jakarta.persistence.DiscriminatorType;
+import jakarta.persistence.Entity;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.Id;
+import jakarta.persistence.Inheritance;
+import jakarta.persistence.InheritanceType;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
+import jakarta.persistence.Table;
 
 @Entity
 @Table(name = "users")
@@ -19,7 +29,7 @@ public class User {
     @Column(name = "full_name", nullable = false)
     private String fullName;
 
-    @Column(name = "street_address",nullable = false)
+    @Column(name = "street_address", nullable = false)
     private String streetAddress;
 
     @Column(name = "email", nullable = false)
@@ -31,11 +41,11 @@ public class User {
     @Column(name = "role", nullable = false)
     private String role;
 
-    @Column(name = "password_hash",nullable = false)
+    @Column(name = "password_hash", nullable = false)
     private String passwordHash;
 
-//    @Column(name = "role", nullable = false)
-//    private String role;
+    // @Column(name = "role", nullable = false)
+    // private String role;
 
     @Column(name = "payment_method_token")
     private String paymentMethodToken;
@@ -51,8 +61,7 @@ public class User {
 
     }
 
-
-    //getters and setters
+    // getters and setters
     public UUID getUserId() {
         return userId;
     }
@@ -101,13 +110,13 @@ public class User {
         this.passwordHash = passwordHash;
     }
 
-   public String getRole() {
-       return role;
-   }
+    public String getRole() {
+        return role;
+    }
 
-   public void setRole(String role) {
-       this.role = role;
-   }
+    public void setRole(String role) {
+        this.role = role;
+    }
 
     public String getPaymentMethodToken() {
         return paymentMethodToken;
@@ -133,9 +142,10 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
-    //contrustor
-    public User( String fullName, String streetAddress, String email, String username, String passwordHash, String paymentMethodToken, LocalDateTime createdAt, LocalDateTime updatedAt) {
-//        this.userId = userId;
+    // contrustor
+    public User(String fullName, String streetAddress, String email, String username, String passwordHash,
+            String paymentMethodToken, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        // this.userId = userId;
         this.fullName = fullName;
         this.streetAddress = streetAddress;
         this.email = email;
