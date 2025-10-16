@@ -1,8 +1,11 @@
 package com.sharecycle.service;
 
+import org.springframework.stereotype.Service;
+
 import java.util.*;
 import java.util.UUID;
 
+@Service
 public class InMemorySessionStore implements SessionStore {
     private final Map<String, UUID> sessions = new HashMap<>();
 

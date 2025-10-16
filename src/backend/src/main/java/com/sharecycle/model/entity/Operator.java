@@ -12,7 +12,7 @@ public class Operator extends User{
 
     public Operator() {
         super();
-        //setRole("OPERATOR");
+        setRole("OPERATOR");
     }
 
     public Operator(String fullName, String streetAddress, String email, String username, String passwordHash, String paymentMethodToken) {
