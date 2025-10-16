@@ -11,7 +11,10 @@ import com.sharecycle.model.entity.Station;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.io.File;
 import java.io.IOException;
@@ -34,8 +37,9 @@ public class TempNameDataSeeder {
         this.stationRepository = stationRepository;
     }
 
-    @PostConstruct
-    private void init(){ String dirPath = System.getProperty("user.dir") + "/src/main/resources/db/data";
+    @EventListener(ApplicationReadyEvent.class)
+    @Transactional
+    public void initData(){ String dirPath = System.getProperty("user.dir") + "/src/main/resources/db/data";
         System.out.println(dirPath);
         if (new File(dirPath+"/stations.json").exists()) {
             logger.info("Data files already existed");

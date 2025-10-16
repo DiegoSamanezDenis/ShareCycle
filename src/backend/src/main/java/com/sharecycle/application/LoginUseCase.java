@@ -4,9 +4,11 @@ import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.model.entity.User;
 import com.sharecycle.service.PasswordHasher;
 import com.sharecycle.service.SessionStore;
+import org.springframework.stereotype.Service;
 
 import java.util.Optional;
 
+@Service
 public class LoginUseCase {
     private final UserRepository userRepository;
     private final PasswordHasher passwordHasher;
