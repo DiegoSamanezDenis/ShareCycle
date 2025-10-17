@@ -46,20 +46,12 @@ public class TripBuilder {
                 '}';
     }
 
-    public Rider getRider() {
-        return rider;
+    public Station getEndStation() {
+        return endStation;
     }
 
-    public Station getStartStation() {
-        return startStation;
-    }
-
-    public Bike getBike() {
-        return bike;
-    }
-
-    public LocalDateTime getStartTime() {
-        return startTime;
+    public void setEndStation(Station endStation) {
+        this.endStation = endStation;
     }
 
     public LocalDateTime getEndTime() {
@@ -70,11 +62,35 @@ public class TripBuilder {
         this.endTime = endTime;
     }
 
-    public Station getEndStation() {
-        return endStation;
+    public LocalDateTime getStartTime() {
+        return startTime;
     }
 
-    public void setEndStation(Station endStation) {
-        this.endStation = endStation;
+    public void setStartTime(LocalDateTime startTime) {
+        this.startTime = startTime;
+    }
+
+    public Bike getBike() {
+        return bike;
+    }
+
+    public void setBike(Bike bike) {
+        this.bike = bike;
+    }
+
+    public Station getStartStation() {
+        return startStation;
+    }
+
+    public void setStartStation(Station startStation) {
+        this.startStation = startStation;
+    }
+
+    public Rider getRider() {
+        return rider;
+    }
+
+    public void setRider(Rider rider) {
+        this.rider = rider;
     }
 }
