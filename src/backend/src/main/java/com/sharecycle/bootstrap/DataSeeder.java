@@ -6,10 +6,11 @@ import com.sharecycle.infrastructure.JpaUserRepository;
 import com.sharecycle.service.BcryptHasher;
 import jakarta.annotation.PostConstruct;
 
-import org.springframework.boot.CommandLineRunner;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
 
 @Component
+@Profile("!test")
 public class DataSeeder {
 
 

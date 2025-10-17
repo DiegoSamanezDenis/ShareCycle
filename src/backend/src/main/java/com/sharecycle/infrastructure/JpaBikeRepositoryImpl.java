@@ -28,4 +28,12 @@ public class JpaBikeRepositoryImpl implements JpaBikeRepository {
     public List<Bike> findAll() {
         return em.createQuery("from Bike", Bike.class).getResultList();
     }
+
+    @Override
+    public List<Bike> findByCurrentStationId(UUID stationId) {
+        return em.createQuery(
+                        "select b from Bike b where b.currentStation.id = :stationId", Bike.class)
+                .setParameter("stationId", stationId)
+                .getResultList();
+    }
 }

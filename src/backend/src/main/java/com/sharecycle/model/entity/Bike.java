@@ -29,8 +29,12 @@ public class Bike {
     @Column(name = "bike_status", nullable = false)
     private BikeStatus status;
 
-    @Column(name = "reservation_expiry", nullable = true)
+    @Column(name = "reservation_expiry")
     private Timestamp reservationExpiry; //SQL Timestamp
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "current_station_id")
+    private Station currentStation;
 
     public Bike() {
         this.id = UUID.randomUUID();
@@ -42,6 +46,7 @@ public class Bike {
     public Bike(BikeType type) {
         this.id = UUID.randomUUID();
         this.type = type;
+        this.status = BikeStatus.AVAILABLE;
     }
 
     public UUID getId() {
@@ -74,5 +79,13 @@ public class Bike {
 
     public void setReservationExpiry(Timestamp reservationExpiry) {
         this.reservationExpiry = reservationExpiry;
+    }
+
+    public Station getCurrentStation() {
+        return currentStation;
+    }
+
+    public void setCurrentStation(Station currentStation) {
+        this.currentStation = currentStation;
     }
 }
