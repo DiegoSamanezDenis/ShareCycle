@@ -126,8 +126,9 @@ cd ../backend && ./mvnw spring-boot:run
 ## Flyway Migrations
 - Location: `src/backend/src/main/resources/db/migration`
 - Examples:
-  - `V1_baseline.sql` — baseline marker
-  - `V2_create_users.sql` — creates `users` table (UUID as `BINARY(16)`, unique email/username)
+  - `V1_baseline.sql` - baseline marker
+  - `V2_create_users.sql` - creates `users` table (UUID as `BINARY(16)`, unique email/username)
+  - `V4__add_bike_station_fk.sql` - links bikes to the station they are currently docked at
 - Runs on startup in default profile; disabled in `local` and `test`.
 
 ## Troubleshooting
@@ -138,5 +139,18 @@ cd ../backend && ./mvnw spring-boot:run
 - CORS during dev: if calling backend from http://localhost:5173, add a simple CORS config or proxy via Vite.
 
 ## Useful Endpoints
-- `GET /health` — returns `ok`
+- `GET /health` - returns `ok`
+
+## Operator Station Operations (new)
+- **Use cases** live under `com.sharecycle.application`:
+  - `SetStationStatusUseCase` toggles stations between active/out-of-service. Only operators may call `execute`.
+  - `AdjustStationCapacityUseCase` adds or removes docks. Positive `delta` creates empty docks; negative `delta` removes empty docks (fails if not enough free docks).
+  - `MoveBikeUseCase` rebalances bikes across stations. Validates operator role, bike availability, source/destination status, and free dock before moving.
+- **Domain updates**:
+  - `Station` derives capacity from its dock collection, offers helpers (`addEmptyDocks`, `removeEmptyDocks`, `dockBike`, `undockBike`) to keep counts legal.
+  - `Dock` exposes `isEmpty()`; `Bike` tracks `currentStation` through a nullable FK (added in `V4__add_bike_station_fk.sql`).
+- **Events** (`com.sharecycle.domain.event`) fire on success so dashboards can refresh:
+  - `StationStatusChangedEvent`, `StationCapacityChangedEvent`, `BikeMovedEvent`.
+- **Testing**: run `./mvnw test` (H2 + `ddl-auto=create-drop`) to execute new integration suites covering station status, capacity, and move workflows.
+- **API surface (planned)**: controller layer should forward PATCH/POST calls to these use cases, returning clear 4xx error messages from thrown exceptions (e.g., “Destination station has no free docks.”).
 
