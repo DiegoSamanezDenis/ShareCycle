@@ -3,6 +3,7 @@ package com.sharecycle.infrastructure;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.model.entity.Station;
 import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.stereotype.Repository;
 
@@ -17,6 +18,11 @@ public class JpaStationRepositoryImpl implements JpaStationRepository {
     @Override
     public Station findById(UUID id) {
         return em.find(Station.class, id);
+    }
+
+    @Override
+    public Station findByIdForUpdate(UUID id) {
+        return em.find(Station.class, id, LockModeType.PESSIMISTIC_WRITE);
     }
 
     @Override

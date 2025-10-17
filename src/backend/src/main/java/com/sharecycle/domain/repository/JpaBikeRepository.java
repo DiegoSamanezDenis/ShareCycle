@@ -10,4 +10,5 @@ public interface JpaBikeRepository{
     Bike findById(UUID id);
     void save(Bike bike);
     List<Bike> findAll();
+    List<Bike> findByCurrentStationId(UUID stationId);
 }

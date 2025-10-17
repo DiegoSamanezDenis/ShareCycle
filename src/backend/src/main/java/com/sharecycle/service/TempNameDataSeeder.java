@@ -8,10 +8,10 @@ import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.model.entity.Bike;
 import com.sharecycle.model.entity.Dock;
 import com.sharecycle.model.entity.Station;
-import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.annotation.Profile;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +21,7 @@ import java.io.IOException;
 import java.util.List;
 
 @Service
+@Profile("!test")
 public class TempNameDataSeeder {
     private final Logger logger = LoggerFactory.getLogger(TempNameDataSeeder.class);
 
@@ -39,9 +40,9 @@ public class TempNameDataSeeder {
 
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
-    public void initData(){ String dirPath = System.getProperty("user.dir") + "/src/main/resources/db/data";
-        System.out.println(dirPath);
-        if (new File(dirPath+"/stations.json").exists()) {
+    public void initData(){
+        logger.info("Loading seed data from {}", dirPath);
+        if (new File(dirPath + "/stations.json").exists()) {
             logger.info("Data files already existed");
         } else {
             logger.warn("Data files not existed");

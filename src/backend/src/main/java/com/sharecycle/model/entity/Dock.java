@@ -2,7 +2,6 @@ package com.sharecycle.model.entity;
 
 import jakarta.persistence.*;
 
-import java.util.List;
 import java.util.UUID;
 
 @Entity
@@ -58,6 +57,12 @@ public class Dock {
         if (occupiedBike != null) {
             this.status = DockStatus.OCCUPIED;
             if (this.station != null) {
+                occupiedBike.setCurrentStation(this.station);
+                this.station.updateBikesDocked();
+            }
+        } else {
+            this.status = DockStatus.EMPTY;
+            if (this.station != null) {
                 this.station.updateBikesDocked();
             }
         }
@@ -69,5 +74,12 @@ public class Dock {
 
     public void setStation(Station station) {
         this.station = station;
+        if (this.occupiedBike != null) {
+            this.occupiedBike.setCurrentStation(station);
+        }
+    }
+
+    public boolean isEmpty() {
+        return DockStatus.EMPTY.equals(this.status) && this.occupiedBike == null;
     }
 }
