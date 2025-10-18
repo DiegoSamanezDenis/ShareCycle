@@ -12,7 +12,6 @@ import java.util.UUID;
 
 public class Trip {
     @Id
-    @GeneratedValue
     @Column(name = "trip_id", columnDefinition = "BINARY(16)")
     private UUID tripID; // primary key
 

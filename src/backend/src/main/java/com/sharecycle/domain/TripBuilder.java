@@ -18,7 +18,6 @@ public class TripBuilder {
     private Station endStation;
 
     public TripBuilder() {
-
     }
 
    public TripBuilder(Trip trip) {
