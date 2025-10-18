@@ -27,11 +27,11 @@ CREATE TABLE trips
     trip_id BINARY (16) NOT NULL,
     start_time       timestamp NULL,
     end_time         timestamp NULL,
-    duration_minutes INT       NOT NULL,
+    duration_minutes INT       NULL,
     user_id BINARY (16) NULL,
     bike_id BINARY (16) NULL,
     start_station_id BINARY (16) NOT NULL,
-    end_station_id BINARY (16) NOT NULL,
+    end_station_id BINARY (16) NULL,
     CONSTRAINT pk_trips PRIMARY KEY (trip_id)
 );
 

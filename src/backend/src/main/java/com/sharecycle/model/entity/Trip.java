@@ -19,7 +19,7 @@ public class Trip {
     @Column(name = "startTime", columnDefinition = "TIMESTAMP")
     private LocalDateTime startTime;
 
-    @Column(name = "endTime", columnDefinition = "TIMESTAMP")
+    @Column(name = "endTime", columnDefinition = "TIMESTAMP", nullable = true)
     private LocalDateTime endTime;
 
     @Column(name = "durationMinutes", nullable = false)
@@ -38,7 +38,7 @@ public class Trip {
     private Station startStation;
 
     @ManyToOne
-    @JoinColumn(name = "end_station_id", nullable = false)
+    @JoinColumn(name = "end_station_id", nullable = true)
     private Station endStation;
 
 
@@ -48,7 +48,11 @@ public class Trip {
         this.tripID = Objects.requireNonNullElseGet(tripID, UUID::randomUUID);
         this.startTime = startTime;
         this.endTime = endTime;
-        this.durationMinutes = endTime.getMinute()-startTime.getMinute();
+        if (endTime == null) {
+            this.durationMinutes = 0;
+        } else {
+            this.durationMinutes = endTime.getMinute()-startTime.getMinute();
+        }
         this.rider = rider;
         this.bike = bike;
         this.startStation = startStation;

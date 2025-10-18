@@ -32,39 +32,38 @@ public class StartTripUseCase {
     @Transactional
     public Trip execute(UUID tripID,
                         LocalDateTime startTime,
-                        LocalDateTime endTime,
                         int durationMinutes,
                         Rider rider,
                         Bike bike,
-                        Station startStation,
-                        Station endStation) {
+                        Station startStation) {
 
-        if(!userRepository.existsByEmail(rider.getEmail())){
-            throw new Error("User does not exist");
-        }
-        else if (startStation.getStatus().equals(Station.StationStatus.EMPTY)||startStation.getStatus().equals(Station.StationStatus.OUT_OF_SERVICE)) {
+        Rider managedRider = (Rider) userRepository.findById(rider.getUserId());
+        Bike managedBike = bikeRepository.findById(bike.getId());
+        Station managedStartStation = stationRepository.findById(startStation.getId());
+
+        if(managedStartStation.getStatus() == Station.StationStatus.EMPTY
+                || managedStartStation.getStatus() == Station.StationStatus.OUT_OF_SERVICE) {
             throw new IllegalStateException("Station is empty.");
         }
-        else if (!(bike.getStatus().equals(Bike.BikeStatus.AVAILABLE)||bike.getStatus().equals(Bike.BikeStatus.RESERVED))) {
+
+        if(!(managedBike.getStatus() == Bike.BikeStatus.AVAILABLE
+                || managedBike.getStatus() == Bike.BikeStatus.RESERVED)) {
             throw new IllegalStateException("Bike is not available.");
         }
-        else {
 
-            // Transition bike state
-            bike.setStatus(Bike.BikeStatus.ON_TRIP);
+        managedBike.setStatus(Bike.BikeStatus.ON_TRIP);
+        managedStartStation.setBikesDocked(managedStartStation.getBikesDocked() - 1);
 
-            // Build and persist reservation
-            TripBuilder tripBuilder = new TripBuilder();
-            tripBuilder.start(rider, startStation, bike, startTime);
-            tripBuilder.endAt(endStation, endTime);
-            Trip trip = tripBuilder.build();
-            tripRepository.save(trip);
+        TripBuilder tripBuilder = new TripBuilder();
+        tripBuilder.start(managedRider, managedStartStation, managedBike, startTime);
+        Trip trip = tripBuilder.build();
 
-            // Publish domain event
-            startStation.setBikesDocked(startStation.getBikesDocked() - 1);
-            eventPublisher.publish(new TripStartedEvent(tripID, startTime, endTime, durationMinutes, rider, bike, startStation, endStation));
-            return trip;
-        }
+        tripRepository.save(trip);
+
+        eventPublisher.publish(new TripStartedEvent(tripID, startTime, null, durationMinutes,
+                managedRider, managedBike, managedStartStation, null));
+
+        return trip;
     }
 
 }
