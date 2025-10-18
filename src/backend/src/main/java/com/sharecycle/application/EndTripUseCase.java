@@ -37,7 +37,7 @@ public class EndTripUseCase {
         this.jpaBikeRepositoryImpl = jpaBikeRepositoryImpl;
     }
     @Transactional
-    public void execute(Trip currentTrip, Station endStation){
+    public LedgerEntry execute(Trip currentTrip, Station endStation){
         validate(currentTrip, endStation);
 
         LocalDateTime endTime = LocalDateTime.now();
@@ -67,6 +67,8 @@ public class EndTripUseCase {
         LedgerEntry ledgerEntry = new LedgerEntry(editedTrip);
         jpaLedgerEntryRepository.save(ledgerEntry);
         eventPublisher.publish(new TripBilledEvent(editedTrip.getTripID(), ledgerEntry.getLedgerId()));
+
+        return ledgerEntry;
     }
 
 
