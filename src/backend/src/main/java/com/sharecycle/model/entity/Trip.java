@@ -3,6 +3,7 @@ package com.sharecycle.model.entity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -11,14 +12,13 @@ import java.util.UUID;
 
 public class Trip {
     @Id
-    @GeneratedValue
     @Column(name = "trip_id", columnDefinition = "BINARY(16)")
     private UUID tripID; // primary key
 
     @Column(name = "startTime", columnDefinition = "TIMESTAMP")
     private LocalDateTime startTime;
 
-    @Column(name = "endTime", columnDefinition = "TIMESTAMP")
+    @Column(name = "endTime", columnDefinition = "TIMESTAMP", nullable = true)
     private LocalDateTime endTime;
 
     @Column(name = "durationMinutes", nullable = false)
@@ -37,17 +37,21 @@ public class Trip {
     private Station startStation;
 
     @ManyToOne
-    @JoinColumn(name = "end_station_id", nullable = false)
+    @JoinColumn(name = "end_station_id", nullable = true)
     private Station endStation;
 
 
     public Trip() {}
 
     public Trip(UUID tripID, LocalDateTime startTime, LocalDateTime endTime, Rider rider, Bike bike, Station startStation, Station endStation) {
-        this.tripID = tripID;
+        this.tripID = Objects.requireNonNullElseGet(tripID, UUID::randomUUID);
         this.startTime = startTime;
         this.endTime = endTime;
-        this.durationMinutes = endTime.getMinute()-startTime.getMinute();
+        if (endTime == null) {
+            this.durationMinutes = 0;
+        } else {
+            this.durationMinutes = endTime.getMinute()-startTime.getMinute();
+        }
         this.rider = rider;
         this.bike = bike;
         this.startStation = startStation;
