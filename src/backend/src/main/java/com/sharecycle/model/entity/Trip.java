@@ -3,6 +3,7 @@ package com.sharecycle.model.entity;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.Objects;
 import java.util.UUID;
 
 @Entity
@@ -44,7 +45,7 @@ public class Trip {
     public Trip() {}
 
     public Trip(UUID tripID, LocalDateTime startTime, LocalDateTime endTime, Rider rider, Bike bike, Station startStation, Station endStation) {
-        this.tripID = tripID;
+        this.tripID = Objects.requireNonNullElseGet(tripID, UUID::randomUUID);
         this.startTime = startTime;
         this.endTime = endTime;
         this.durationMinutes = endTime.getMinute()-startTime.getMinute();
