@@ -1,12 +1,13 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.model.entity.User;
+import com.sharecycle.domain.model.User;
 import com.sharecycle.service.PasswordHasher;
 import com.sharecycle.service.SessionStore;
 import org.springframework.stereotype.Service;
 
 import java.util.Optional;
+import java.util.UUID;
 
 @Service
 public class LoginUseCase {
@@ -30,9 +31,9 @@ public class LoginUseCase {
             throw new RuntimeException("Invalid username or password");
         }
         String token = sessionStore.createSession(user.getUserId());
-        return new LoginResponse(token, user.getRole());
+        return new LoginResponse(user.getUserId(), user.getUsername(), user.getRole(), token);
     }
 
 
-    public record LoginResponse(String token, String role){}
+    public record LoginResponse(UUID userId, String username, String role, String token){}
 }

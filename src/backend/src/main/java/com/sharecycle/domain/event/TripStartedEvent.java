@@ -1,8 +1,8 @@
 package com.sharecycle.domain.event;
 
-import com.sharecycle.model.entity.Rider;
-import com.sharecycle.model.entity.Station;
-import com.sharecycle.model.entity.Bike;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Bike;
 
 
 import java.time.LocalDateTime;

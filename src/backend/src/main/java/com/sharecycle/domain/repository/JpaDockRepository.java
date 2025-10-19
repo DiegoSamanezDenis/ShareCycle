@@ -1,6 +1,6 @@
 package com.sharecycle.domain.repository;
 
-import com.sharecycle.model.entity.Dock;
+import com.sharecycle.domain.model.Dock;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 import java.util.List;

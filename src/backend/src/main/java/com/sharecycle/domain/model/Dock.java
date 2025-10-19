@@ -1,35 +1,25 @@
-package com.sharecycle.model.entity;
-
-import jakarta.persistence.*;
+package com.sharecycle.domain.model;
 
 import java.util.UUID;
 
-@Entity
 public class Dock {
-    public enum DockStatus{
-        EMPTY, OCCUPIED, OUT_OF_SERVICE,
+    public enum DockStatus {
+        EMPTY, OCCUPIED, OUT_OF_SERVICE
     }
-    @Id
-    @Column(name = "dock_id", unique = true, nullable = false)
+
     private UUID id;
-
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "dock_status", nullable = false)
     private DockStatus status;
-
-    @ManyToOne
-    @JoinColumn(name = "station_id")
     private Station station;
-
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
-    @JoinColumn(name = "bike_id")
     private Bike occupiedBike;
 
     public Dock() {
-        this.id = UUID.randomUUID();
-        this.status = DockStatus.EMPTY;
-        this.occupiedBike = null;
+        this(UUID.randomUUID(), DockStatus.EMPTY, null);
+    }
+
+    public Dock(UUID id, DockStatus status, Bike occupiedBike) {
+        this.id = id == null ? UUID.randomUUID() : id;
+        this.status = status;
+        this.occupiedBike = occupiedBike;
     }
 
     public UUID getId() {
@@ -46,6 +36,17 @@ public class Dock {
 
     public void setStatus(DockStatus status) {
         this.status = status;
+    }
+
+    public Station getStation() {
+        return station;
+    }
+
+    public void setStation(Station station) {
+        this.station = station;
+        if (this.occupiedBike != null) {
+            this.occupiedBike.setCurrentStation(station);
+        }
     }
 
     public Bike getOccupiedBike() {
@@ -65,17 +66,6 @@ public class Dock {
             if (this.station != null) {
                 this.station.updateBikesDocked();
             }
-        }
-    }
-
-    public Station getStation() {
-        return station;
-    }
-
-    public void setStation(Station station) {
-        this.station = station;
-        if (this.occupiedBike != null) {
-            this.occupiedBike.setCurrentStation(station);
         }
     }
 

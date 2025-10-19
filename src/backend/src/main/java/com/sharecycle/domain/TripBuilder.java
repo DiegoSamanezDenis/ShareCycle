@@ -3,10 +3,10 @@ package com.sharecycle.domain;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
-import com.sharecycle.model.entity.Bike;
-import com.sharecycle.model.entity.Rider;
-import com.sharecycle.model.entity.Station;
-import com.sharecycle.model.entity.Trip;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
 
 public class TripBuilder {
     private UUID tripId;

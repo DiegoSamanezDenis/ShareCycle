@@ -4,8 +4,8 @@ import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.StationStatusChangedEvent;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.model.entity.Station;
-import com.sharecycle.model.entity.User;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.User;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 

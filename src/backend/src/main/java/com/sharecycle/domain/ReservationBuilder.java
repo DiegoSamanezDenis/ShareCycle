@@ -3,10 +3,10 @@ package com.sharecycle.domain;
 import java.time.Instant;
 import java.util.UUID;
 
-import com.sharecycle.model.entity.Bike;
-import com.sharecycle.model.entity.Rider;
-import com.sharecycle.model.entity.Reservation;
-import com.sharecycle.model.entity.Station;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Station;
 
 public class ReservationBuilder {
     private Rider rider;

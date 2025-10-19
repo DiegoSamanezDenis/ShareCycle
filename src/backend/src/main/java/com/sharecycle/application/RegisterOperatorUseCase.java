@@ -1,8 +1,8 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.model.entity.Operator;
-import com.sharecycle.model.entity.Operator;
+import com.sharecycle.domain.model.Operator;
+import com.sharecycle.domain.model.Operator;
 import com.sharecycle.service.PasswordHasher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;

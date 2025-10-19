@@ -1,53 +1,45 @@
-package com.sharecycle.model.entity;
-
-import jakarta.persistence.*;
+package com.sharecycle.domain.model;
 
 import java.time.Instant;
 import java.util.UUID;
 
-@Entity
 public class LedgerEntry {
     public enum LedgerStatus {
         PENDING, PAID
     }
 
-    @Id
-    @Column(name = "ledger_id", unique = true, nullable = false)
     private UUID ledgerId;
-
-    @ManyToOne
-    @JoinColumn(name = "user_id")
     private User user;
-
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = false)
-    @JoinColumn(name = "trip_id")
     private Trip trip;
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "status", nullable = false)
     private LedgerStatus ledgerStatus;
-
-    @Column(name = "total_amount", nullable = false)
     private double totalAmount;
-
-    @Column(name = "timestamp", nullable = false)
     private Instant timestamp;
 
-    public LedgerEntry() {}
+    public LedgerEntry() {
+    }
+
+    public LedgerEntry(UUID ledgerId,
+                       User user,
+                       Trip trip,
+                       LedgerStatus status,
+                       double totalAmount,
+                       Instant timestamp) {
+        this.ledgerId = ledgerId == null ? UUID.randomUUID() : ledgerId;
+        this.user = user;
+        this.trip = trip;
+        this.ledgerStatus = status;
+        this.totalAmount = totalAmount;
+        this.timestamp = timestamp;
+    }
 
     public LedgerEntry(Trip trip) {
-        this.ledgerId = UUID.randomUUID();
-        this.user = trip.getRider();
-        this.trip = trip;
-        this.ledgerStatus = LedgerStatus.PENDING;
-        this.timestamp = Instant.now();
-        this.generateBill();
+        this(UUID.randomUUID(), trip.getRider(), trip, LedgerStatus.PENDING, 0.0, Instant.now());
+        Bill bill = generateBill();
+        this.totalAmount = bill.getTotal();
     }
 
     public Bill generateBill() {
-        Bill bill = new Bill(this.trip);
-        this.totalAmount = bill.getTotal();
-        return bill;
+        return new Bill(this.trip);
     }
 
     public UUID getLedgerId() {

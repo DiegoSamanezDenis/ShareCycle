@@ -5,8 +5,14 @@ import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.StationStatusChangedEvent;
 import com.sharecycle.domain.event.TripBilledEvent;
 import com.sharecycle.domain.event.TripEndedEvent;
-import com.sharecycle.infrastructure.*;
-import com.sharecycle.model.entity.*;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.repository.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
+import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.domain.repository.TripRepository;
 import jakarta.transaction.Transactional;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,20 +27,22 @@ public class EndTripUseCase {
 
     private final DomainEventPublisher eventPublisher;
 
-    private final JpaTripRepository jpaTripRepository;
-    private final JpaLedgerEntryRepositoryImpl jpaLedgerEntryRepository;
-    private final JpaStationRepositoryImpl jpaStationRepository;
-    private final JpaBikeRepositoryImpl jpaBikeRepositoryImpl;
+    private final TripRepository tripRepository;
+    private final JpaLedgerEntryRepository ledgerEntryRepository;
+    private final JpaStationRepository stationRepository;
+    private final JpaBikeRepository bikeRepository;
 
 
-    public EndTripUseCase(DomainEventPublisher eventPublisher, JpaTripRepository jpaTripRepository,
-                          JpaLedgerEntryRepositoryImpl jpaLedgerEntryRepository, JpaStationRepositoryImpl jpaStationRepository,
-                          JpaBikeRepositoryImpl jpaBikeRepositoryImpl) {
+    public EndTripUseCase(DomainEventPublisher eventPublisher,
+                          TripRepository tripRepository,
+                          JpaLedgerEntryRepository ledgerEntryRepository,
+                          JpaStationRepository stationRepository,
+                          JpaBikeRepository bikeRepository) {
         this.eventPublisher = eventPublisher;
-        this.jpaTripRepository = jpaTripRepository;
-        this.jpaLedgerEntryRepository = jpaLedgerEntryRepository;
-        this.jpaStationRepository = jpaStationRepository;
-        this.jpaBikeRepositoryImpl = jpaBikeRepositoryImpl;
+        this.tripRepository = tripRepository;
+        this.ledgerEntryRepository = ledgerEntryRepository;
+        this.stationRepository = stationRepository;
+        this.bikeRepository = bikeRepository;
     }
     @Transactional
     public LedgerEntry execute(Trip currentTrip, Station endStation){
@@ -43,7 +51,7 @@ public class EndTripUseCase {
         LocalDateTime endTime = LocalDateTime.now();
         //Update the station and dock
         endStation.dockBike(currentTrip.getBike());
-        jpaStationRepository.save(endStation);
+        stationRepository.save(endStation);
 
         eventPublisher.publish(new StationStatusChangedEvent(
                 endStation.getId(),
@@ -54,18 +62,18 @@ public class EndTripUseCase {
 
         // Update the bike's status
         currentTrip.getBike().setStatus(Bike.BikeStatus.AVAILABLE);
-        jpaBikeRepositoryImpl.save(currentTrip.getBike());
+        bikeRepository.save(currentTrip.getBike());
 
         // Update the trip: builder new Trip with same UUID to update the one in database
         TripBuilder tripBuilder = new TripBuilder(currentTrip);
         tripBuilder.endAt(endStation, endTime);
         Trip editedTrip = tripBuilder.build();
-        jpaTripRepository.save(editedTrip);
+        tripRepository.save(editedTrip);
         eventPublisher.publish(new TripEndedEvent(editedTrip.getTripID()));
 
         // Generate ledger
         LedgerEntry ledgerEntry = new LedgerEntry(editedTrip);
-        jpaLedgerEntryRepository.save(ledgerEntry);
+        ledgerEntryRepository.save(ledgerEntry);
         eventPublisher.publish(new TripBilledEvent(editedTrip.getTripID(), ledgerEntry.getLedgerId()));
 
         return ledgerEntry;

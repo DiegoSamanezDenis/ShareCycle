@@ -1,6 +1,6 @@
 package com.sharecycle.domain.repository;
 
-import com.sharecycle.model.entity.Reservation;
+import com.sharecycle.domain.model.Reservation;
 
 import java.util.List;
 import java.util.UUID;

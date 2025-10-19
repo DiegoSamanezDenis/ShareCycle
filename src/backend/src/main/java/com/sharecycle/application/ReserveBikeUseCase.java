@@ -5,8 +5,7 @@ import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.ReservationCreatedEvent;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
-import com.sharecycle.domain.repository.JpaStationRepository;
-import com.sharecycle.model.entity.*;
+import com.sharecycle.domain.model.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -14,13 +13,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class ReserveBikeUseCase {
 
     private JpaBikeRepository bikeRepository;
-    private JpaStationRepository stationRepository;
     private ReservationRepository reservationRepository;
     private final DomainEventPublisher eventPublisher;
 
-    public ReserveBikeUseCase(JpaBikeRepository bikeRepository, JpaStationRepository stationRepository, ReservationRepository reservationRepository, DomainEventPublisher eventPublisher) {
+    public ReserveBikeUseCase(JpaBikeRepository bikeRepository, ReservationRepository reservationRepository, DomainEventPublisher eventPublisher) {
         this.bikeRepository = bikeRepository;
-        this.stationRepository = stationRepository;
         this.reservationRepository = reservationRepository;
         this.eventPublisher = eventPublisher;
     }
@@ -38,7 +35,9 @@ public class ReserveBikeUseCase {
         }
 
         // Transition bike state using State Pattern
-        bike.setStatus(Bike.BikeStatus.RESERVED);
+		bike.setStatus(Bike.BikeStatus.RESERVED);
+		// Persist bike status change to ensure DB reflects reservation
+		bikeRepository.save(bike);
 
         // Build and persist reservation
         Reservation reservation = new ReservationBuilder().rider(rider)

@@ -4,7 +4,8 @@ import com.sharecycle.application.LoginUseCase;
 import com.sharecycle.service.SessionStore;
 import org.springframework.web.bind.annotation.*;
 
-@RestController@RequestMapping("/api/auth")
+@RestController
+@RequestMapping("/api/auth")
 public class LoginController {
     private final LoginUseCase loginUseCase;
     private final SessionStore sessionStore;

@@ -2,8 +2,7 @@ package com.sharecycle.bootstrap;
 
 
 import com.sharecycle.application.RegisterOperatorUseCase;
-import com.sharecycle.infrastructure.JpaUserRepository;
-import com.sharecycle.service.BcryptHasher;
+import com.sharecycle.domain.repository.UserRepository;
 import jakarta.annotation.PostConstruct;
 
 import org.springframework.context.annotation.Profile;
@@ -14,13 +13,11 @@ import org.springframework.stereotype.Component;
 public class DataSeeder {
 
 
-    private final JpaUserRepository userRepository;
-    private final BcryptHasher bcryptHasher;
-private final RegisterOperatorUseCase registerOperatorUseCase;
+    private final UserRepository userRepository;
+    private final RegisterOperatorUseCase registerOperatorUseCase;
 
-    public DataSeeder(JpaUserRepository userRepository, BcryptHasher bcryptHasher, RegisterOperatorUseCase registerOperatorUseCase) {
+    public DataSeeder(UserRepository userRepository, RegisterOperatorUseCase registerOperatorUseCase) {
         this.userRepository = userRepository;
-        this.bcryptHasher = bcryptHasher;
         this.registerOperatorUseCase = registerOperatorUseCase;
     }
 
@@ -36,12 +33,10 @@ private final RegisterOperatorUseCase registerOperatorUseCase;
                     "smooth address",
                     "smooth@op.com",
                     "SmoothOperator",
-                    bcryptHasher.hash("wowpass"),
+                    "wowpass",
                     null
 
             );
         }
-        System.out.println("DataSeeder running...");
-
     }
 }

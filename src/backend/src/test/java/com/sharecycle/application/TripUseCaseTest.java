@@ -1,7 +1,17 @@
 package com.sharecycle.application;
 
-import com.sharecycle.infrastructure.*;
-import com.sharecycle.model.entity.*;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Bill;
+import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.repository.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
+import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.domain.repository.TripRepository;
+import com.sharecycle.domain.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,22 +34,19 @@ public class TripUseCaseTest {
     private EndTripUseCase endTripUseCase;
     
     @Autowired
-    private JpaTripRepository jpaTripRepository;
+    private TripRepository tripRepository;
     
     @Autowired
-    private JpaUserRepository userRepository;
+    private UserRepository userRepository;
     
     @Autowired
-    private JpaLedgerEntryRepositoryImpl jpaLedgerEntryRepository;
+    private JpaLedgerEntryRepository ledgerEntryRepository;
     
     @Autowired
-    private JpaStationRepositoryImpl jpaStationRepository;
-    
-    @Autowired
-    private JpaDockRepositoryImpl jpaDockRepository;
+    private JpaStationRepository stationRepository;
 
     @Autowired
-    private JpaBikeRepositoryImpl jpaBikeRepositoryImpl;
+    private JpaBikeRepository bikeRepository;
 
     @Test
     @Transactional
@@ -56,7 +63,7 @@ public class TripUseCaseTest {
         startStation.markActive();
         startStation.addEmptyDocks(1);
         startStation.getDocks().getFirst().setOccupiedBike(new Bike(Bike.BikeType.STANDARD));
-        jpaStationRepository.save(startStation);
+        stationRepository.save(startStation);
 
         int startBikeDockedNumber = startStation.getBikesDocked();
         // Assertion before trip start
@@ -69,15 +76,15 @@ public class TripUseCaseTest {
                 startStation
         );
 
-        Trip updatedTrip = jpaTripRepository.findById(trip.getTripID());
-        Station updatedStartStation = jpaStationRepository.findById(updatedTrip.getStartStation().getId());
+        Trip updatedTrip = tripRepository.findById(trip.getTripID());
+        Station updatedStartStation = stationRepository.findById(updatedTrip.getStartStation().getId());
         Dock updatedStartDock = updatedStartStation.getDocks().getFirst();
-        Bike updatedBike = jpaBikeRepositoryImpl.findById(updatedTrip.getBike().getId());
+        Bike updatedBike = bikeRepository.findById(updatedTrip.getBike().getId());
 
         // Assertion during trip
-        assertThat(startBikeDockedNumber == (updatedStartStation.getBikesDocked() + 1));
-        assertThat(updatedStartDock.getStatus() == Dock.DockStatus.EMPTY);
-        assertThat(updatedBike.getStatus() == Bike.BikeStatus.ON_TRIP);
+        assertThat(updatedStartStation.getBikesDocked()).isEqualTo(startBikeDockedNumber - 1);
+        assertThat(updatedStartDock.getStatus()).isEqualTo(Dock.DockStatus.EMPTY);
+        assertThat(updatedBike.getStatus()).isEqualTo(Bike.BikeStatus.ON_TRIP);
 
         Station endStation = new Station();
         endStation.setName("End Station");
@@ -86,27 +93,27 @@ public class TripUseCaseTest {
         endStation.setAddress("Address");
         endStation.markActive();
         endStation.addEmptyDocks(1);
-        jpaStationRepository.save(endStation);
-        int endBikeDockedNumber = startStation.getBikesDocked();
+        stationRepository.save(endStation);
+        int endBikeDockedNumber = endStation.getBikesDocked();
 
         LedgerEntry ledgerEntry = endTripUseCase.execute(trip, endStation);
 
-        updatedTrip = jpaTripRepository.findById(trip.getTripID()); // Should be the same tripId
-        Station updatedEndStation = jpaStationRepository.findById(updatedTrip.getEndStation().getId());
+        updatedTrip = tripRepository.findById(trip.getTripID()); // Should be the same tripId
+        Station updatedEndStation = stationRepository.findById(updatedTrip.getEndStation().getId());
         Dock updatedEndDock = updatedEndStation.getDocks().getFirst();
-        updatedBike = jpaBikeRepositoryImpl.findById(updatedTrip.getBike().getId());
+        updatedBike = bikeRepository.findById(updatedTrip.getBike().getId());
 
         //After trip assertions
-        assertThat(endBikeDockedNumber == (updatedEndStation.getBikesDocked() - 1));
-        assertThat(updatedEndDock.getStatus() == Dock.DockStatus.OCCUPIED);
-        assertThat(updatedBike.getStatus() == Bike.BikeStatus.AVAILABLE);
+        assertThat(updatedEndStation.getBikesDocked()).isEqualTo(endBikeDockedNumber + 1);
+        assertThat(updatedEndDock.getStatus()).isEqualTo(Dock.DockStatus.OCCUPIED);
+        assertThat(updatedBike.getStatus()).isEqualTo(Bike.BikeStatus.AVAILABLE);
 
         // Ledger
-        LedgerEntry updatedLedgerEntry = jpaLedgerEntryRepository.findById(ledgerEntry.getLedgerId());
+        LedgerEntry updatedLedgerEntry = ledgerEntryRepository.findById(ledgerEntry.getLedgerId());
         Bill bill = new Bill(updatedTrip);
 
-        assertThat(updatedLedgerEntry.getTrip().getTripID() == updatedTrip.getTripID());
-        assertThat(ledgerEntry.getTotalAmount() == bill.getTotal());
+        assertThat(updatedLedgerEntry.getTrip().getTripID()).isEqualTo(updatedTrip.getTripID());
+        assertThat(ledgerEntry.getTotalAmount()).isEqualTo(bill.getTotal());
 
     }
 

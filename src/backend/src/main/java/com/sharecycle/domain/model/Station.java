@@ -1,57 +1,39 @@
-package com.sharecycle.model.entity;
+package com.sharecycle.domain.model;
 
-import jakarta.persistence.*;
+import java.util.ArrayList;
+import java.util.Iterator;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 
-import java.util.*;
-
-@Entity
 public class Station {
     public enum StationStatus {
-        EMPTY, OCCUPIED, FULL, OUT_OF_SERVICE,
+        EMPTY, OCCUPIED, FULL, OUT_OF_SERVICE
     }
 
-    @Id
-    @Column(name = "station_id", columnDefinition = "BINARY(16)", unique = true, nullable = false)
     private UUID id;
-
-    @Column(name = "station_name", nullable = true)
     private String name;
-
-    @Enumerated(EnumType.ORDINAL)
-    @Column(name = "station_status", nullable = false)
     private StationStatus status;
-
-    @Column(name = "station_latitude", nullable = false)
     private double latitude;
-
-    @Column(name = "station_longtitude", nullable = false)
     private double longitude;
-
-    @Column(name = "bikes_docked", nullable = false)
     private int bikesDocked;
-
-    @Column(name = "station_capacity", nullable = false)
     private int capacity;
-
-    @Column(name = "address", nullable = false)
-    private String address; // Keep it simple, no need libaddressinput
-
-    @OneToMany(mappedBy = "station", cascade = CascadeType.ALL, orphanRemoval = true)
-    private List<Dock> docks;
+    private String address;
+    private final List<Dock> docks = new ArrayList<>();
 
     public Station() {
-        this.id = UUID.randomUUID();
-        this.status = StationStatus.EMPTY;
-        this.latitude = 0.0;
-        this.longitude = 0.0;
-        this.bikesDocked = 0;
-        this.capacity = 0;
-        this.address = "";
-        this.docks = new ArrayList<>();
+        this(UUID.randomUUID(), "", StationStatus.EMPTY, 0.0, 0.0, "", 0, 0);
     }
 
-    public Station(String name, StationStatus status, double latitude, double longitude, String address, int capacity, int bikesDocked) {
-        this.id = UUID.randomUUID();
+    public Station(UUID id,
+                   String name,
+                   StationStatus status,
+                   double latitude,
+                   double longitude,
+                   String address,
+                   int capacity,
+                   int bikesDocked) {
+        this.id = id == null ? UUID.randomUUID() : id;
         this.name = name;
         this.status = status;
         this.latitude = latitude;
@@ -77,12 +59,12 @@ public class Station {
         this.name = name;
     }
 
-    public double getLongitude() {
-        return longitude;
+    public StationStatus getStatus() {
+        return status;
     }
 
-    public void setLongitude(double longitude) {
-        this.longitude = longitude;
+    public void setStatus(StationStatus status) {
+        this.status = status;
     }
 
     public double getLatitude() {
@@ -93,12 +75,12 @@ public class Station {
         this.latitude = latitude;
     }
 
-    public StationStatus getStatus() {
-        return status;
+    public double getLongitude() {
+        return longitude;
     }
 
-    public void setStatus(StationStatus status) {
-        this.status = status;
+    public void setLongitude(double longitude) {
+        this.longitude = longitude;
     }
 
     public int getBikesDocked() {
@@ -130,10 +112,13 @@ public class Station {
         return docks;
     }
 
-    public void setDocks(List<Dock> docks) {
-        this.docks = docks;
-        for (Dock dock : docks) {
-            dock.setStation(this);
+    public void setDocks(List<Dock> dockList) {
+        docks.clear();
+        if (dockList != null) {
+            docks.addAll(dockList);
+            for (Dock dock : docks) {
+                dock.setStation(this);
+            }
         }
         recalculateCapacity();
     }
@@ -141,11 +126,11 @@ public class Station {
     public void updateBikesDocked() {
         int totalOccupied = 0;
         for (Dock dock : docks) {
-            if (dock.getStatus() == Dock.DockStatus.OCCUPIED){
+            if (dock.getStatus() == Dock.DockStatus.OCCUPIED) {
                 totalOccupied++;
             }
         }
-        this.setBikesDocked(totalOccupied);
+        setBikesDocked(totalOccupied);
     }
 
     public boolean isOutOfService() {
@@ -164,8 +149,13 @@ public class Station {
         this.status = StationStatus.OUT_OF_SERVICE;
     }
 
+    public void markActive() {
+        this.status = StationStatus.EMPTY;
+        syncStatusFromCounts();
+    }
+
     public int getFreeDockCount() {
-        return capacity - bikesDocked;
+        return Math.max(0, capacity - bikesDocked);
     }
 
     public void addEmptyDocks(int count) {
@@ -228,6 +218,15 @@ public class Station {
         emptyDock.setOccupiedBike(bike);
     }
 
+    public Dock getFirstDockWithBike() {
+        for (Dock dock : docks) {
+            if (dock.getOccupiedBike() != null) {
+                return dock;
+            }
+        }
+        return null;
+    }
+
     private void syncStatusFromCounts() {
         if (!StationStatus.OUT_OF_SERVICE.equals(this.status)) {
             if (bikesDocked == 0) {
@@ -240,21 +239,8 @@ public class Station {
         }
     }
 
-    public void markActive() {
-        this.status = StationStatus.EMPTY;
-        syncStatusFromCounts();
-    }
-
     private void recalculateCapacity() {
         this.capacity = docks.size();
         updateBikesDocked();
-    }
-    public Dock getFirstDockWithBike(){
-        for (Dock dock : docks) {
-            if (dock.getOccupiedBike() != null) {
-                return dock;
-            }
-        }
-        return null;
     }
 }

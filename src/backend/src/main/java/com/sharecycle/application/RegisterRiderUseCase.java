@@ -1,10 +1,11 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.model.entity.Rider;
+import com.sharecycle.domain.model.Rider;
 import com.sharecycle.service.PasswordHasher;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
+import java.util.UUID;
 
 @Service
 public class RegisterRiderUseCase {
@@ -12,43 +13,43 @@ public class RegisterRiderUseCase {
     private final PasswordHasher passwordHasher;
 
     //constructor
-    @Autowired
     public RegisterRiderUseCase(UserRepository userRepository, PasswordHasher passwordHasher) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
     }
 
-    public Rider register(String fullName,String address,  String email, String username, String password, String paymentToken) {
-        //validate email
-        if(email == null || !email.contains("@")) {
+    public RegistrationResult register(String fullName, String address, String email, String username, String password, String paymentToken) {
+        if (fullName == null || fullName.isBlank()) {
+            throw new IllegalArgumentException("Full name is required");
+        }
+        if (address == null || address.isBlank()) {
+            throw new IllegalArgumentException("Address is required");
+        }
+        if (email == null || !email.contains("@")) {
             throw new IllegalArgumentException("Email address is invalid");
         }
-
-        //check is username and password not set (require fields)
-        if (username==null || username.isEmpty() || password==null || password.isEmpty()) {
-            throw new IllegalArgumentException("Username and password is required");
+        if (username == null || username.isBlank()) {
+            throw new IllegalArgumentException("Username is required");
         }
-
-        //check if the user already exist
-        if (userRepository.existsByEmail(email) || userRepository.existsByUsername(username)){
-            throw new IllegalArgumentException("Username/ email is already in use");
+        if (password == null || password.isBlank()) {
+            throw new IllegalArgumentException("Password is required");
         }
-
-        if (password.length()>72){
+        if (paymentToken == null || paymentToken.isBlank()) {
+            throw new IllegalArgumentException("Payment method token is required");
+        }
+        String normalizedUsername = username.trim();
+        String normalizedEmail = email.trim();
+        if (userRepository.existsByEmail(normalizedEmail) || userRepository.existsByUsername(normalizedUsername)) {
+            throw new IllegalArgumentException("Username/email is already in use");
+        }
+        if (password.length() > 72) {
             throw new IllegalArgumentException("Password is too long");
         }
-        //hashing the password
-        String hashedpassword = passwordHasher.hash(password);
-
-        //creating the rider
-        Rider rider = new Rider(fullName, address, email, username, hashedpassword, paymentToken);
-
+        String hashedPassword = passwordHasher.hash(password);
+        Rider rider = new Rider(fullName.trim(), address.trim(), normalizedEmail, normalizedUsername, hashedPassword, paymentToken.trim());
         userRepository.save(rider);
-
-        // reutrning with password null so as to not expose it
-        return new Rider(rider.getFullName(), rider.getStreetAddress(), rider.getEmail(), rider.getUsername(), null, rider.getPaymentMethodToken());
-
+        return new RegistrationResult(rider.getUserId(), rider.getUsername(), rider.getRole(), rider.getEmail(), rider.getFullName());
     }
 
-
+    public record RegistrationResult(UUID userId, String username, String role, String email, String fullName) { }
 }
