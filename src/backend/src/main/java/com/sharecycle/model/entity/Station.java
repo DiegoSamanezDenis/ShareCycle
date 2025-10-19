@@ -249,4 +249,12 @@ public class Station {
         this.capacity = docks.size();
         updateBikesDocked();
     }
+    public Dock getFirstDockWithBike(){
+        for (Dock dock : docks) {
+            if (dock.getOccupiedBike() != null) {
+                return dock;
+            }
+        }
+        return null;
+    }
 }

@@ -9,6 +9,7 @@ import com.sharecycle.model.entity.Station;
 import com.sharecycle.model.entity.Trip;
 
 public class TripBuilder {
+    private UUID tripId;
     private Rider rider;
     private Station startStation;
     private Bike bike;
@@ -17,8 +18,18 @@ public class TripBuilder {
     private Station endStation;
 
     public TripBuilder() {
-
     }
+
+   public TripBuilder(Trip trip) {
+        tripId = trip.getTripID();
+        rider = trip.getRider();
+        startStation = trip.getStartStation();
+        bike = trip.getBike();
+        startTime = trip.getStartTime();
+        endTime = trip.getEndTime();
+        endStation = trip.getEndStation();
+   }
+
     public void start(Rider rider, Station startStation, Bike bike, LocalDateTime startTime) {
         this.rider = rider;
         this.startStation = startStation;
@@ -31,7 +42,7 @@ public class TripBuilder {
     }
     public Trip build()
     {
-        return new Trip(UUID.randomUUID(),getStartTime(),getEndTime(),getRider(), getBike(),getStartStation(),getEndStation());
+        return new Trip(getTripId(),getStartTime(),getEndTime(),getRider(), getBike(),getStartStation(),getEndStation());
     }
 
     @Override
@@ -44,6 +55,14 @@ public class TripBuilder {
                 ", endTime=" + endTime +
                 ", endStation=" + endStation +
                 '}';
+    }
+
+    public UUID getTripId() {
+        return tripId;
+    }
+
+    public void setTripId(UUID tripId) {
+        this.tripId = tripId;
     }
 
     public Station getEndStation() {
