@@ -16,8 +16,8 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.io.File;
 import java.io.IOException;
+import java.io.InputStream;
 import java.util.List;
 
 @Service
@@ -30,7 +30,6 @@ public class TempNameDataSeeder {
     private final JpaStationRepository stationRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final String dirPath = System.getProperty("user.dir") +  "/src/main/resources/db/data";
 
     public TempNameDataSeeder(JpaBikeRepository bikeRepository, JpaDockRepository dockRepository, JpaStationRepository stationRepository) {
         this.bikeRepository = bikeRepository;
@@ -41,28 +40,19 @@ public class TempNameDataSeeder {
     @EventListener(ApplicationReadyEvent.class)
     @Transactional
     public void initData(){
-        logger.info("Loading seed data from {}", dirPath);
-        if (new File(dirPath + "/stations.json").exists()) {
-            logger.info("Data files already existed");
-        } else {
-            logger.warn("Data files not existed");
-            logger.info("Creating random data files");
-            com.sharecycle.service.DataGenerator.generateRandomDataFiles();
-        }
+        logger.info("Loading seed data from classpath: db/data/*.json");
         loadBikes();
         loadDocks();
         loadStations();
     }
 
     private void loadBikes() {
-
-        File bikeFile = new File(dirPath + "/bikes.json");
-        try {
-            List<Bike> bikes = objectMapper.readValue(
-                    bikeFile,
-                    new TypeReference<>() {
-                    }
-            );
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("db/data/bikes.json")) {
+            if (is == null) {
+                logger.warn("bikes.json not found on classpath; skipping bikes seeding");
+                return;
+            }
+            List<Bike> bikes = objectMapper.readValue(is, new TypeReference<>() {});
             List<Bike> existingBikes = bikeRepository.findAll();
             for (Bike bike : bikes) {
                 if (!existingBikes.contains(bike)) {
@@ -75,14 +65,12 @@ public class TempNameDataSeeder {
         }
     }
     private void loadDocks() {
-        File dockFile = new File(dirPath + "/docks.json");
-        try {
-
-            List<Dock> docks = objectMapper.readValue(
-                    dockFile,
-                    new TypeReference<>() {
-                    }
-            );
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("db/data/docks.json")) {
+            if (is == null) {
+                logger.warn("docks.json not found on classpath; skipping docks seeding");
+                return;
+            }
+            List<Dock> docks = objectMapper.readValue(is, new TypeReference<>() {});
             List<Dock> existingDocks = dockRepository.findAll();
             for (Dock dock : docks) {
                 if (!existingDocks.contains(dock)) {
@@ -95,13 +83,12 @@ public class TempNameDataSeeder {
         }
     }
     private void loadStations() {
-        try {
-            File stationFile = new File(dirPath + "/stations.json");
-            List<Station> stations = objectMapper.readValue(
-                    stationFile,
-                    new TypeReference<>() {
-                    }
-            );
+        try (InputStream is = getClass().getClassLoader().getResourceAsStream("db/data/stations.json")) {
+            if (is == null) {
+                logger.warn("stations.json not found on classpath; skipping stations seeding");
+                return;
+            }
+            List<Station> stations = objectMapper.readValue(is, new TypeReference<>() {});
             List<Station> existingStations = stationRepository.findAll();
             for (Station station : stations) {
                 if (!existingStations.contains(station)) {

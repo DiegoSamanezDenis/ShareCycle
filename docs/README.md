@@ -239,6 +239,85 @@ Notes on controller tests:
   - Request: `{ stationId: UUID }`
   - Response: `{ tripId, endStationId, endedAt, durationMinutes, ledgerId, totalAmount }`
 
+## Frontend UI Demo
+
+- Tech: React 19 + Vite + React Router, Testing Library + Vitest, Pigeon Maps (map component compatible with React 19).
+- Location: `src/frontend`
+
+### Run (frontend)
+```
+cd src/frontend
+npm install
+npm run dev
+# App at http://localhost:5173
+```
+
+Set `VITE_API_URL` if needed (defaults to `http://localhost:8080/api`).
+
+### Features
+- Auth: Register, Login, Logout (token stored in localStorage)
+- Route guard: `/dashboard` requires login
+- Dashboard:
+  - Station summaries table
+  - Rider actions: Reserve bike (with countdown), Start trip, End trip (receipt)
+  - Operator controls: Toggle status, Adjust capacity, Move bike
+  - Map + legend (Pigeon Maps) and Station details panel
+  - Event console (recent actions)
+
+### Tests (frontend)
+```
+cd src/frontend
+npm run type-check && npm run lint && npm run test
+```
+Current suite: routing, auth guard/login, dashboard loads, reservation, trip start/end, operator controls.
+
+## Full Local Run (DB + API + Frontend)
+
+Option A — Docker (recommended)
+```
+# From repo root
+cd src
+docker compose up -d --build
+# Health check
+curl http://localhost:8080/health
+# In another terminal
+cd ../frontend
+npm install
+npm run dev
+# Open http://localhost:5173
+```
+
+Option B — Backend only with H2 (no Docker)
+```
+cd src/backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+# Windows: mvnw.cmd ...
+cd ../../frontend
+npm install
+npm run dev
+```
+
+## Demo Accounts & Seed Data
+
+- Operator (auto-seeded on startup via `DataSeeder` in non-test profiles):
+  - Username: `SmoothOperator`
+  - Password: `wowpass`
+  - Role: `OPERATOR`
+
+- Rider: create one via the Register page (no pre-seeded rider by default). Use any email/username; a token will be returned on login.
+
+- Stations/Bikes: pre-seeded under `src/backend/src/main/resources/db/data/` with Montreal coordinates (e.g., “Station #1”, “Station #2”, …). Use dashboard actions to reserve, start, and end trips.
+
+### Demo Script
+1. Register a rider (any values). You’ll be redirected to Login.
+2. Login as your new rider.
+3. Go to Dashboard:
+   - Reserve a bike at a station, observe countdown.
+   - Start a trip and then end it at another station; view the receipt amount.
+4. Logout.
+5. Login as `SmoothOperator` to access Operator Controls:
+   - Toggle a station’s status, adjust capacity, and move a bike between stations.
+
 ## Operator Station Operations (new)
 - **Use cases** live under `com.sharecycle.application`:
   - `SetStationStatusUseCase` toggles stations between active/out-of-service. Only operators may call `execute`.

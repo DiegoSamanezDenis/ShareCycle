@@ -23,7 +23,6 @@ import java.util.UUID;
 public class JpaUserEntity {
 
     @Id
-    @GeneratedValue
     @Column(name = "user_id", columnDefinition = "BINARY(16)")
     private UUID userId;
 
@@ -48,10 +47,10 @@ public class JpaUserEntity {
     @Column(name = "payment_method_token")
     private String paymentMethodToken;
 
-    @Column(name = "created_at")
+    @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;
 
-    @Column(name = "updated_at")
+    @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
     public JpaUserEntity() {

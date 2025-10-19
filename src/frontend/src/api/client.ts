@@ -15,9 +15,9 @@ export async function apiRequest<T>(
     requestHeaders.set('Content-Type', 'application/json');
   }
 
-  if (token) {
-    requestHeaders.set('Authorization', token);
-  }
+  // Attach auth token: prefer explicit token, otherwise read from storage
+  const resolvedToken = token ?? getTokenFromStorage();
+  if (resolvedToken) requestHeaders.set('Authorization', resolvedToken);
 
   const response = await fetch(`${appConfig.apiUrl}${path}`, {
     ...rest,
@@ -57,4 +57,15 @@ async function extractErrorMessage(response: Response): Promise<string> {
   }
 
   return `Request failed with status ${response.status}`;
+}
+
+function getTokenFromStorage(): string | null {
+  try {
+    const raw = localStorage.getItem('sharecycle.auth');
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as { token?: string | null };
+    return parsed?.token ?? null;
+  } catch {
+    return null;
+  }
 }
