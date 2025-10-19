@@ -1,9 +1,9 @@
 package com.sharecycle.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sharecycle.model.entity.Bike;
-import com.sharecycle.model.entity.Dock;
-import com.sharecycle.model.entity.Station;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.Station;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 

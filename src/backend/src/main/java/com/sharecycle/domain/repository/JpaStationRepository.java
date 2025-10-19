@@ -1,6 +1,6 @@
 package com.sharecycle.domain.repository;
 
-import com.sharecycle.model.entity.Station;
+import com.sharecycle.domain.model.Station;
 
 import java.util.List;
 import java.util.UUID;

@@ -2,9 +2,9 @@ package com.sharecycle.application;
 
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.model.entity.Bike;
-import com.sharecycle.model.entity.Operator;
-import com.sharecycle.model.entity.Station;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Operator;
+import com.sharecycle.domain.model.Station;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

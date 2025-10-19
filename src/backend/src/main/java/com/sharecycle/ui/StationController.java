@@ -1,22 +1,66 @@
 package com.sharecycle.ui;
 
-import com.sharecycle.application.ListStationSummariesUseCase;
-import com.sharecycle.infrastructure.JpaStationRepositoryImpl;
+import com.sharecycle.application.BmsFacade;
+import com.sharecycle.domain.model.Station;
 import com.sharecycle.model.dto.StationSummaryDto;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestController
+@RequestMapping("/api/stations")
 public class StationController {
-    private final JpaStationRepositoryImpl jpaStationRepository;
-    public StationController(JpaStationRepositoryImpl jpaStationRepository) {
-        this.jpaStationRepository = jpaStationRepository;
+
+    private final BmsFacade bmsFacade;
+
+    public StationController(BmsFacade bmsFacade) {
+        this.bmsFacade = bmsFacade;
     }
-    @GetMapping("/api/stations")
-    public List<StationSummaryDto> getStations() {
-        ListStationSummariesUseCase listStationSummariesUseCase = new ListStationSummariesUseCase(jpaStationRepository);
-        return listStationSummariesUseCase.execute();
+
+    @GetMapping
+    public List<StationSummaryDto> listStations() {
+        return bmsFacade.listStations();
     }
+
+    @PatchMapping("/{stationId}/status")
+    public StationSummaryDto updateStatus(@PathVariable UUID stationId, @RequestBody UpdateStatusRequest request) {
+        Station station = bmsFacade.updateStationStatus(request.operatorId(), stationId, request.outOfService());
+        return toDto(station);
+    }
+
+    @PatchMapping("/{stationId}/capacity")
+    public StationSummaryDto adjustCapacity(@PathVariable UUID stationId, @RequestBody AdjustCapacityRequest request) {
+        Station station = bmsFacade.adjustStationCapacity(request.operatorId(), stationId, request.delta());
+        return toDto(station);
+    }
+
+    @PostMapping("/move-bike")
+    public List<StationSummaryDto> moveBike(@RequestBody MoveBikeRequest request) {
+        bmsFacade.moveBike(request.operatorId(), request.bikeId(), request.destinationStationId());
+        return bmsFacade.listStations();
+    }
+
+    private StationSummaryDto toDto(Station station) {
+        return new StationSummaryDto(
+                station.getId(),
+                station.getName(),
+                station.getStatus(),
+                station.getBikesDocked(),
+                station.getCapacity(),
+                station.getFreeDockCount()
+        );
+    }
+
+    public record UpdateStatusRequest(UUID operatorId, boolean outOfService) { }
+
+    public record AdjustCapacityRequest(UUID operatorId, int delta) { }
+
+    public record MoveBikeRequest(UUID operatorId, UUID bikeId, UUID destinationStationId) { }
 }

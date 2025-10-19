@@ -1,5 +1,6 @@
 // src/App.tsx
 import { createBrowserRouter, RouterProvider } from 'react-router-dom';
+import { AuthProvider } from './auth/AuthContext';
 import { appConfig } from './config/env';
 import { routes } from './routes';
 
@@ -11,6 +12,10 @@ if (import.meta.env.DEV && !import.meta.env.VITE_API_URL) {
 }
 
 export default function App() {
-  return <RouterProvider router={router} />;
+  return (
+    <AuthProvider>
+      <RouterProvider router={router} />
+    </AuthProvider>
+  );
 }
 

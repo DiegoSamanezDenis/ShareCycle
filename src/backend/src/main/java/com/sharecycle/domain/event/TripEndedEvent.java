@@ -1,6 +1,6 @@
 package com.sharecycle.domain.event;
 
-import com.sharecycle.model.entity.*;
+import com.sharecycle.domain.model.*;
 
 import java.time.LocalDateTime;
 import java.util.UUID;

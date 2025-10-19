@@ -1,8 +1,8 @@
 package com.sharecycle.domain.repository;
 
-import com.sharecycle.model.entity.LedgerEntry;
-import com.sharecycle.model.entity.Trip;
-import com.sharecycle.model.entity.User;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.model.User;
 
 import java.util.List;
 import java.util.UUID;

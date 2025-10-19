@@ -2,6 +2,40 @@
 
 This document covers both frontend (React + TypeScript) and backend (Spring Boot) setup, how they fit together, and how to run everything locally.
 
+---
+
+# Developer Quick Start
+
+1) Clone and bootstrap
+```
+git clone <repo>
+cd ShareCycle
+# Frontend deps
+cd src/frontend && npm install
+```
+
+2) Run everything with Docker (DB + API)
+```
+cd src
+docker compose up -d --build
+# Health check
+curl http://localhost:8080/health
+```
+
+3) Run the frontend
+```
+cd src/frontend
+npm run dev
+# App at http://localhost:5173
+```
+
+4) Local-only backend (H2, no Docker)
+```
+cd src/backend
+./mvnw spring-boot:run -Dspring-boot.run.profiles=local
+# Windows: mvnw.cmd ...
+```
+
 ## Prerequisites
 - Java 21 (JDK) for the backend
 - Node.js 18+ and npm 9+ for the frontend
@@ -37,6 +71,15 @@ npm install
 - `npm run build` — `tsc -b` followed by `vite build`
 - `npm run preview` — serve the production bundle locally
 
+### Frontend API usage
+- Base URL: `VITE_API_URL` (defaults to `http://localhost:8080/api`)
+- Auth header: backend expects an `Authorization` header with an opaque token returned by login
+- Example
+```
+await apiRequest('/auth/login', { method: 'POST', body: JSON.stringify({ username, password }) })
+await apiRequest('/stations', { token })
+```
+
 ## Project Layout (src/frontend)
 - `index.html` — Vite HTML entry point
 - `package.json` — scripts and dependencies
@@ -63,15 +106,23 @@ npm install
 - Build: Maven wrapper in `src/backend/mvnw(.cmd)`
 - Database: MySQL 8 via Docker Compose, Flyway migrations
 - Local Dev Option: H2 in‑memory profile (`local`) disables Flyway
+- Schedulers: `ReservationExpiryScheduler` runs every minute to expire reservations and persist bikes back to `AVAILABLE`.
 
 The backend is a standard Boot app exposing REST endpoints (e.g., `GET /health`). JPA is configured; schema is managed via Flyway SQL migrations.
 
 ## Project Layout (src/backend)
 - `src/main/java/com/sharecycle/SharecycleApplication.java` — Spring Boot entry point
 - `src/main/java/com/sharecycle/ui/HealthController.java` — health endpoint
+- `src/main/java/com/sharecycle/application/BmsFacade.java` — façade orchestrating BMS workflows
+- Controllers (JSON APIs under `/api/...`):
+  - `RegistrationController` (`/api/auth/register`)
+  - `LoginController` (`/api/auth/login`, `/api/auth/logout`)
+  - `ReservationController` (`/api/reservations`)
+  - `TripController` (`/api/trips`, `/api/trips/{tripId}/end`)
+  - `StationController` (`/api/stations`, status/capacity/move-bike)
 - `src/main/resources/application.yml` — default config (MySQL + Flyway)
 - `src/main/resources/application-local.yml` — local dev profile (H2, Flyway off)
-- `src/main/resources/db/migration/` — Flyway SQL migrations (V1, V2)
+- `src/main/resources/db/migration/` — Flyway SQL migrations (see list below)
 - `src/test/resources/application-test.yml` — test profile (H2, Flyway off)
 - `pom.xml` — web, validation, data‑jpa, MySQL driver, Flyway (core + mysql), H2
 
@@ -123,12 +174,24 @@ cd ../backend && ./mvnw spring-boot:run
 - Build without tests: `cd src/backend && ./mvnw -DskipTests package`
 - Run tests: `cd src/backend && ./mvnw test` (uses `test` profile)
 
+### Test Playbook (after making changes)
+Run these before committing significant changes:
+- `cd src/backend && ./mvnw test` — runs H2-based integration tests for use cases and controllers
+- `cd src/frontend && npm run type-check && npm run lint && npm run test && npm run build`
+- Optional coverage gate (frontend): `npm run coverage`
+
+Notes on controller tests:
+- Spring Security is enabled by default; POST endpoints may require CSRF tokens or security to be disabled in test slices if you add auth middleware.
+- If you add security, consider adding `.with(csrf())` to POSTs and configuring a test security config.
+
 ## Flyway Migrations
 - Location: `src/backend/src/main/resources/db/migration`
-- Examples:
-  - `V1_baseline.sql` - baseline marker
-  - `V2_create_users.sql` - creates `users` table (UUID as `BINARY(16)`, unique email/username)
-  - `V4__add_bike_station_fk.sql` - links bikes to the station they are currently docked at
+- Present:
+  - `V1__baseline.sql` – baseline marker
+  - `V2__create_users.sql` – creates `users` table (UUID as `BINARY(16)`, unique email/username)
+  - `V3__create_station_dock_bike_tables.sql` – station/dock/bike tables
+  - `V4__add_bike_station_fk.sql` – links bikes to their current station
+  - `V5__create_reservation_trip_ledger.sql` – reservation, trip, ledger tables
 - Runs on startup in default profile; disabled in `local` and `test`.
 
 ## Troubleshooting
@@ -139,7 +202,42 @@ cd ../backend && ./mvnw spring-boot:run
 - CORS during dev: if calling backend from http://localhost:5173, add a simple CORS config or proxy via Vite.
 
 ## Useful Endpoints
-- `GET /health` - returns `ok`
+- `GET /health` — returns `ok`
+- `POST /api/auth/register` — register rider
+- `POST /api/auth/login` — login; returns `{ userId, username, role, token }`
+- `POST /api/auth/logout` — invalidates token
+- `GET /api/stations` — list station summaries
+- `PATCH /api/stations/{stationId}/status` — toggle station status
+- `PATCH /api/stations/{stationId}/capacity` — adjust station capacity
+- `POST /api/stations/move-bike` — move a bike between stations
+- `POST /api/reservations` — create reservation
+- `POST /api/trips` — start trip
+- `POST /api/trips/{tripId}/end` — end trip and bill
+
+### Endpoint contracts (request/response shapes)
+- POST `/api/auth/login`
+  - Request: `{ username: string, password: string }`
+  - Response: `{ userId: UUID, username: string, role: 'RIDER'|'OPERATOR', token: string }`
+- POST `/api/auth/register`
+  - Request: `{ fullName, streetAddress, email, username, password, paymentMethodToken }`
+  - Response: `{ userId, username, role, email, fullName }`
+- GET `/api/stations`
+  - Response: `Array<{ stationId, name, status, bikesDocked, capacity, freeDocks }>`
+- PATCH `/api/stations/{id}/status`
+  - Request: `{ operatorId: UUID, outOfService: boolean }`
+- PATCH `/api/stations/{id}/capacity`
+  - Request: `{ operatorId: UUID, delta: number }`
+- POST `/api/stations/move-bike`
+  - Request: `{ operatorId: UUID, bikeId: UUID, destinationStationId: UUID }`
+- POST `/api/reservations`
+  - Request: `{ riderId: UUID, stationId: UUID, bikeId: UUID, expiresAfterMinutes: number }`
+  - Response: `{ reservationId, stationId, bikeId, reservedAt, expiresAt, active }`
+- POST `/api/trips`
+  - Request: `{ tripId?: UUID|null, riderId: UUID, bikeId: UUID, stationId: UUID, startTime?: ISO8601|null }`
+  - Response: `{ tripId, stationId, bikeId, riderId, startedAt }`
+- POST `/api/trips/{tripId}/end`
+  - Request: `{ stationId: UUID }`
+  - Response: `{ tripId, endStationId, endedAt, durationMinutes, ledgerId, totalAmount }`
 
 ## Operator Station Operations (new)
 - **Use cases** live under `com.sharecycle.application`:
@@ -152,5 +250,55 @@ cd ../backend && ./mvnw spring-boot:run
 - **Events** (`com.sharecycle.domain.event`) fire on success so dashboards can refresh:
   - `StationStatusChangedEvent`, `StationCapacityChangedEvent`, `BikeMovedEvent`.
 - **Testing**: run `./mvnw test` (H2 + `ddl-auto=create-drop`) to execute new integration suites covering station status, capacity, and move workflows.
-- **API surface (planned)**: controller layer should forward PATCH/POST calls to these use cases, returning clear 4xx error messages from thrown exceptions (e.g., “Destination station has no free docks.”).
+- **API surface (implemented)**: controller layer forwards PATCH/POST calls to these use cases and returns clear 4xx messages on validation errors (e.g., “Destination station has no free docks.”). See `StationController` for routes.
+
+---
+
+# Reservation & Trips (new)
+
+- **Use cases** live under `com.sharecycle.application`:
+  - `ReserveBikeUseCase` validates preconditions, marks bike `RESERVED`, persists, publishes `ReservationCreated`.
+  - `ReservationExpiryScheduler` runs periodically to expire reservations and persist bikes back to `AVAILABLE`.
+  - `StartTripUseCase` undocks from start station, marks bike `ON_TRIP`, persists trip/station/bike, publishes `TripStarted`.
+  - `EndTripUseCase` docks at end station, marks bike `AVAILABLE`, ends trip via `TripBuilder`, persists ledger, publishes `TripEnded`/`TripBilled`.
+- **API surface**:
+  - `POST /api/reservations` — create reservation
+  - `POST /api/trips` — start trip
+  - `POST /api/trips/{tripId}/end` — end trip and bill
+
+---
+
+# Codebase Layout & Where to Find Things
+
+Backend (Spring Boot)
+- Application (use cases, orchestration): `src/backend/src/main/java/com/sharecycle/application`
+  - Reserve/Start/End Trip, Station controls, Scheduler
+- UI Controllers (REST): `src/backend/src/main/java/com/sharecycle/ui`
+- Domain (models, builders, state): `src/backend/src/main/java/com/sharecycle/domain`
+- Infrastructure (JPA adapters/entities, events): `src/backend/src/main/java/com/sharecycle/infrastructure`
+- Config & profiles: `src/backend/src/main/resources/*.yml`
+- Migrations: `src/backend/src/main/resources/db/migration`
+- Tests: `src/backend/src/test/java/...`
+
+Frontend (Vite + React)
+- Pages (routes): `src/frontend/src/pages`
+- Auth/session: `src/frontend/src/auth/AuthContext.tsx`
+- API client: `src/frontend/src/api/client.ts`
+- App & router: `src/frontend/src/App.tsx`, `src/frontend/src/routes.tsx`
+- Tests & setup: `src/frontend/src/App.test.tsx`, `src/frontend/src/test/setup.ts`
+
+---
+
+# Security & Auth
+- Login returns an opaque `token`; send it in `Authorization` header on subsequent requests.
+- Registration and login endpoints are under `/api/auth/...`.
+- For local dev, you can run without strict controller-level security; when enabling security, ensure POST requests include CSRF tokens or configure test security accordingly.
+
+---
+
+# Collaboration Tips (FE <> BE)
+- Agree on base URL via `.env` (`VITE_API_URL`), default is `http://localhost:8080/api`.
+- The “Endpoint contracts” section above enumerates payloads and responses; extend it when adding endpoints.
+- Use the domain events (logged in API) to trace reservation/trip/station flows during manual testing.
+
 

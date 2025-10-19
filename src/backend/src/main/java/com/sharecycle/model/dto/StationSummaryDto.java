@@ -1,37 +1,47 @@
 package com.sharecycle.model.dto;
 
+import com.sharecycle.domain.model.Station;
+
+import java.util.UUID;
 
 public class StationSummaryDto {
-    private String name;
-    private int bikesDocked;
-    private int capacity;
-    public StationSummaryDto(String name, int bikesDocked, int capacity) {
+    private final UUID stationId;
+    private final String name;
+    private final Station.StationStatus status;
+    private final int bikesDocked;
+    private final int capacity;
+    private final int freeDocks;
+
+    public StationSummaryDto(UUID stationId, String name, Station.StationStatus status, int bikesDocked, int capacity, int freeDocks) {
+        this.stationId = stationId;
         this.name = name;
+        this.status = status;
         this.bikesDocked = bikesDocked;
         this.capacity = capacity;
+        this.freeDocks = freeDocks;
+    }
+
+    public UUID getStationId() {
+        return stationId;
     }
 
     public String getName() {
         return name;
     }
 
-    public void setName(String name) {
-        this.name = name;
+    public Station.StationStatus getStatus() {
+        return status;
     }
 
     public int getBikesDocked() {
         return bikesDocked;
     }
 
-    public void setBikesDocked(int bikesDocked) {
-        this.bikesDocked = bikesDocked;
-    }
-
     public int getCapacity() {
         return capacity;
     }
 
-    public void setCapacity(int capacity) {
-        this.capacity = capacity;
+    public int getFreeDocks() {
+        return freeDocks;
     }
 }

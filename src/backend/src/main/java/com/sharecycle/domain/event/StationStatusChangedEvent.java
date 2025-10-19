@@ -1,6 +1,6 @@
 package com.sharecycle.domain.event;
 
-import com.sharecycle.model.entity.Station;
+import com.sharecycle.domain.model.Station;
 
 import java.util.UUID;
 

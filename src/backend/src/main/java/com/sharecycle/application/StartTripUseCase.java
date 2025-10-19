@@ -7,8 +7,7 @@ import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.infrastructure.JpaUserRepository;
-import com.sharecycle.model.entity.*;
+import com.sharecycle.domain.model.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,10 +18,10 @@ import java.util.UUID;
 public class StartTripUseCase {
     private JpaBikeRepository bikeRepository;
     private JpaStationRepository stationRepository;
-    private JpaUserRepository userRepository;
+    private UserRepository userRepository;
     private TripRepository tripRepository;
     private final DomainEventPublisher eventPublisher;
-    public StartTripUseCase(JpaBikeRepository bikeRepository, JpaUserRepository userRepository,JpaStationRepository stationRepository, TripRepository tripRepository, DomainEventPublisher eventPublisher) {
+    public StartTripUseCase(JpaBikeRepository bikeRepository, UserRepository userRepository,JpaStationRepository stationRepository, TripRepository tripRepository, DomainEventPublisher eventPublisher) {
         this.bikeRepository = bikeRepository;
         this.userRepository = userRepository;
         this.stationRepository = stationRepository;
@@ -37,30 +36,51 @@ public class StartTripUseCase {
                         Bike bike,
                         Station startStation) {
 
-        Rider managedRider = (Rider) userRepository.findById(rider.getUserId());
-        Bike managedBike = bikeRepository.findById(bike.getId());
-        Station managedStartStation = stationRepository.findById(startStation.getId());
-
-        if(managedStartStation.getStatus() == Station.StationStatus.EMPTY
-                || managedStartStation.getStatus() == Station.StationStatus.OUT_OF_SERVICE) {
-            throw new IllegalStateException("Station is empty.");
+        User user = userRepository.findById(rider.getUserId());
+        if (!(user instanceof Rider managedRider)) {
+            throw new IllegalStateException("Only riders can start trips.");
         }
 
-        if(!(managedBike.getStatus() == Bike.BikeStatus.AVAILABLE
+        Bike managedBike = bikeRepository.findById(bike.getId());
+        if (managedBike == null) {
+            throw new IllegalArgumentException("Bike not found.");
+        }
+
+        Station managedStartStation = stationRepository.findByIdForUpdate(startStation.getId());
+        if (managedStartStation == null) {
+            throw new IllegalArgumentException("Start station not found.");
+        }
+
+        if (managedStartStation.isOutOfService()) {
+            throw new IllegalStateException("Station is out of service.");
+        }
+        if (!managedStartStation.hasAvailableBike()) {
+            throw new IllegalStateException("Station has no available bikes.");
+        }
+        if (managedStartStation.findDockWithBike(managedBike.getId()).isEmpty()) {
+            throw new IllegalStateException("Bike is not docked at the specified station.");
+        }
+        if (!(managedBike.getStatus() == Bike.BikeStatus.AVAILABLE
                 || managedBike.getStatus() == Bike.BikeStatus.RESERVED)) {
             throw new IllegalStateException("Bike is not available.");
         }
 
+        managedStartStation.undockBike(managedBike);
         managedBike.setStatus(Bike.BikeStatus.ON_TRIP);
-        managedStartStation.setBikesDocked(managedStartStation.getBikesDocked() - 1);
+        managedBike.setCurrentStation(null);
 
         TripBuilder tripBuilder = new TripBuilder();
+        if (tripID != null) {
+            tripBuilder.setTripId(tripID);
+        }
         tripBuilder.start(managedRider, managedStartStation, managedBike, startTime);
         Trip trip = tripBuilder.build();
 
         tripRepository.save(trip);
+        stationRepository.save(managedStartStation);
+        bikeRepository.save(managedBike);
 
-        eventPublisher.publish(new TripStartedEvent(tripID, startTime, null, durationMinutes,
+        eventPublisher.publish(new TripStartedEvent(trip.getTripID(), trip.getStartTime(), trip.getEndTime(), trip.getDurationMinutes(),
                 managedRider, managedBike, managedStartStation, null));
 
         return trip;
