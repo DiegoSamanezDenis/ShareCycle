@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { ChangeEvent, FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 
 type RegisterFormState = {
@@ -136,6 +136,11 @@ export default function RegisterPage() {
       </form>
       {error && <p role="alert">{error}</p>}
       {success && <p>Registration successful! Redirecting to login…</p>}
+      {!success && (
+        <p>
+          Already have an account? <Link to="/login">Sign in</Link>.
+        </p>
+      )}
     </main>
   );
 }

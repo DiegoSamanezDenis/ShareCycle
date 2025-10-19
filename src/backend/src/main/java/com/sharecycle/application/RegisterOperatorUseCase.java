@@ -6,6 +6,7 @@ import com.sharecycle.domain.model.Operator;
 import com.sharecycle.service.PasswordHasher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import java.util.UUID;
 
 @Service
 public class RegisterOperatorUseCase {
@@ -41,12 +42,13 @@ public class RegisterOperatorUseCase {
         //hashing the password
         String hashedpassword = passwordHasher.hash(password);
 
-        //creating the operator
+        //creating the operator (assign UUID explicitly; JPA requires manual id)
         Operator operator = new Operator(fullName, address, email, username, hashedpassword, paymentToken);
+        operator.setUserId(UUID.randomUUID());
 
         userRepository.save(operator);
 
-        // reutrning with password null so as to not expose it
+        // returning with password null so as to not expose it
         return new Operator(operator.getFullName(), operator.getStreetAddress(), operator.getEmail(), operator.getUsername(), null, null);
 
     }

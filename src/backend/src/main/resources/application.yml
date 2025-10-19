@@ -1,8 +1,8 @@
 spring:
   datasource:
-    url: jdbc:mysql://localhost:3306/sharecycle?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC
-    username: sharecycle
-    password: devpw
+    url: ${DB_URL:jdbc:mysql://localhost:3306/sharecycle?useSSL=false&allowPublicKeyRetrieval=true&serverTimezone=UTC}
+    username: ${DB_USER:sharecycle}
+    password: ${DB_PASSWORD:devpw}
     driver-class-name: com.mysql.cj.jdbc.Driver
   jpa:
     hibernate:

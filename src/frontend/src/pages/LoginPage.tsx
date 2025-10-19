@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import type { FormEvent } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { apiRequest } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
 
@@ -76,6 +76,9 @@ export default function LoginPage() {
         </button>
       </form>
       {error && <p role="alert">{error}</p>}
+      <p>
+        Don't have an account? <Link to="/register">Create one</Link>.
+      </p>
     </main>
   );
 }
