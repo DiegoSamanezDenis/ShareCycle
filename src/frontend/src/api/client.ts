@@ -24,6 +24,7 @@ export async function apiRequest<T>(
     headers: requestHeaders
   });
 
+  // --- CALL extractErrorMessage HERE ---
   if (!response.ok) {
     const message = await extractErrorMessage(response);
     throw new Error(message);
@@ -41,9 +42,11 @@ export async function apiRequest<T>(
   return undefined as T;
 }
 
+// Keep only **one** extractErrorMessage here
 async function extractErrorMessage(response: Response): Promise<string> {
   try {
-    const data = await response.json();
+    const cloned = response.clone(); // clone to avoid "body already read"
+    const data = await cloned.json();
     if (data && typeof data.message === 'string') {
       return data.message;
     }
@@ -51,9 +54,11 @@ async function extractErrorMessage(response: Response): Promise<string> {
     // ignore JSON parse failures
   }
 
-  const text = await response.text();
-  if (text) {
-    return text;
+  try {
+    const text = await response.text();
+    if (text) return text;
+  } catch {
+    // ignore text failures
   }
 
   return `Request failed with status ${response.status}`;
