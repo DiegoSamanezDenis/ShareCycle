@@ -1,0 +1,2 @@
+There was an error that did'nt allow registration 
+The error occurred because Hibernate could not persist a `Rider` entity with a `null` primary key (`userId`). This caused a `IdentifierGenerationException` when trying to save a new rider. The issue was fixed by assigning a UUID to `userId` in the `Rider` constructor before saving. With this change, new rider accounts can now be created without triggering a persistence error.

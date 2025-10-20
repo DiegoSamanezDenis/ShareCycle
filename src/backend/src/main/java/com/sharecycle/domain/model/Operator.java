@@ -1,5 +1,7 @@
 package com.sharecycle.domain.model;
 
+import java.util.UUID;
+
 public class Operator extends User {
 
     public Operator() {
@@ -25,7 +27,7 @@ public class Operator extends User {
                     String username,
                     String passwordHash,
                     String paymentMethodToken) {
-        super(null,
+        super(UUID.randomUUID(),
                 fullName,
                 streetAddress,
                 email,
