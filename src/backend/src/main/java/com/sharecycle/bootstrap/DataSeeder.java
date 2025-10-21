@@ -27,16 +27,16 @@ public class DataSeeder {
     //to make it run on startup (bascally after all beans are initialised/setup)
     @PostConstruct
     public void init() {
-        if(!userRepository.existsByUsername("SmoothOperator")){
+        if(!userRepository.existsByUsername("SmoothOperator2")) {
             registerOperatorUseCase.register(
-"Smoooothhh operatorrr",
+                    "Smoooothhh operatorrr",
                     "smooth address",
-                    "smooth@op.com",
-                    "SmoothOperator",
+                    "smooth2@op.com",
+                    "SmoothOperator2",
                     "wowpass",
                     null
-
             );
         }
     }
+
 }
