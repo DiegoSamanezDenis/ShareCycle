@@ -5,8 +5,8 @@ type ApiRequestOptions = RequestInit & {
 };
 
 export async function apiRequest<T>(
-  path: string,
-  options: ApiRequestOptions = {}
+    path: string,
+    options: ApiRequestOptions = {}
 ): Promise<T> {
   const { token, headers, ...rest } = options;
   const requestHeaders = new Headers(headers ?? {});

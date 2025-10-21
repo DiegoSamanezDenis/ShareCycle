@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react';
 // no form submissions in Stories 1–3 UI
 import { apiRequest } from '../api/client';
 import { useAuth } from '../auth/AuthContext';
+import ReserveForm from './ReserveForm';
 
 type StationSummary = {
   stationId: string;
@@ -59,6 +60,9 @@ export default function DashboardPage() {
 
   // Capacity/move bike/trip actions removed for Stories 4–9
 
+  // map station shape for ReserveForm
+  const reserveStations = stations.map((s) => ({ id: s.stationId, name: s.name ?? 'Unnamed station' }));
+
   return (
     <main>
       {/* Stories 1–3: summaries only */}
@@ -101,6 +105,9 @@ export default function DashboardPage() {
           </table>
         )}
       </section>
+
+      {/* Story 4: Reserve bike UI */}
+      <ReserveForm stations={reserveStations} />
 
       {/* No actions or event console for Stories 1–3 */}
     </main>
