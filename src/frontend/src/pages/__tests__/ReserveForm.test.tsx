@@ -5,7 +5,7 @@ import ReserveForm from '../../pages/ReserveForm';
 import { AuthProvider } from '../../auth/AuthContext';
 
 vi.mock('../../api/client', () => ({
-  apiRequest: vi.fn(async (path: string, opts?: any) => {
+  apiRequest: vi.fn(async (path: string, opts?: { method?: string }) => {
     // Mock bikes endpoint for station s1
     if (path === '/stations/s1/bikes') {
       return [
@@ -14,7 +14,7 @@ vi.mock('../../api/client', () => ({
       ];
     }
     // Mock reservation POST
-    if (path === '/reservations' && opts && opts.method === 'POST') {
+    if (path === '/reservations' && opts?.method === 'POST') {
       return { id: 'r1', expiresAt: new Date(Date.now() + 5 * 60_000).toISOString() };
     }
     return undefined;
@@ -67,4 +67,3 @@ describe('ReserveForm', () => {
     expect(await screen.findByText(/Reservation created:/)).toBeInTheDocument();
   });
 });
-
