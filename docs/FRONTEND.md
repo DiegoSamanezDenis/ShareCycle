@@ -1,135 +1,112 @@
 ## ShareCycle Frontend
 
-This document captures the current state of the ShareCycle frontend
+Updated guide for the React UI that now delivers Stories 1–9 end to end.
 
 ### Scope (Current UI)
-- Stories implemented in the UI: 1–3
-  - Story 1: Registration (Register rider)
-  - Story 2: Login & Session (role-aware access, route guard)
-  - Story 3: Station summary (list of stations with basic availability).
+- Stories 1–9 are demo-ready across the frontend:
+  - Story 1: Rider registration with full validation and friendly errors.
+  - Story 2: Login/session handling with role-aware dashboards and route guards.
+  - Story 3: Station summary list plus map markers coloured by fullness.
+  - Story 4: Reservation workflow with countdown, success/failure toasts, and auto-refresh.
+  - Story 5: Trip start guardrails and inline feedback when preconditions fail.
+  - Story 6: Trip completion/receipt flow showing billing totals.
+  - Story 7: Operator controls for status toggles, capacity adjustments, and bike moves.
+  - Story 8: Guest landing map + legend with pricing CTA, no destructive actions.
+  - Story 9: Station details drawer with dock grid, role-based action buttons, and event console.
 
 ### Tech Stack
 - React 19 + TypeScript (Vite 7)
 - React Router DOM 7
+- Zustand-powered auth context (plain React state under the hood)
 - ESLint (flat config) + Prettier
-- Vitest + @testing-library/react (jsdom)
+- Vitest + Testing Library + MSW for integration-style UI tests
+- Pigeon Maps for the station map visualisation
 
-### Project Structure (frontend)
+### Project Structure
 ```
 src/frontend/
   src/
     api/
-      client.ts            # API utility (base URL, auth header, error handling)
+      client.ts              # Shared fetch wrapper (auth headers, safe error parsing)
     auth/
-      AuthContext.tsx      # Auth state (token, role, userId, username); login/logout
+      AuthContext.tsx        # Token/role storage + login/logout helpers
+    components/
+      (inline in pages today – extracted pieces live alongside dashboard)
     config/
-      env.ts               # appConfig.apiUrl → defaults to http://localhost:8080/api
+      env.ts                 # appConfig.apiUrl with defaults + type-safe access
     pages/
-      HomePage.tsx
-      LoginPage.tsx        # Sign-in form; saves session to storage via AuthContext
-      RegisterPage.tsx     # Basic registration form (Rider)
-      DashboardPage.tsx    # Simplified station summary table only (Stories 1–3)
-      __tests__/
-        AuthFlow.test.tsx  # Route guard + login flow
-        DashboardPage.test.tsx  # Asserts station overview renders
-    routes.tsx             # App routes + RequireAuth wrapper for /dashboard
+      HomePage.tsx           # Guest map + legend + pricing CTA
+      LoginPage.tsx          # Story 2 login experience
+      RegisterPage.tsx       # Story 1 registration form
+      DashboardPage.tsx      # All stories 3–9 for riders/operators
+      NotFoundPage.tsx
+      __tests__/             # Vitest suites (auth, flows, dashboard, guest map)
+    routes.tsx               # Router + RequireAuth guard
+    types/                   # DTO contracts: stations, events, auth
     App.tsx, main.tsx, index.css
 ```
 
 ### Configuration
-- API base URL is defined in `src/frontend/src/config/env.ts`:
-  - Defaults to `http://localhost:8080/api`. Adjust if backend runs elsewhere.
-- Auth storage key: `sharecycle.auth` (JSON object with token, role, userId, username).
+- API base URL lives in `src/frontend/src/config/env.ts` and resolves to `import.meta.env.VITE_API_URL ?? "http://localhost:8080/api"`.
+- Auth tokens persist under `localStorage` key `sharecycle.auth` (JSON with `token`, `role`, `userId`, `username`).
 
 ### Authentication & Routing
-- `AuthContext.tsx` exposes:
-  - `token`, `role`, `userId`, `username`
-  - `login(credentials)` and `logout()`
-- `routes.tsx` defines routes:
-  - `/` → Home
-  - `/register` → Register
-  - `/login` → Login
-  - `/dashboard` → Protected by `RequireAuth` (renders `LoginPage` if no token)
+- `AuthContext` persists the session, exposes `login`/`logout`, and attaches the bearer token through `apiRequest`.
+- `routes.tsx` defines public routes (`/`, `/register`, `/login`) and the protected dashboard. `RequireAuth` redirects unauthenticated visitors to the login page.
+- Logout wipes local storage and informs the backend.
 
 ### API Client
-- `api/client.ts` provides `apiRequest<T>(path, options)`:
-  - Automatically attaches `Authorization` header from explicit `options.token` or `localStorage`.
-  - Sets `Content-Type: application/json` for string bodies.
-  - Throws errors with server-provided message when possible.
+- `api/client.ts` abstracts fetch:
+  - Sets JSON headers when needed and attaches the bearer token.
+  - Uses `response.clone().json()` plus a fallback to text/status to preserve error messages from HTML or plain-text responses.
+  - Normalises 204 responses to `undefined`.
 
-### Dashboard (Story 3)
-- `DashboardPage.tsx` shows a Station Overview table only:
-  - Fetches `GET /api/stations` via `apiRequest` on mount when a token exists.
-  - Renders name, status, bikes docked, free docks, and capacity.
+### Feature Highlights
+- **Registration (Story 1):** Field-level validation, inline server errors, and automatic role assignment to Rider.
+- **Login & Sessions (Story 2):** Role-aware redirects (rider -> dashboard, operator -> management view) with token persistence and logout.
+- **Station Summary + Map (Story 3 & 8):** Combined table and map view showing fullness, status, and tooltips. Legend clarifies colour-coding for guests and authenticated users.
+- **Reservations & Trips (Stories 4-6):** Dock-level actions let riders reserve, start, and end trips without typing IDs; countdowns and receipts refresh automatically after each step, and the active trip snapshot survives a page refresh via local storage.
+- **Operator Controls (Story 7):** Status toggles, capacity adjustments, and bike moves surface only for operators with disabled states when rules fail.
+- **Station Details Panel (Story 9):** Dock grid shows live occupancy with inline controls (map markers and table rows open the same panel), and the event console polls `/api/public/events` to highlight backend activity.
 
 ### Tests
-- Keep:
-  - `AuthFlow.test.tsx` → validates the route guard and a happy-path login navigation.
-  - `DashboardPage.test.tsx` → validates that station overview renders with mocked data.
-- Removed:
-  - `Flows.test.tsx` and all tests for reservations, trips, operator controls, and map rendering.
+- `src/App.test.tsx` – smoke test for routing/shell.
+- `src/pages/__tests__/AuthFlow.test.tsx` – login guard, redirects, logout flow.
+- `src/pages/__tests__/DashboardPage.test.tsx` – station overview, map legend, drawer rendering.
+- `src/pages/__tests__/Flows.test.tsx` – rider reservation/start/end flow and operator controls hitting mocked endpoints.
+- `src/pages/__tests__/HomePage.test.tsx` – guest landing map + legend with pricing CTA.
+- All tests run via `npm test` (Vitest in CI mode).
 
 ### Scripts
-- From `src/frontend`:
-  - `npm run dev` → Vite dev server
-  - `npm run build` → type-check + bundle
-  - `npm run preview` → serve production build
-  - `npm run lint` → ESLint (no warnings allowed by default script)
-  - `npm run type-check` → TypeScript no-emit check
-  - `npm run test` / `npm run coverage` → Vitest
+- `npm run dev` – Vite dev server.
+- `npm run build` – TypeScript build + production bundle.
+- `npm run preview` – Serve production build locally.
+- `npm run lint` – ESLint.
+- `npm run type-check` – TypeScript `--noEmit` pass.
+- `npm run test` / `npm run coverage` – Vitest suites.
 
-### How to Run (Frontend Only)
+### How to Run (Frontend)
 1. `cd src/frontend`
 2. `npm install`
 3. `npm run dev`
-4. Open the printed local URL (typically `http://localhost:5173`). Ensure the backend is running at `http://localhost:8080` (or update `env.ts`).
+4. Open `http://localhost:5173` (ensure backend reachable at the URL defined in `env.ts` or `.env`).
 
 ### Dev Tips
-- Manually set an auth session for testing:
+- To simulate auth quickly in the browser console:
   ```js
   localStorage.setItem('sharecycle.auth', JSON.stringify({
-    token: 'demo-token', role: 'RIDER', userId: 'u1', username: 'rider1'
-  }))
+    token: 'demo-token',
+    role: 'RIDER',
+    userId: 'rider-1',
+    username: 'rider@example.com',
+  }));
   ```
-- If you see “Failed to fetch,” confirm backend is up at `http://localhost:8080/health` and CORS is enabled. Current backend `SecurityConfig` permits `/api/**` with CORS for `http://localhost:5173`.
-- Type-only imports: prefer `import type { ReactNode } from 'react'` to satisfy TS 5.9 and ESLint.
+- When testing operator flows, seed credentials: `SmoothOperator` / `wowpass` (created by backend seeder).
+- If fetch calls fail, confirm the backend health endpoint (`/api/health` or `/health` depending on profile) and CORS configuration in `SecurityConfig`.
+- Active trips persist in `localStorage` under `sharecycle.activeTrip`; clear it if you need to reset the rider state between demos.
 
-
-### What's left
-1. Story 4 – Reservation UI
-   - Add a “Reserve bike” form to `DashboardPage.tsx` (or a child component) that POSTs to `/api/reservations` with `riderId`, `stationId`, `bikeId`, and `expiresAfterMinutes`.
-   - Display reservation feedback and an expiry countdown.
-   - Tests: add a test that mocks POST `/reservations` and validates text feedback.
-2. Story 5 – Start Trip UI
-   - Add a form to POST `/api/trips` with `riderId`, `bikeId`, `stationId`.
-   - Tests: verify feedback appears and overview refreshes.
-3. Story 6 – End Trip UI
-   - Add a form to POST `/api/trips/:tripId/end` with `stationId`.
-   - Tests: verify receipt details appear.
-4. Stories 7–9 – Operator Controls
-   - Add forms for PATCH `/api/stations/:id/status` and `/api/stations/:id/capacity`, and POST `/api/stations/move-bike`.
-   - Ensure buttons are disabled when rules fail; surface error messages.
-   - Tests: one test per control with mocked responses.
-5. Map 
-   - Re-introduce a map to visualize stations. If you use Pigeon Maps again:
-     - `npm i pigeon-maps`
-     - Render `<Map>` with markers sized for visibility; add a legend.
-   - Consider storing real coordinates in the station summary to avoid demo-only placement.
-
-### Coding Conventions
-- Components in PascalCase; hooks/utilities in camelCase.
-- Keep two-space indents; avoid unrelated reformatting.
-- Keep code verbose and readable; avoid overly clever one-liners.
-- Add comments only for non-obvious logic or invariants.
-
-### Known Constraints / Assumptions
-- Station summary currently does not include real lat/lng; the UI shows a table only (no map).
-- Auth is a simple opaque token in `Authorization` header; no refresh token or silent re-auth yet.
-- Error messaging is basic (server-provided message preferred).
-
-### Maintenance Checklist
-- Before PRs: `npm run lint`, `npm run type-check`, `npm run test`, and consider `npm run coverage`.
-- Keep `docs/README.md` and this `docs/FRONTEND.md` updated when features are added.
-- Ensure `/api` base URL in `env.ts` matches your backend environment.
-
-
+### Known Constraints
+- Map uses seeded coordinates; adjust `ListStationSummariesUseCase` payload or seed data for different demos.
+- UI polls events every 10 seconds; for large loads consider SSE/websocket upgrade.
+- Payment display is a simple ledger total; full invoice history is future work.
+- CSS relies on module-level styles in `DashboardPage.tsx`; extracting components could improve reuse, but not required for demo readiness.

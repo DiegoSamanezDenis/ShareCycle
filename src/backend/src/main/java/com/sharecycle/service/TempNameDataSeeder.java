@@ -3,10 +3,8 @@ package com.sharecycle.service;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.sharecycle.domain.repository.JpaBikeRepository;
-import com.sharecycle.domain.repository.JpaDockRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.model.Bike;
-import com.sharecycle.domain.model.Dock;
 import com.sharecycle.domain.model.Station;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -26,14 +24,12 @@ public class TempNameDataSeeder {
     private final Logger logger = LoggerFactory.getLogger(TempNameDataSeeder.class);
 
     private final JpaBikeRepository bikeRepository;
-    private final JpaDockRepository dockRepository;
     private final JpaStationRepository stationRepository;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public TempNameDataSeeder(JpaBikeRepository bikeRepository, JpaDockRepository dockRepository, JpaStationRepository stationRepository) {
+    public TempNameDataSeeder(JpaBikeRepository bikeRepository, JpaStationRepository stationRepository) {
         this.bikeRepository = bikeRepository;
-        this.dockRepository = dockRepository;
         this.stationRepository = stationRepository;
     }
 
@@ -41,8 +37,9 @@ public class TempNameDataSeeder {
     @Transactional
     public void initData(){
         logger.info("Loading seed data from classpath: db/data/*.json");
+        // Load bikes first so station docks with occupied bikes reference existing rows
         loadBikes();
-        loadDocks();
+        // Then load stations; docks will be persisted via cascade with station_id set
         loadStations();
     }
 
@@ -64,24 +61,8 @@ public class TempNameDataSeeder {
             logger.error(e.getMessage());
         }
     }
-    private void loadDocks() {
-        try (InputStream is = getClass().getClassLoader().getResourceAsStream("db/data/docks.json")) {
-            if (is == null) {
-                logger.warn("docks.json not found on classpath; skipping docks seeding");
-                return;
-            }
-            List<Dock> docks = objectMapper.readValue(is, new TypeReference<>() {});
-            List<Dock> existingDocks = dockRepository.findAll();
-            for (Dock dock : docks) {
-                if (!existingDocks.contains(dock)) {
-                    dockRepository.save(dock);
-                }
-            }
-        } catch (IOException e) {
-            logger.error("Failed to load docks data file");
-            logger.error(e.getMessage());
-        }
-    }
+    // Docks are persisted through stations' docks association via cascade;
+    // do not load docks independently.
     private void loadStations() {
         try (InputStream is = getClass().getClassLoader().getResourceAsStream("db/data/stations.json")) {
             if (is == null) {

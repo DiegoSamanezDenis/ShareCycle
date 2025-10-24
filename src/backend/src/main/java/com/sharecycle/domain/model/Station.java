@@ -158,6 +158,33 @@ public class Station {
         return Math.max(0, capacity - bikesDocked);
     }
 
+    public int getAvailableBikeCount() {
+        int available = 0;
+        for (Dock dock : docks) {
+            if (dock.getOccupiedBike() != null && dock.getOccupiedBike().getStatus() == Bike.BikeStatus.AVAILABLE) {
+                available++;
+            }
+        }
+        return available;
+    }
+
+    public String getFullnessCategory() {
+        if (capacity <= 0) {
+            return "UNKNOWN";
+        }
+        double ratio = (double) bikesDocked / capacity;
+        if (ratio == 0.0) {
+            return "EMPTY";
+        }
+        if (ratio < 0.3) {
+            return "LOW";
+        }
+        if (ratio > 0.9) {
+            return "FULL";
+        }
+        return "HEALTHY";
+    }
+
     public void addEmptyDocks(int count) {
         if (count < 0) {
             throw new IllegalArgumentException("Dock count to add cannot be negative.");

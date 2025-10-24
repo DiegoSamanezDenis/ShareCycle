@@ -6,11 +6,13 @@ import com.sharecycle.service.PasswordHasher;
 import org.springframework.stereotype.Service;
 
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class RegisterRiderUseCase {
     private final UserRepository userRepository;
     private final PasswordHasher passwordHasher;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     //constructor
     public RegisterRiderUseCase(UserRepository userRepository, PasswordHasher passwordHasher) {
@@ -25,7 +27,7 @@ public class RegisterRiderUseCase {
         if (address == null || address.isBlank()) {
             throw new IllegalArgumentException("Address is required");
         }
-        if (email == null || !email.contains("@")) {
+        if (email == null || !EMAIL_PATTERN.matcher(email.trim()).matches()) {
             throw new IllegalArgumentException("Email address is invalid");
         }
         if (username == null || username.isBlank()) {
@@ -38,8 +40,8 @@ public class RegisterRiderUseCase {
             throw new IllegalArgumentException("Payment method token is required");
         }
         String normalizedUsername = username.trim();
-        String normalizedEmail = email.trim();
-        if (userRepository.existsByEmail(normalizedEmail) || userRepository.existsByUsername(normalizedUsername)) {
+        String normalizedEmail = email.trim().toLowerCase();
+        if (userRepository.existsByEmail(normalizedEmail) || userRepository.existsByUsername(normalizedUsername.toLowerCase())) {
             throw new IllegalArgumentException("Username/email is already in use");
         }
         if (password.length() > 72) {

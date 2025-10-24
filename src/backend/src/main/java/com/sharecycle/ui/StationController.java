@@ -2,6 +2,7 @@ package com.sharecycle.ui;
 
 import com.sharecycle.application.BmsFacade;
 import com.sharecycle.domain.model.Station;
+import com.sharecycle.model.dto.StationDetailsDto;
 import com.sharecycle.model.dto.StationSummaryDto;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -29,6 +30,11 @@ public class StationController {
         return bmsFacade.listStations();
     }
 
+    @GetMapping("/{stationId}/details")
+    public StationDetailsDto getStationDetails(@PathVariable UUID stationId) {
+        return bmsFacade.getStationDetails(stationId);
+    }
+
     @PatchMapping("/{stationId}/status")
     public StationSummaryDto updateStatus(@PathVariable UUID stationId, @RequestBody UpdateStatusRequest request) {
         Station station = bmsFacade.updateStationStatus(request.operatorId(), stationId, request.outOfService());
@@ -52,9 +58,13 @@ public class StationController {
                 station.getId(),
                 station.getName(),
                 station.getStatus(),
+                station.getAvailableBikeCount(),
                 station.getBikesDocked(),
                 station.getCapacity(),
-                station.getFreeDockCount()
+                station.getFreeDockCount(),
+                station.getLatitude(),
+                station.getLongitude(),
+                station.getFullnessCategory()
         );
     }
 

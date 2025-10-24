@@ -3,7 +3,9 @@ package com.sharecycle.ui;
 import com.sharecycle.application.BmsFacade;
 import com.sharecycle.domain.model.Reservation;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -48,6 +50,22 @@ public class ReservationController {
             UUID bikeId,
             int expiresAfterMinutes
     ) { }
+
+    @GetMapping("/active")
+    public ResponseEntity<ReservationResponse> getActive(@org.springframework.web.bind.annotation.RequestParam("riderId") UUID riderId) {
+        Reservation reservation = bmsFacade.getActiveReservation(riderId);
+        if (reservation == null || !reservation.isActive()) {
+            return ResponseEntity.noContent().build();
+        }
+        return ResponseEntity.ok(new ReservationResponse(
+                reservation.getReservationId(),
+                reservation.getStation().getId(),
+                reservation.getBike().getId(),
+                reservation.getReservedAt(),
+                reservation.getExpiresAt(),
+                reservation.isActive()
+        ));
+    }
 
     public record ReservationResponse(
             UUID reservationId,

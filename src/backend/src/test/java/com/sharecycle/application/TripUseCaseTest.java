@@ -48,6 +48,9 @@ public class TripUseCaseTest {
     @Autowired
     private JpaBikeRepository bikeRepository;
 
+    @Autowired
+    private jakarta.persistence.EntityManager entityManager;
+
     @Test
     @Transactional
     void test() {
@@ -65,15 +68,18 @@ public class TripUseCaseTest {
         startStation.getDocks().getFirst().setOccupiedBike(new Bike(Bike.BikeType.STANDARD));
         stationRepository.save(startStation);
 
-        int startBikeDockedNumber = startStation.getBikesDocked();
+        Station managedStartStation = stationRepository.findById(startStation.getId());
+        int startBikeDockedNumber = managedStartStation.getBikesDocked();
+        Bike bikeForTrip = managedStartStation.getFirstDockWithBike().getOccupiedBike();
+
         // Assertion before trip start
         Trip trip = startTripUseCase.execute(
                 UUID.randomUUID(),
                 LocalDateTime.now(),
                 0,
                 rider,
-                startStation.getFirstDockWithBike().getOccupiedBike(),
-                startStation
+                bikeForTrip,
+                managedStartStation
         );
 
         Trip updatedTrip = tripRepository.findById(trip.getTripID());
@@ -94,14 +100,18 @@ public class TripUseCaseTest {
         endStation.markActive();
         endStation.addEmptyDocks(1);
         stationRepository.save(endStation);
-        int endBikeDockedNumber = endStation.getBikesDocked();
+        Station managedEndStation = stationRepository.findById(endStation.getId());
+        int endBikeDockedNumber = managedEndStation.getBikesDocked();
 
-        LedgerEntry ledgerEntry = endTripUseCase.execute(trip, endStation);
+        LedgerEntry ledgerEntry = endTripUseCase.execute(trip, managedEndStation);
+
+        entityManager.flush();
+        entityManager.clear();
 
         updatedTrip = tripRepository.findById(trip.getTripID()); // Should be the same tripId
         Station updatedEndStation = stationRepository.findById(updatedTrip.getEndStation().getId());
         Dock updatedEndDock = updatedEndStation.getDocks().getFirst();
-        updatedBike = bikeRepository.findById(updatedTrip.getBike().getId());
+        updatedBike = updatedTrip.getBike();
 
         //After trip assertions
         assertThat(updatedEndStation.getBikesDocked()).isEqualTo(endBikeDockedNumber + 1);

@@ -38,6 +38,12 @@ public class ReservationBuilder {
         if (rider == null) {
             throw new IllegalArgumentException("Rider cannot be null when creating a reservation.");
         }
+        if (station == null) {
+            throw new IllegalArgumentException("Station cannot be null when creating a reservation.");
+        }
+        if (bike == null) {
+            throw new IllegalArgumentException("Bike cannot be null when creating a reservation.");
+        }
         if (expiresAfterMinutes <= 0) {
             throw new IllegalArgumentException("Expires-after time must be greater than 0 minutes.");
         }

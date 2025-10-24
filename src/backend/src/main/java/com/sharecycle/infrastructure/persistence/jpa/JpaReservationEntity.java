@@ -2,10 +2,10 @@ package com.sharecycle.infrastructure.persistence.jpa;
 
 import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Rider;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
@@ -22,15 +22,15 @@ public class JpaReservationEntity {
     @Column(name = "reservation_id", columnDefinition = "BINARY(16)")
     private UUID reservationId;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "rider_id")
     private JpaUserEntity.JpaRiderEntity rider;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "station_id")
     private JpaStationEntity station;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "bike_id")
     private JpaBikeEntity bike;
 

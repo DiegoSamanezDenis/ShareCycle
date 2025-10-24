@@ -1,0 +1,55 @@
+package com.sharecycle.application;
+
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.model.dto.StationSummaryDto;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
+import java.util.List;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+@SpringBootTest
+@ActiveProfiles("test")
+class ListStationSummariesUseCaseTest {
+
+    @Autowired
+    private ListStationSummariesUseCase useCase;
+
+    @Autowired
+    private JpaStationRepository stationRepository;
+
+    private Station station;
+
+    @BeforeEach
+    void setUp() {
+        station = new Station();
+        station.setName("Summary Station");
+        station.setLatitude(45.1234);
+        station.setLongitude(-73.5678);
+        station.markActive();
+        station.addEmptyDocks(2);
+        station.getDocks().get(0).setOccupiedBike(new Bike(Bike.BikeType.STANDARD));
+        stationRepository.save(station);
+    }
+
+    @Test
+    void stationSummaryIncludesCoordinatesAndFullness() {
+        List<StationSummaryDto> summaries = useCase.execute();
+        StationSummaryDto dto = summaries.stream()
+                .filter(s -> s.getStationId().equals(station.getId()))
+                .findFirst()
+                .orElseThrow();
+
+        assertThat(dto.getLatitude()).isEqualTo(45.1234);
+        assertThat(dto.getLongitude()).isEqualTo(-73.5678);
+        assertThat(dto.getBikesAvailable()).isEqualTo(1);
+        assertThat(dto.getFullnessCategory()).isEqualTo("HEALTHY");
+        assertThat(dto.getFreeDocks()).isEqualTo(1);
+    }
+}

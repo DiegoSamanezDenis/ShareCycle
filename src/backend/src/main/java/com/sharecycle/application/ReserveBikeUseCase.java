@@ -5,6 +5,7 @@ import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.ReservationCreatedEvent;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
+import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.model.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -12,13 +13,18 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class ReserveBikeUseCase {
 
-    private JpaBikeRepository bikeRepository;
-    private ReservationRepository reservationRepository;
+    private final JpaBikeRepository bikeRepository;
+    private final ReservationRepository reservationRepository;
+    private final TripRepository tripRepository;
     private final DomainEventPublisher eventPublisher;
 
-    public ReserveBikeUseCase(JpaBikeRepository bikeRepository, ReservationRepository reservationRepository, DomainEventPublisher eventPublisher) {
+    public ReserveBikeUseCase(JpaBikeRepository bikeRepository,
+                              ReservationRepository reservationRepository,
+                              TripRepository tripRepository,
+                              DomainEventPublisher eventPublisher) {
         this.bikeRepository = bikeRepository;
         this.reservationRepository = reservationRepository;
+        this.tripRepository = tripRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -27,17 +33,24 @@ public class ReserveBikeUseCase {
         if (reservationRepository.existsByRiderId(rider.getUserId())) {
             throw new IllegalStateException("Rider already has an active reservation.");
         }
-        if (station.getStatus().equals(Station.StationStatus.OUT_OF_SERVICE)) {
+        if (tripRepository.riderHasActiveTrip(rider.getUserId())) {
+            throw new IllegalStateException("Rider already has an active trip.");
+        }
+        if (station.isOutOfService()) {
             throw new IllegalStateException("Station is not active.");
         }
         if (!(bike.getStatus().equals(Bike.BikeStatus.AVAILABLE))) {
             throw new IllegalStateException("Bike is not available.");
         }
+        if (bike.getCurrentStation() == null || !station.getId().equals(bike.getCurrentStation().getId())) {
+            throw new IllegalStateException("Bike is not docked at the requested station.");
+        }
+        if (station.findDockWithBike(bike.getId()).isEmpty()) {
+            throw new IllegalStateException("Bike is not docked at the requested station.");
+        }
 
         // Transition bike state using State Pattern
 		bike.setStatus(Bike.BikeStatus.RESERVED);
-		// Persist bike status change to ensure DB reflects reservation
-		bikeRepository.save(bike);
 
         // Build and persist reservation
         Reservation reservation = new ReservationBuilder().rider(rider)
@@ -46,6 +59,8 @@ public class ReserveBikeUseCase {
                 .expiresAfterMinutes(expiresAfterMinutes)
                 .build();
 
+        bike.setReservationExpiry(reservation.getExpiresAt());
+        bikeRepository.save(bike);
         reservationRepository.save(reservation);
 
         // Publish domain event

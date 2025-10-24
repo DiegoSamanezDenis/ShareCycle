@@ -1,30 +1,38 @@
-import { appConfig } from '../config/env';
+import { appConfig } from "../config/env";
 
 type ApiRequestOptions = RequestInit & {
   token?: string | null;
+  skipAuth?: boolean;
 };
 
 export async function apiRequest<T>(
   path: string,
-  options: ApiRequestOptions = {}
+  options: ApiRequestOptions = {},
 ): Promise<T> {
-  const { token, headers, ...rest } = options;
+  const { token, skipAuth = false, headers, ...rest } = options;
   const requestHeaders = new Headers(headers ?? {});
 
-  if (rest.body && typeof rest.body === 'string' && !requestHeaders.has('Content-Type')) {
-    requestHeaders.set('Content-Type', 'application/json');
+  if (
+    rest.body &&
+    typeof rest.body === "string" &&
+    !requestHeaders.has("Content-Type")
+  ) {
+    requestHeaders.set("Content-Type", "application/json");
   }
 
   // Attach auth token: prefer explicit token, otherwise read from storage
-  const resolvedToken = token ?? getTokenFromStorage();
-  if (resolvedToken) requestHeaders.set('Authorization', resolvedToken);
+  if (!skipAuth) {
+    const resolvedToken = token ?? getTokenFromStorage();
+    if (resolvedToken) {
+      requestHeaders.set("Authorization", `Bearer ${resolvedToken}`);
+    }
+  }
 
   const response = await fetch(`${appConfig.apiUrl}${path}`, {
     ...rest,
-    headers: requestHeaders
+    headers: requestHeaders,
   });
 
-  // --- CALL extractErrorMessage HERE ---
   if (!response.ok) {
     const message = await extractErrorMessage(response);
     throw new Error(message);
@@ -34,21 +42,19 @@ export async function apiRequest<T>(
     return undefined as T;
   }
 
-  const contentType = response.headers.get('content-type') ?? '';
-  if (contentType.includes('application/json')) {
+  const contentType = response.headers.get("content-type") ?? "";
+  if (contentType.includes("application/json")) {
     return (await response.json()) as T;
   }
 
   return undefined as T;
 }
 
-// Keep only **one** extractErrorMessage here
 async function extractErrorMessage(response: Response): Promise<string> {
   try {
-    const cloned = response.clone(); // clone to avoid "body already read"
-    const data = await cloned.json();
-    if (data && typeof data.message === 'string') {
-      return data.message;
+    const data = await response.clone().json();
+    if (data && typeof data.message === "string" && data.message.trim()) {
+      return data.message.trim();
     }
   } catch {
     // ignore JSON parse failures
@@ -56,9 +62,19 @@ async function extractErrorMessage(response: Response): Promise<string> {
 
   try {
     const text = await response.text();
-    if (text) return text;
+    if (text.trim()) {
+      return text.trim();
+    }
   } catch {
-    // ignore text failures
+    // ignore text parse failures (stream already consumed, etc.)
+  }
+
+  if (response.statusText) {
+    return response.statusText;
+  }
+
+  if (response.status === 401) {
+    return "Unauthorized. Please sign in again.";
   }
 
   return `Request failed with status ${response.status}`;
@@ -66,7 +82,7 @@ async function extractErrorMessage(response: Response): Promise<string> {
 
 function getTokenFromStorage(): string | null {
   try {
-    const raw = localStorage.getItem('sharecycle.auth');
+    const raw = localStorage.getItem("sharecycle.auth");
     if (!raw) return null;
     const parsed = JSON.parse(raw) as { token?: string | null };
     return parsed?.token ?? null;
