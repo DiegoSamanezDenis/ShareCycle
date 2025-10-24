@@ -12,5 +12,5 @@ public interface ReservationRepository {
     boolean existsByRiderId(UUID riderId);
     Reservation findByRiderId(UUID riderId);
     List<Reservation> findExpiredReservations();
-
+    boolean hasActiveReservationForBike(UUID bikeId);
 }

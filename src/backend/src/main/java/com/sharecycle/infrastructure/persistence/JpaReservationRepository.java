@@ -53,18 +53,24 @@ public class JpaReservationRepository implements ReservationRepository {
 
     @Override
     public boolean existsByRiderId(UUID riderId) {
+        Instant now = Instant.now();
         Long count = entityManager.createQuery(
-                        "select count(r) from JpaReservationEntity r where r.rider.userId = :riderId and r.active = true", Long.class)
+                        "select count(r) from JpaReservationEntity r where r.rider.userId = :riderId and r.active = true and r.expiresAt > :now",
+                        Long.class)
                 .setParameter("riderId", riderId)
+                .setParameter("now", now)
                 .getSingleResult();
         return count > 0;
     }
 
     @Override
     public Reservation findByRiderId(UUID riderId) {
+        Instant now = Instant.now();
         return entityManager.createQuery(
-                        "select r from JpaReservationEntity r where r.rider.userId = :riderId and r.active = true", JpaReservationEntity.class)
+                        "select r from JpaReservationEntity r where r.rider.userId = :riderId and r.active = true and r.expiresAt > :now",
+                        JpaReservationEntity.class)
                 .setParameter("riderId", riderId)
+                .setParameter("now", now)
                 .getResultStream()
                 .findFirst()
                 .map(entity -> entity.toDomain(new MapperContext()))
@@ -82,5 +88,17 @@ public class JpaReservationRepository implements ReservationRepository {
                 .getResultStream()
                 .map(entity -> entity.toDomain(context))
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    public boolean hasActiveReservationForBike(UUID bikeId) {
+        Instant now = Instant.now();
+        Long count = entityManager.createQuery(
+                        "select count(r) from JpaReservationEntity r where r.bike.bikeId = :bikeId and r.active = true and r.expiresAt > :now",
+                        Long.class)
+                .setParameter("bikeId", bikeId)
+                .setParameter("now", now)
+                .getSingleResult();
+        return count > 0;
     }
 }

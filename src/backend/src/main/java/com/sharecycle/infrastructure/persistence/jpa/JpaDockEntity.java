@@ -31,7 +31,7 @@ public class JpaDockEntity {
     @JoinColumn(name = "station_id")
     private JpaStationEntity station;
 
-    @OneToOne(cascade = CascadeType.ALL, orphanRemoval = true)
+    @OneToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "bike_id")
     private JpaBikeEntity occupiedBike;
 

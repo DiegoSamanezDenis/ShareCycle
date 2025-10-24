@@ -2,16 +2,18 @@ package com.sharecycle.application;
 
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.domain.model.Operator;
-import com.sharecycle.domain.model.Operator;
 import com.sharecycle.service.PasswordHasher;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+
 import java.util.UUID;
+import java.util.regex.Pattern;
 
 @Service
 public class RegisterOperatorUseCase {
     private final UserRepository userRepository;
     private final PasswordHasher passwordHasher;
+    private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
     //constructor
     @Autowired
@@ -22,7 +24,7 @@ public class RegisterOperatorUseCase {
 
     public Operator register(String fullName, String address, String email, String username, String password, String paymentToken) {
         //validate email
-        if(email == null || !email.contains("@")) {
+        if(email == null || !EMAIL_PATTERN.matcher(email.trim()).matches()) {
             throw new IllegalArgumentException("Email address is invalid");
         }
 
@@ -31,8 +33,11 @@ public class RegisterOperatorUseCase {
             throw new IllegalArgumentException("Username and password is required");
         }
 
+        String normalizedUsername = username.trim();
+        String normalizedEmail = email.trim().toLowerCase();
+
         //check if the user already exist
-        if (userRepository.existsByEmail(email) || userRepository.existsByUsername(username)){
+        if (userRepository.existsByEmail(normalizedEmail) || userRepository.existsByUsername(normalizedUsername.toLowerCase())){
             throw new IllegalArgumentException("Username/ email is already in use");
         }
 
@@ -43,7 +48,7 @@ public class RegisterOperatorUseCase {
         String hashedpassword = passwordHasher.hash(password);
 
         //creating the operator (assign UUID explicitly; JPA requires manual id)
-        Operator operator = new Operator(fullName, address, email, username, hashedpassword, paymentToken);
+        Operator operator = new Operator(fullName.trim(), address != null ? address.trim() : null, normalizedEmail, normalizedUsername, hashedpassword, paymentToken != null ? paymentToken.trim() : null);
         operator.setUserId(UUID.randomUUID());
 
         userRepository.save(operator);

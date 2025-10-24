@@ -9,9 +9,15 @@ import org.springframework.stereotype.Component;
 public class SimpleDomainEventPublisher implements DomainEventPublisher {
 
     private static final Logger logger = LoggerFactory.getLogger(SimpleDomainEventPublisher.class);
+    private final DomainEventLog eventLog;
+
+    public SimpleDomainEventPublisher(DomainEventLog eventLog) {
+        this.eventLog = eventLog;
+    }
 
     @Override
     public void publish(Object event) {
         logger.info("domain.event published name={}, payload={}", event.getClass().getSimpleName(), event);
+        eventLog.append(event);
     }
 }

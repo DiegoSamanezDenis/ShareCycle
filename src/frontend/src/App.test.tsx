@@ -1,36 +1,39 @@
-import { render, screen } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { appConfig } from './config/env';
-import { routes } from './routes';
-import { AuthProvider } from './auth/AuthContext';
+import { render, screen } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { appConfig } from "./config/env";
+import { routes } from "./routes";
+import { AuthProvider } from "./auth/AuthContext";
 
 function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
   render(
     <AuthProvider>
       <RouterProvider router={router} />
-    </AuthProvider>
+    </AuthProvider>,
   );
 }
 
-describe('App routing', () => {
-  it('renders the home page by default', () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/'] });
+describe("App routing", () => {
+  it("renders the home page by default", () => {
+    const router = createMemoryRouter(routes, { initialEntries: ["/"] });
     renderWithProviders(router);
 
-    expect(screen.getByRole('heading', { name: /home/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /sharecycle/i }),
+    ).toBeInTheDocument();
   });
 
-  it('renders the not found page for unknown routes', () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/missing'] });
+  it("renders the not found page for unknown routes", () => {
+    const router = createMemoryRouter(routes, { initialEntries: ["/missing"] });
     renderWithProviders(router);
 
-    expect(screen.getByRole('heading', { name: /404 - not found/i })).toBeInTheDocument();
+    expect(
+      screen.getByRole("heading", { name: /404 - not found/i }),
+    ).toBeInTheDocument();
   });
 });
 
-describe('App configuration', () => {
-  it('exposes an API base URL', () => {
-    expect(appConfig.apiUrl).toBe('http://localhost:8080/api');
+describe("App configuration", () => {
+  it("exposes an API base URL", () => {
+    expect(appConfig.apiUrl).toBe("http://localhost:8080/api");
   });
 });
-

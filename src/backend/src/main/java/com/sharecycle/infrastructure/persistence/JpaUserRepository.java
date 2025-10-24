@@ -25,8 +25,8 @@ public class JpaUserRepository implements UserRepository {
     @Override
     public boolean existsByEmail(String email) {
         Long count = entityManager.createQuery(
-                        "select count(u) from JpaUserEntity u where u.email = :email", Long.class)
-                .setParameter("email", email)
+                        "select count(u) from JpaUserEntity u where lower(u.email) = :email", Long.class)
+                .setParameter("email", email.toLowerCase())
                 .getSingleResult();
         return count > 0;
     }
@@ -34,14 +34,17 @@ public class JpaUserRepository implements UserRepository {
     @Override
     public boolean existsByUsername(String username) {
         Long count = entityManager.createQuery(
-                        "select count(u) from JpaUserEntity u where u.username = :username", Long.class)
-                .setParameter("username", username)
+                        "select count(u) from JpaUserEntity u where lower(u.username) = :username", Long.class)
+                .setParameter("username", username.toLowerCase())
                 .getSingleResult();
         return count > 0;
     }
 
     @Override
     public void save(User user) {
+        if (user.getUserId() == null) {
+            user.setUserId(UUID.randomUUID());
+        }
         JpaUserEntity entity = JpaUserEntity.fromDomain(user);
         if (entity.getUserId() == null) {
             entityManager.persist(entity);
@@ -62,8 +65,8 @@ public class JpaUserRepository implements UserRepository {
     @Override
     public Optional<User> findByUsername(String username) {
         return entityManager.createQuery(
-                        "select u from JpaUserEntity u where u.username = :username", JpaUserEntity.class)
-                .setParameter("username", username)
+                        "select u from JpaUserEntity u where lower(u.username) = :username", JpaUserEntity.class)
+                .setParameter("username", username.toLowerCase())
                 .getResultStream()
                 .map(JpaUserEntity::toDomain)
                 .findFirst();

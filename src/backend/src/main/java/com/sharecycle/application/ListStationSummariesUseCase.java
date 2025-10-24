@@ -22,11 +22,14 @@ public class ListStationSummariesUseCase {
                         station.getId(),
                         station.getName(),
                         station.getStatus(),
+                        station.getAvailableBikeCount(),
                         station.getBikesDocked(),
                         station.getCapacity(),
-                        station.getFreeDockCount()
+                        station.getFreeDockCount(),
+                        station.getLatitude(),
+                        station.getLongitude(),
+                        station.getFullnessCategory()
                 ))
                 .toList();
     }
-
 }

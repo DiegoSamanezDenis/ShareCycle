@@ -1,9 +1,15 @@
 /* eslint-disable react-refresh/only-export-components */
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
-import type { ReactNode } from 'react';
-import { apiRequest } from '../api/client';
+import {
+  createContext,
+  useCallback,
+  useContext,
+  useMemo,
+  useState,
+} from "react";
+import type { ReactNode } from "react";
+import { apiRequest } from "../api/client";
 
-type AuthRole = 'RIDER' | 'OPERATOR';
+type AuthRole = "RIDER" | "OPERATOR";
 
 type AuthState = {
   token: string | null;
@@ -24,7 +30,8 @@ type AuthContextValue = AuthState & {
   logout: () => Promise<void>;
 };
 
-const STORAGE_KEY = 'sharecycle.auth';
+const STORAGE_KEY = "sharecycle.auth";
+const ACTIVE_TRIP_STORAGE_KEY = "sharecycle.activeTrip";
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined);
 
@@ -32,7 +39,7 @@ const emptyState: AuthState = {
   token: null,
   role: null,
   userId: null,
-  username: null
+  username: null,
 };
 
 function loadInitialState(): AuthState {
@@ -44,7 +51,7 @@ function loadInitialState(): AuthState {
         token: parsed.token ?? null,
         role: parsed.role ?? null,
         userId: parsed.userId ?? null,
-        username: parsed.username ?? null
+        username: parsed.username ?? null,
       };
     }
   } catch {
@@ -61,7 +68,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       token: payload.token,
       role: payload.role,
       userId: payload.userId,
-      username: payload.username
+      username: payload.username,
     };
     setState(nextState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
@@ -70,9 +77,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(async () => {
     if (state.token) {
       try {
-        await apiRequest<void>('/auth/logout', {
-          method: 'POST',
-          token: state.token
+        await apiRequest<void>("/auth/logout", {
+          method: "POST",
+          token: state.token,
         });
       } catch {
         // swallow logout errors
@@ -80,15 +87,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
     setState(emptyState);
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_TRIP_STORAGE_KEY);
   }, [state.token]);
 
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
       login,
-      logout
+      logout,
     }),
-    [state, login, logout]
+    [state, login, logout],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -97,7 +105,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const context = useContext(AuthContext);
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
+    throw new Error("useAuth must be used within an AuthProvider");
   }
   return context;
 }

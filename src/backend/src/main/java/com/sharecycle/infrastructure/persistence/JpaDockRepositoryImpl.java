@@ -49,4 +49,16 @@ public class JpaDockRepositoryImpl implements JpaDockRepository {
                 .map(entity -> entity.toDomain(context))
                 .collect(Collectors.toList());
     }
+
+    @Override
+    public int clearBikeFromAllDocks(UUID bikeId) {
+        if (bikeId == null) {
+            return 0;
+        }
+        // Clear bike from any dock that currently references it, and mark dock as EMPTY
+        return entityManager.createQuery(
+                        "update JpaDockEntity d set d.occupiedBike = null, d.status = com.sharecycle.domain.model.Dock$DockStatus.EMPTY where d.occupiedBike.bikeId = :bikeId")
+                .setParameter("bikeId", bikeId)
+                .executeUpdate();
+    }
 }

@@ -5,6 +5,7 @@ import com.sharecycle.domain.TripBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.domain.model.*;
@@ -16,16 +17,23 @@ import java.time.LocalDateTime;
 import java.util.UUID;
 @Service
 public class StartTripUseCase {
-    private JpaBikeRepository bikeRepository;
-    private JpaStationRepository stationRepository;
-    private UserRepository userRepository;
-    private TripRepository tripRepository;
+    private final JpaBikeRepository bikeRepository;
+    private final JpaStationRepository stationRepository;
+    private final UserRepository userRepository;
+    private final TripRepository tripRepository;
+    private final ReservationRepository reservationRepository;
     private final DomainEventPublisher eventPublisher;
-    public StartTripUseCase(JpaBikeRepository bikeRepository, UserRepository userRepository,JpaStationRepository stationRepository, TripRepository tripRepository, DomainEventPublisher eventPublisher) {
+    public StartTripUseCase(JpaBikeRepository bikeRepository,
+                            UserRepository userRepository,
+                            JpaStationRepository stationRepository,
+                            TripRepository tripRepository,
+                            ReservationRepository reservationRepository,
+                            DomainEventPublisher eventPublisher) {
         this.bikeRepository = bikeRepository;
         this.userRepository = userRepository;
         this.stationRepository = stationRepository;
         this.tripRepository = tripRepository;
+        this.reservationRepository = reservationRepository;
         this.eventPublisher = eventPublisher;
     }
     @Transactional
@@ -39,6 +47,9 @@ public class StartTripUseCase {
         User user = userRepository.findById(rider.getUserId());
         if (!(user instanceof Rider managedRider)) {
             throw new IllegalStateException("Only riders can start trips.");
+        }
+        if (tripRepository.riderHasActiveTrip(managedRider.getUserId())) {
+            throw new IllegalStateException("Rider already has an active trip.");
         }
 
         Bike managedBike = bikeRepository.findById(bike.getId());
@@ -60,25 +71,44 @@ public class StartTripUseCase {
         if (managedStartStation.findDockWithBike(managedBike.getId()).isEmpty()) {
             throw new IllegalStateException("Bike is not docked at the specified station.");
         }
-        if (!(managedBike.getStatus() == Bike.BikeStatus.AVAILABLE
-                || managedBike.getStatus() == Bike.BikeStatus.RESERVED)) {
-            throw new IllegalStateException("Bike is not available.");
+        Reservation activeReservation = reservationRepository.findByRiderId(managedRider.getUserId());
+        if (activeReservation != null) {
+            if (!activeReservation.getBike().getId().equals(managedBike.getId())) {
+                throw new IllegalStateException("Rider must use the reserved bike.");
+            }
+        } else {
+            if (managedBike.getStatus() == Bike.BikeStatus.RESERVED
+                    || reservationRepository.hasActiveReservationForBike(managedBike.getId())) {
+                throw new IllegalStateException("Bike is reserved by another rider.");
+            }
+            if (managedBike.getStatus() != Bike.BikeStatus.AVAILABLE) {
+                throw new IllegalStateException("Bike is not available.");
+            }
         }
 
         managedStartStation.undockBike(managedBike);
         managedBike.setStatus(Bike.BikeStatus.ON_TRIP);
         managedBike.setCurrentStation(null);
+        managedBike.setReservationExpiry(null);
+        // Persist station and bike state before inserting trip row to keep UI and DB in sync
+        stationRepository.save(managedStartStation);
+        bikeRepository.save(managedBike);
 
         TripBuilder tripBuilder = new TripBuilder();
         if (tripID != null) {
             tripBuilder.setTripId(tripID);
         }
-        tripBuilder.start(managedRider, managedStartStation, managedBike, startTime);
+        LocalDateTime effectiveStart = startTime != null ? startTime : LocalDateTime.now();
+        tripBuilder.start(managedRider, managedStartStation, managedBike, effectiveStart);
         Trip trip = tripBuilder.build();
 
+        // Now persist the trip (unique constraints on bike/user should be free because previous trip ended)
         tripRepository.save(trip);
-        stationRepository.save(managedStartStation);
-        bikeRepository.save(managedBike);
+        if (activeReservation != null) {
+            activeReservation.expire();
+            reservationRepository.save(activeReservation);
+            managedBike.setReservationExpiry(null);
+        }
 
         eventPublisher.publish(new TripStartedEvent(trip.getTripID(), trip.getStartTime(), trip.getEndTime(), trip.getDurationMinutes(),
                 managedRider, managedBike, managedStartStation, null));

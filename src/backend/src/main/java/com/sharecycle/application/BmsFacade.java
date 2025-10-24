@@ -3,6 +3,7 @@ package com.sharecycle.application;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.model.User;
@@ -11,6 +12,7 @@ import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.model.dto.StationDetailsDto;
 import com.sharecycle.model.dto.StationSummaryDto;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -34,6 +36,7 @@ public class BmsFacade {
     private final JpaStationRepository stationRepository;
     private final JpaBikeRepository bikeRepository;
     private final TripRepository tripRepository;
+    private final ReservationRepository reservationRepository;
 
     public BmsFacade(ReserveBikeUseCase reserveBikeUseCase,
                      StartTripUseCase startTripUseCase,
@@ -45,7 +48,8 @@ public class BmsFacade {
                      UserRepository userRepository,
                      JpaStationRepository stationRepository,
                      JpaBikeRepository bikeRepository,
-                     TripRepository tripRepository) {
+                     TripRepository tripRepository,
+                     ReservationRepository reservationRepository) {
         this.reserveBikeUseCase = reserveBikeUseCase;
         this.startTripUseCase = startTripUseCase;
         this.endTripUseCase = endTripUseCase;
@@ -57,6 +61,7 @@ public class BmsFacade {
         this.stationRepository = stationRepository;
         this.bikeRepository = bikeRepository;
         this.tripRepository = tripRepository;
+        this.reservationRepository = reservationRepository;
     }
 
     @Transactional
@@ -114,6 +119,22 @@ public class BmsFacade {
         return listStationSummariesUseCase.execute();
     }
 
+    @Transactional(readOnly = true)
+    public Station findStation(UUID stationId) {
+        return requireStation(stationId);
+    }
+
+    @Transactional(readOnly = true)
+    public StationDetailsDto getStationDetails(UUID stationId) {
+        Station station = requireStation(stationId);
+        return toStationDetailsDto(station);
+    }
+
+    @Transactional(readOnly = true)
+    public Reservation getActiveReservation(UUID riderId) {
+        return reservationRepository.findByRiderId(riderId);
+    }
+
     private Station requireStation(UUID stationId) {
         Station station = stationRepository.findById(stationId);
         if (station == null) {
@@ -139,4 +160,24 @@ public class BmsFacade {
     }
 
     public record TripCompletionResult(Trip trip, LedgerEntry ledgerEntry) { }
+
+    private StationDetailsDto toStationDetailsDto(Station station) {
+        List<StationDetailsDto.DockDto> docks = station.getDocks().stream()
+                .map(dock -> new StationDetailsDto.DockDto(
+                        dock.getId(),
+                        dock.getStatus(),
+                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getId() : null
+                ))
+                .toList();
+        return new StationDetailsDto(
+                station.getId(),
+                station.getName(),
+                station.getStatus(),
+                station.getCapacity(),
+                station.getBikesDocked(),
+                station.getFreeDockCount(),
+                docks
+        );
+    }
 }
+

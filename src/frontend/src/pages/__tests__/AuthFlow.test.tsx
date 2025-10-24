@@ -1,26 +1,47 @@
-import { describe, expect, it, beforeEach, vi } from 'vitest';
-import { render, screen, fireEvent } from '@testing-library/react';
-import { createMemoryRouter, RouterProvider } from 'react-router-dom';
-import { routes } from '../../routes';
-import { AuthProvider } from '../../auth/AuthContext';
-import LoginPage from '../../pages/LoginPage';
+import { describe, expect, it, beforeEach, vi } from "vitest";
+import { render, screen, fireEvent } from "@testing-library/react";
+import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { routes } from "../../routes";
+import { AuthProvider } from "../../auth/AuthContext";
+import LoginPage from "../../pages/LoginPage";
 
-vi.mock('../../api/client', () => {
+vi.mock("../../api/client", () => {
   return {
     apiRequest: vi.fn(async (path: string, opts?: any) => {
-      if (path === '/auth/login' && opts?.method === 'POST') {
+      if (path === "/auth/login" && opts?.method === "POST") {
         return {
-          token: 'demo-token',
-          role: 'RIDER',
-          userId: 'u1',
-          username: 'rider1'
+          token: "demo-token",
+          role: "RIDER",
+          userId: "u1",
+          username: "rider1",
         };
       }
-      if (path === '/stations') {
+      if (path === "/stations") {
         return [];
       }
+      if (path === "/public/events") {
+        return [];
+      }
+      if (path.startsWith("/stations/") && path.endsWith("/details")) {
+        return {
+          stationId: "s1",
+          name: "Station #1",
+          status: "OCCUPIED",
+          bikesAvailable: 2,
+          bikesDocked: 3,
+          capacity: 5,
+          freeDocks: 2,
+          latitude: 45.5,
+          longitude: -73.6,
+          fullnessCategory: "HEALTHY",
+          docks: [
+            { dockId: "d1", status: "OCCUPIED", bikeId: "b1" },
+            { dockId: "d2", status: "EMPTY", bikeId: null },
+          ],
+        };
+      }
       return undefined;
-    })
+    }),
   };
 });
 
@@ -29,45 +50,61 @@ function renderWithProviders(initialEntries: string[]) {
   render(
     <AuthProvider>
       <RouterProvider router={router} />
-    </AuthProvider>
+    </AuthProvider>,
   );
 }
 
-describe('Auth guard', () => {
+describe("Auth guard", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('shows login page when accessing dashboard without token', () => {
-    renderWithProviders(['/dashboard']);
-    expect(screen.getByRole('heading', { name: /sign in/i })).toBeInTheDocument();
+  it("shows login page when accessing dashboard without token", () => {
+    renderWithProviders(["/dashboard"]);
+    expect(
+      screen.getByRole("heading", { name: /sign in/i }),
+    ).toBeInTheDocument();
   });
 
-  it('renders dashboard when token exists', async () => {
-    localStorage.setItem('sharecycle.auth', JSON.stringify({ token: 't', role: 'RIDER', userId: 'u1', username: 'r' }));
-    renderWithProviders(['/dashboard']);
-    expect(await screen.findByRole('heading', { name: /Station Overview/i })).toBeInTheDocument();
+  it("renders dashboard when token exists", async () => {
+    localStorage.setItem(
+      "sharecycle.auth",
+      JSON.stringify({
+        token: "t",
+        role: "RIDER",
+        userId: "u1",
+        username: "r",
+      }),
+    );
+    renderWithProviders(["/dashboard"]);
+    expect(
+      await screen.findByRole("heading", { name: /Station Overview/i }),
+    ).toBeInTheDocument();
   });
 });
 
-describe('Login flow', () => {
+describe("Login flow", () => {
   beforeEach(() => {
     localStorage.clear();
   });
 
-  it('logs in and navigates to dashboard', async () => {
-    const router = createMemoryRouter(routes, { initialEntries: ['/login'] });
+  it("logs in and navigates to dashboard", async () => {
+    const router = createMemoryRouter(routes, { initialEntries: ["/login"] });
     render(
       <AuthProvider>
         <RouterProvider router={router} />
-      </AuthProvider>
+      </AuthProvider>,
     );
-    fireEvent.change(screen.getByLabelText(/Username/i), { target: { value: 'rider1' } });
-    fireEvent.change(screen.getByLabelText(/Password/i), { target: { value: 'password123' } });
-    fireEvent.click(screen.getByRole('button', { name: /login/i }));
+    fireEvent.change(screen.getByLabelText(/Username/i), {
+      target: { value: "rider1" },
+    });
+    fireEvent.change(screen.getByLabelText(/Password/i), {
+      target: { value: "password123" },
+    });
+    fireEvent.click(screen.getByRole("button", { name: /login/i }));
     // After login, router should navigate to dashboard and render Station Overview
-    expect(await screen.findByRole('heading', { name: /Station Overview/i })).toBeInTheDocument();
+    expect(
+      await screen.findByRole("heading", { name: /Station Overview/i }),
+    ).toBeInTheDocument();
   });
 });
-
-

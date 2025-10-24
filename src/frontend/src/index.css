@@ -30,6 +30,8 @@ body {
   min-height: 100vh;
 }
 
+/* Leaflet styles no longer needed (using Pigeon Maps) */
+
 h1 {
   font-size: 3.2em;
   line-height: 1.1;

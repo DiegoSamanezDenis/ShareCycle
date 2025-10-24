@@ -87,11 +87,14 @@ await apiRequest('/stations', { token })
 - `tsconfig*.json` — TypeScript compiler settings
 - `eslint.config.js` — Flat‑config ESLint setup
 - `src/main.tsx` — React entry point
-- `src/App.tsx` — router host component
-- `src/index.css` — global styles
-- `src/config/env.ts` — typed access to environment variables
-- `src/pages/` — route placeholders (Home, Register, Login, Dashboard, NotFound)
-- `src/test/setup.ts` — Testing Library + jest‑dom hooks
+- `src/App.tsx` - router host component
+- `src/index.css` - global styles
+- `src/config/env.ts` - typed access to environment variables
+- `src/api/` - shared `apiRequest` client with auth header + error handling
+- `src/auth/` - `AuthContext` for token persistence, login/logout helpers, and guards
+- `src/pages/` - feature-complete pages (Home map, Register, Login, Dashboard with rider/operator flows, NotFound) plus colocated tests
+- `src/types/` - DTO contracts shared across pages/tests
+- `src/test/setup.ts` - Testing Library + jest-dom hooks
 
 ## Testing
 - Vitest runs with a jsdom environment and globals from `vitest/globals`.
@@ -113,7 +116,7 @@ The backend is a standard Boot app exposing REST endpoints (e.g., `GET /health`)
 ## Project Layout (src/backend)
 - `src/main/java/com/sharecycle/SharecycleApplication.java` — Spring Boot entry point
 - `src/main/java/com/sharecycle/ui/HealthController.java` — health endpoint
-- `src/main/java/com/sharecycle/application/BmsFacade.java` — façade orchestrating BMS workflows
+- `src/main/java/com/sharecycle/application/BmsFacade.java` - facade orchestrating BMS workflows
 - Controllers (JSON APIs under `/api/...`):
   - `RegistrationController` (`/api/auth/register`)
   - `LoginController` (`/api/auth/login`, `/api/auth/logout`)
@@ -308,15 +311,41 @@ npm run dev
 
 - Stations/Bikes: pre-seeded under `src/backend/src/main/resources/db/data/` with Montreal coordinates (e.g., “Station #1”, “Station #2”, …). Use dashboard actions to reserve, start, and end trips.
 
-### Demo Script
-1. Register a rider (any values). You’ll be redirected to Login.
-2. Login as your new rider.
-3. Go to Dashboard:
-   - Reserve a bike at a station, observe countdown.
-   - Start a trip and then end it at another station; view the receipt amount.
-4. Logout.
-5. Login as `SmoothOperator` to access Operator Controls:
-   - Toggle a station’s status, adjust capacity, and move a bike between stations.
+### Story-by-Story Demo Guide (Stories 1-7)
+1. **Story 1 – Rider Registration**
+   - Navigate to `/register` from the landing page.
+   - Fill in name, address, email, username, password, and any mock payment token.
+   - Submit and point out inline validations (invalid email, duplicate username, etc.).
+   - Show the success toast and the redirect prompt to login (credentials persist hashed server-side).
+2. **Story 2 – Login & Session**
+   - Visit `/login`, enter the newly created rider credentials, and sign in.
+   - Highlight the issued token in local storage (`sharecycle.auth`) and the redirect to the rider dashboard.
+   - Briefly show that accessing `/dashboard` without a token now redirects to `/login` (route guard).
+3. **Story 3 - Station Summaries**
+   - On the rider dashboard, point out the station table (status, bikes available, free docks, capacity).
+   - Switch to the map view to show markers coloured by fullness; hover a marker to display the tooltip and click it to open the same station in the details panel.
+   - Mention that data comes from the backend seeder and updates live as actions occur.
+4. **Story 4 - Reserve Bike**
+   - From the station list or by clicking a map marker, open the station details panel.
+   - Pick a dock with an available bike and press the inline `Reserve` button.
+   - Show the success notification, updated availability counts, and the countdown timer until expiry.
+   - (Optional) Demonstrate reservation validation by attempting a second reservation while one is active.
+5. **Story 5 - Start Trip**
+   - With an active reservation, click `Start trip` beside the reserved bike.
+   - Point out that other bikes stay disabled while the reservation is active.
+   - Point out the dashboard updates: reservation cleared, trip banner displayed, event console logging `TripStarted`.
+   - Refresh the dashboard to show that the active trip banner persists (stored locally) until the ride is finished.
+6. **Story 6 - End Trip**
+   - Choose a destination station with free docks and press `End trip here`.
+   - Highlight the receipt panel with billing total and the station counts adjusting.
+   - Mention that the backend ledger entry is created and reflected in the event console (`TripEnded`, `TripBilled`).
+7. **Story 7 – Operator Station Management**
+   - Log out (`/logout` or header action) and re-login as the seeded operator (`SmoothOperator` / `wowpass`).
+   - In the operator dashboard view, open the station drawer:
+     - Toggle status to `OUT_OF_SERVICE`, note how rider actions disable and the event console logs the change.
+     - Adjust capacity using `+1 Dock` / `-1 Dock`, pointing out the capacity count and events.
+     - Use `Move bike here` to transfer a bike from a source station; show source/destination counts updating and validation errors if rules break.
+   - Close by emphasising role-based controls (riders never see operator buttons, guests stay read-only).
 
 ## Operator Station Operations (new)
 - **Use cases** live under `com.sharecycle.application`:

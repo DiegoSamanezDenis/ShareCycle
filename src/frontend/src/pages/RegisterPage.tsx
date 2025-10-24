@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import type { ChangeEvent, FormEvent } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { apiRequest } from '../api/client';
+import { useState } from "react";
+import type { ChangeEvent, FormEvent } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import { apiRequest } from "../api/client";
 
 type RegisterFormState = {
   fullName: string;
@@ -13,17 +13,18 @@ type RegisterFormState = {
 };
 
 const defaultFormState: RegisterFormState = {
-  fullName: '',
-  streetAddress: '',
-  email: '',
-  username: '',
-  password: '',
-  paymentMethodToken: ''
+  fullName: "",
+  streetAddress: "",
+  email: "",
+  username: "",
+  password: "",
+  paymentMethodToken: "",
 };
 
 export default function RegisterPage() {
   const navigate = useNavigate();
-  const [formState, setFormState] = useState<RegisterFormState>(defaultFormState);
+  const [formState, setFormState] =
+    useState<RegisterFormState>(defaultFormState);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
@@ -40,22 +41,22 @@ export default function RegisterPage() {
     setSuccess(false);
 
     try {
-      await apiRequest('/auth/register', {
-        method: 'POST',
+      await apiRequest("/auth/register", {
+        method: "POST",
         body: JSON.stringify({
           fullName: formState.fullName,
           streetAddress: formState.streetAddress,
           email: formState.email,
           username: formState.username,
           password: formState.password,
-          paymentMethodToken: formState.paymentMethodToken
-        })
+          paymentMethodToken: formState.paymentMethodToken,
+        }),
       });
       setSuccess(true);
       setFormState(defaultFormState);
-      setTimeout(() => navigate('/login'), 1200);
+      setTimeout(() => navigate("/login"), 1200);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Registration failed');
+      setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
       setSubmitting(false);
     }
@@ -131,7 +132,7 @@ export default function RegisterPage() {
           />
         </label>
         <button type="submit" disabled={submitting}>
-          {submitting ? 'Submitting…' : 'Register'}
+          {submitting ? "Submitting…" : "Register"}
         </button>
       </form>
       {error && <p role="alert">{error}</p>}

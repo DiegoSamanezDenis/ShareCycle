@@ -2,6 +2,7 @@ package com.sharecycle.infrastructure.persistence.jpa;
 
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Trip;
+import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.FetchType;
@@ -30,19 +31,19 @@ public class JpaTripEntity {
     @Column(name = "duration_minutes")
     private int durationMinutes;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "user_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+    @JoinColumn(name = "user_id", nullable = true)
     private JpaUserEntity.JpaRiderEntity rider;
 
-    @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "bike_id", nullable = false)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
+    @JoinColumn(name = "bike_id", nullable = true)
     private JpaBikeEntity bike;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "start_station_id", nullable = false)
     private JpaStationEntity startStation;
 
-    @ManyToOne(fetch = FetchType.LAZY)
+    @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "end_station_id")
     private JpaStationEntity endStation;
 
@@ -98,5 +99,13 @@ public class JpaTripEntity {
 
     public void setTripId(UUID tripId) {
         this.tripId = tripId;
+    }
+
+    public void setBike(JpaBikeEntity bike) {
+        this.bike = bike;
+    }
+
+    public void setRider(JpaUserEntity.JpaRiderEntity rider) {
+        this.rider = rider;
     }
 }

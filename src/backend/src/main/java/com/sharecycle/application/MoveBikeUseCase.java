@@ -5,6 +5,7 @@ import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.StationStatusChangedEvent;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Station;
@@ -21,15 +22,18 @@ public class MoveBikeUseCase {
     private final JpaBikeRepository bikeRepository;
     private final JpaStationRepository stationRepository;
     private final UserRepository userRepository;
+    private final ReservationRepository reservationRepository;
     private final DomainEventPublisher eventPublisher;
 
     public MoveBikeUseCase(JpaBikeRepository bikeRepository,
                            JpaStationRepository stationRepository,
                            UserRepository userRepository,
+                           ReservationRepository reservationRepository,
                            DomainEventPublisher eventPublisher) {
         this.bikeRepository = bikeRepository;
         this.stationRepository = stationRepository;
         this.userRepository = userRepository;
+        this.reservationRepository = reservationRepository;
         this.eventPublisher = eventPublisher;
     }
 
@@ -47,6 +51,7 @@ public class MoveBikeUseCase {
         ensureStationIsOperational(sourceStation, "Source station is out of service.");
         ensureStationIsOperational(destinationStation, "Destination station is out of service.");
         ensureBikeIsMovable(bike);
+        ensureBikeHasNoActiveReservation(bike);
         ensureDestinationHasCapacity(destinationStation);
 
         if (sourceStation.getId().equals(destinationStation.getId())) {
@@ -124,6 +129,12 @@ public class MoveBikeUseCase {
     private void ensureBikeIsMovable(Bike bike) {
         if (!Bike.BikeStatus.AVAILABLE.equals(bike.getStatus())) {
             throw new IllegalStateException("Bike is not available to move.");
+        }
+    }
+
+    private void ensureBikeHasNoActiveReservation(Bike bike) {
+        if (reservationRepository.hasActiveReservationForBike(bike.getId())) {
+            throw new IllegalStateException("Bike has an active reservation and cannot be moved.");
         }
     }
 

@@ -13,7 +13,6 @@ import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
 
 import java.time.Instant;
-import java.time.ZoneOffset;
 import java.util.UUID;
 
 @Entity
