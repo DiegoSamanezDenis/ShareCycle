@@ -4,5 +4,5 @@ import com.sharecycle.domain.model.Bill;
 
 import java.util.UUID;
 
-public record PaymentStartedEvent(UUID riderId, UUID tripId) {
+public record PaymentStartedEvent(UUID riderId, UUID tripId, String msg) {
 }

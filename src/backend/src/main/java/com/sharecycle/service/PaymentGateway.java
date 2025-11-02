@@ -7,10 +7,12 @@ import com.stripe.model.Charge;
 import com.stripe.model.InvoicePayment;
 import com.stripe.model.Token;
 import io.github.cdimascio.dotenv.Dotenv;
+import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
 import java.util.Map;
 
+@Service
 public interface PaymentGateway {
     boolean capture(double amount, String riderToken);
     String createPaymentToken(User user);
