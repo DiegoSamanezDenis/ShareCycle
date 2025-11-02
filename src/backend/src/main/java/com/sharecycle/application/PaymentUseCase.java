@@ -21,12 +21,14 @@ public class PaymentUseCase {
     private final JpaLedgerEntryRepository ledgerEntryRepository;
     private final JpaUserRepository userRepository;
     private final DomainEventPublisher eventPublisher;
+    private final PaymentGateway paymentGateway;
 
     @Autowired
-    public PaymentUseCase(JpaLedgerEntryRepository ledgerEntryRepository, JpaUserRepository userRepository, DomainEventPublisher domainEventPublisher) {
+    public PaymentUseCase(JpaLedgerEntryRepository ledgerEntryRepository, JpaUserRepository userRepository, DomainEventPublisher domainEventPublisher, PaymentGateway paymentGateway) {
         this.ledgerEntryRepository = ledgerEntryRepository;
         this.userRepository = userRepository;
         this.eventPublisher = domainEventPublisher;
+        this.paymentGateway = paymentGateway;
     }
 
     public void execute(LedgerEntry ledgerEntry) {
@@ -35,19 +37,18 @@ public class PaymentUseCase {
         // Get or create payment token if user doesn't have 1 yet
         String userPaymentToken = this.getOrCreatePaymentToken(rider);
 
-        PaymentGateway paymentGateway = new StubPaymentGateway();
         logger.info("Payment starting");
-        eventPublisher.publish(new PaymentStartedEvent(rider.getUserId(), ledgerEntry.getTrip().getTripID()));
+        eventPublisher.publish(new PaymentStartedEvent(rider.getUserId(), ledgerEntry.getTrip().getTripID(), "Payment Started"));
         boolean isSuccess = paymentGateway.capture(totalAmount, userPaymentToken);
 
         if (isSuccess) {
             logger.info("Payment successful");
-            eventPublisher.publish(new PaymentSucceedEvent(rider.getUserId(), ledgerEntry.getTrip().getTripID()));
+            eventPublisher.publish(new PaymentSucceedEvent(rider.getUserId(), ledgerEntry.getTrip().getTripID(), "Payment Succeed"));
             ledgerEntry.setLedgerStatus(LedgerEntry.LedgerStatus.PAID);
             ledgerEntryRepository.save(ledgerEntry);
         } else {
             logger.info("Payment failed");
-            eventPublisher.publish(new PaymentFailedEvent(rider.getUserId(), ledgerEntry.getTrip().getTripID()));
+            eventPublisher.publish(new PaymentFailedEvent(rider.getUserId(), ledgerEntry.getTrip().getTripID(), "Payment failed"));
         }
     }
 
