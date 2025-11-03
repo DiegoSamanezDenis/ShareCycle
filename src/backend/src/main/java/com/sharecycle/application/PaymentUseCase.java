@@ -8,8 +8,9 @@ import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.infrastructure.persistence.JpaUserRepository;
-import com.sharecycle.service.PaymentGateway;
-import com.sharecycle.service.StubPaymentGateway;
+import com.sharecycle.service.payment.PaymentGateway;
+import com.sharecycle.service.payment.StubPaymentGateway;
+import com.stripe.exception.StripeException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -31,7 +32,7 @@ public class PaymentUseCase {
         this.paymentGateway = paymentGateway;
     }
 
-    public void execute(LedgerEntry ledgerEntry) {
+    public void execute(LedgerEntry ledgerEntry) throws StripeException {
         double totalAmount = ledgerEntry.getTotalAmount();
         User rider = ledgerEntry.getUser();
         // Get or create payment token if user doesn't have 1 yet
@@ -72,9 +73,11 @@ public class PaymentUseCase {
             return user.getPaymentMethodToken();
         }
         // Token does not exist, create one
-        PaymentGateway paymentGateway = new StubPaymentGateway(); //TODO: Switch to Stripe when implemented
+        logger.info("No payment token found, creating new payment token");
         String token = paymentGateway.createPaymentToken(user);
         user.setPaymentMethodToken(token);
+        logger.info("Payment token created");
+        logger.info("Payment token: {}", token);
         userRepository.save(user);
         return token;
     }

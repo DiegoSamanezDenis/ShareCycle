@@ -6,6 +6,9 @@ import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.infrastructure.SimpleDomainEventPublisher;
 import com.sharecycle.infrastructure.persistence.JpaTripRepository;
 import com.sharecycle.infrastructure.persistence.JpaUserRepository;
+import com.stripe.Stripe;
+import com.stripe.exception.StripeException;
+import com.stripe.model.Balance;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -49,27 +52,27 @@ class PaymentUseCaseTest {
 
     @Test
     @Transactional
-    void paymentSuccess() {
-//        createUser();
-//        createBike();
-//        createTrip();
-//        createLedgerEntry();
-//        paymentUseCase.execute(testLedgerEntry);
-//        LedgerEntry managedLedgerEntry = jpaLedgerEntryRepository.findById(testLedgerEntry.getLedgerId());
-//        assertEquals(LedgerEntry.LedgerStatus.PAID, managedLedgerEntry.getLedgerStatus());
+    void paymentSuccess() throws StripeException {
+        createUser();
+        createBike();
+        createTrip();
+        createLedgerEntry();
+        paymentUseCase.execute(testLedgerEntry);
+        LedgerEntry managedLedgerEntry = jpaLedgerEntryRepository.findById(testLedgerEntry.getLedgerId());
+        assertEquals(LedgerEntry.LedgerStatus.PAID, managedLedgerEntry.getLedgerStatus());
     }
     @Test
     @Transactional
-    void paymentAlreadyPaid() {
-//        createUser();
-//        createBike();
-//        createTrip();
-//        createLedgerEntry();
-//        testLedgerEntry.setLedgerStatus(LedgerEntry.LedgerStatus.PAID);
-//        jpaLedgerEntryRepository.save(testLedgerEntry);
-//        paymentUseCase.execute(testLedgerEntry);
-//        LedgerEntry managedLedgerEntry = jpaLedgerEntryRepository.findById(testLedgerEntry.getLedgerId());
-//        assertEquals(LedgerEntry.LedgerStatus.PAID, managedLedgerEntry.getLedgerStatus());
+    void paymentAlreadyPaid() throws StripeException {
+        createUser();
+        createBike();
+        createTrip();
+        createLedgerEntry();
+        testLedgerEntry.setLedgerStatus(LedgerEntry.LedgerStatus.PAID);
+        jpaLedgerEntryRepository.save(testLedgerEntry);
+        paymentUseCase.execute(testLedgerEntry);
+        LedgerEntry managedLedgerEntry = jpaLedgerEntryRepository.findById(testLedgerEntry.getLedgerId());
+        assertEquals(LedgerEntry.LedgerStatus.PAID, managedLedgerEntry.getLedgerStatus());
     }
 
 
