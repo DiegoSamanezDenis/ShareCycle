@@ -47,6 +47,16 @@ public class SimpleDomainEventPublisher implements DomainEventPublisher {
     }
 
     @Override
+    public void publish(Object event) {
+        if (event == null) return;
+        if (event instanceof DomainEvent) {
+            publish((DomainEvent) event);
+        } else {
+            logger.warn("Ignoring non-DomainEvent published: {}", event.getClass().getName());
+        }
+    }
+
+    @Override
     public void publish(DomainEvent event) {
         if (event == null) return;
         logger.info("publishing domain event: {}", event.getClass().getSimpleName());
