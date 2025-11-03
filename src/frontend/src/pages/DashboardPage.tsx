@@ -863,7 +863,14 @@ const [tripCompletion, setTripCompletion] =
           </div>
         </div>
 
-        <Map defaultCenter={[45.508, -73.587]} defaultZoom={13} height={600}>
+        <Map
+          defaultCenter={[45.508, -73.587]}
+          defaultZoom={13}
+          height={600}
+          provider={(x: number, y: number, z: number) =>
+            `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
+          }
+        >
           {stations.map((s) => {
             const lat = Number.isFinite(s.latitude) ? s.latitude : 45.508;
 
