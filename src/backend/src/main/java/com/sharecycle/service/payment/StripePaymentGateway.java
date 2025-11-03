@@ -2,11 +2,7 @@ package com.sharecycle.service.payment;
 
 import com.sharecycle.domain.model.User;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Charge;
 import com.stripe.model.PaymentIntent;
-import com.stripe.model.Token;
-import com.stripe.param.ChargeCreateParams;
-import com.stripe.param.TokenCreateParams;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
