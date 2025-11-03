@@ -2,6 +2,7 @@ package com.sharecycle.domain.repository;
 
 import com.sharecycle.domain.model.Trip;
 
+import java.util.List;
 import java.util.UUID;
 
 public interface TripRepository {
@@ -13,4 +14,8 @@ public interface TripRepository {
     Trip findByBikeId(UUID bikeId);
     void deleteByUserId(UUID userId);
     void deleteByBikeId(UUID bikeId);
+
+    List<Trip> findAll();
+
+    List<Trip> findAllByUserId(UUID userId);
 }
