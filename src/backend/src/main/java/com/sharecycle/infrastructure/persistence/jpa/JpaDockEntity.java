@@ -1,6 +1,7 @@
 package com.sharecycle.infrastructure.persistence.jpa;
 
 import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.Station;
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -51,14 +52,6 @@ public class JpaDockEntity {
         return entity;
     }
 
-    public Dock toDomain(MapperContext context) {
-        Dock dock = new Dock(dockId, status, null);
-        if (occupiedBike != null) {
-            dock.setOccupiedBike(occupiedBike.toDomain(context));
-        }
-        return dock;
-    }
-
     public UUID getDockId() {
         return dockId;
     }
@@ -89,5 +82,21 @@ public class JpaDockEntity {
 
     public void setOccupiedBike(JpaBikeEntity occupiedBike) {
         this.occupiedBike = occupiedBike;
+    }
+
+    public Dock toDomain(MapperContext context){
+        Dock existing = context.docks.get(dockId);
+        if (existing != null) {
+            return existing;
+        }
+        Station station = this.station.toDomain(context);
+        Dock dock = new Dock();
+        dock.setId(dockId);
+        dock.setStatus(status);
+        dock.setStation(station);
+        dock.setOccupiedBike(occupiedBike!=null?occupiedBike.toDomain(context):null);
+
+        context.docks.put(dockId, dock);
+        return dock;
     }
 }

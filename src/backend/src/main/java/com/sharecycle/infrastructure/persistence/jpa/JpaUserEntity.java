@@ -7,7 +7,6 @@ import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
@@ -197,5 +196,33 @@ public class JpaUserEntity {
             User base = super.toDomain();
             return new Operator(base);
         }
+    }
+
+    public User toDomain(MapperContext context) {
+        User existing = context.users.get(userId);
+        if (existing != null) {
+            return existing;
+        }
+        User user;
+        if (role.equals("RIDER")) {
+            user = new Rider();
+        } else {
+            user = new Operator();
+        }
+        user.setFullName(fullName);
+        user.setStreetAddress(streetAddress);
+        user.setEmail(email);
+        user.setUsername(username);
+        user.setRole(role);
+        user.setPasswordHash(passwordHash);
+        user.setPaymentMethodToken(paymentMethodToken);
+        user.setCreatedAt(createdAt);
+        user.setUpdatedAt(updatedAt);
+        context.users.put(userId, user);
+        if (role.equals("RIDER")) {
+            assert user instanceof Rider;
+            context.riders.put(userId, (Rider) user);
+        }
+        return user;
     }
 }

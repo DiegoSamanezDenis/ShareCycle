@@ -9,6 +9,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -90,6 +91,22 @@ public class JpaTripRepository implements TripRepository {
         entityManager.createQuery("delete from JpaTripEntity t where t.bike.bikeId = :bikeId")
                 .setParameter("bikeId", bikeId)
                 .executeUpdate();
+    }
+    @Override
+    public List<Trip> findAll(){
+        return entityManager.createQuery("select t from JpaTripEntity t ", JpaTripEntity.class).getResultList().stream()
+                .map(entity -> entity.toDomain(new MapperContext())) // define a mapping method
+                .toList();
+    }
+    @Override
+    public List<Trip> findAllByUserId(UUID userId) {
+        return entityManager.createQuery(
+                        "select t from JpaTripEntity t where t.rider.userId = :userId and t.endTime is null",
+                        JpaTripEntity.class)
+                .setParameter("userId", userId)
+                .getResultStream()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .toList();
     }
 
     // clearAssociationsForTrip removed to avoid nulling rider/bike which breaks toDomain
