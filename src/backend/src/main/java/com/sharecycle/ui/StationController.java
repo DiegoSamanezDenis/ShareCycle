@@ -1,9 +1,12 @@
 package com.sharecycle.ui;
 
 import com.sharecycle.application.BmsFacade;
+import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.model.dto.StationDetailsDto;
 import com.sharecycle.model.dto.StationSummaryDto;
+
+import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -11,6 +14,7 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.security.core.context.SecurityContextHolder;
 
 import java.util.List;
 import java.util.UUID;
@@ -32,7 +36,8 @@ public class StationController {
 
     @GetMapping("/{stationId}/details")
     public StationDetailsDto getStationDetails(@PathVariable UUID stationId) {
-        return bmsFacade.getStationDetails(stationId);
+        UUID principalId = extractPrincipalUserId();
+        return bmsFacade.getStationDetails(stationId, principalId);
     }
 
     @PatchMapping("/{stationId}/status")
@@ -68,6 +73,13 @@ public class StationController {
         );
     }
 
+    private UUID extractPrincipalUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User user) {
+            return user.getUserId();
+        }
+        return null;
+    }
     public record UpdateStatusRequest(UUID operatorId, boolean outOfService) { }
 
     public record AdjustCapacityRequest(UUID operatorId, int delta) { }

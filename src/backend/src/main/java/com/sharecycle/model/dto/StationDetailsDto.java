@@ -13,7 +13,12 @@ public record StationDetailsDto(
         int capacity,
         int bikesDocked,
         int freeDocks,
-        List<DockDto> docks
+        List<DockDto> docks,
+        boolean canReserve,
+        boolean canStartTrip,
+        boolean canReturn,
+        boolean canMove,
+        boolean canToggleStatus
 ) {
     public record DockDto(
             UUID dockId,

@@ -127,6 +127,9 @@ export default function HomePage() {
               defaultCenter={[45.508, -73.587]}
               defaultZoom={13}
               height={400}
+              provider={(x: number, y: number, z: number) =>
+                `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
+              }
             >
               {stations.map((station) => {
                 const lat = Number.isFinite(station.latitude)
