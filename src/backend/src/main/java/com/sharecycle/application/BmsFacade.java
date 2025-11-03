@@ -125,9 +125,9 @@ public class BmsFacade {
     }
 
     @Transactional(readOnly = true)
-    public StationDetailsDto getStationDetails(UUID stationId, UUID principalUserId) {
+    public StationDetailsDto getStationDetails(UUID stationId) {
         Station station = requireStation(stationId);
-        return toStationDetailsDto(station, principalUserId);
+        return toStationDetailsDto(station);
     }
 
     @Transactional(readOnly = true)
@@ -161,7 +161,7 @@ public class BmsFacade {
 
     public record TripCompletionResult(Trip trip, LedgerEntry ledgerEntry) { }
 
-    private StationDetailsDto toStationDetailsDto(Station station, UUID principalUserId) {
+    private StationDetailsDto toStationDetailsDto(Station station) {
         List<StationDetailsDto.DockDto> docks = station.getDocks().stream()
                 .map(dock -> new StationDetailsDto.DockDto(
                         dock.getId(),
@@ -169,43 +169,6 @@ public class BmsFacade {
                         dock.getOccupiedBike() != null ? dock.getOccupiedBike().getId() : null
                 ))
                 .toList();
-        boolean isOperator = false;
-        boolean isRider = false;
-        if (principalUserId != null) {
-            User user = userRepository.findById(principalUserId);
-            if (user != null && user.getRole() != null) {
-                isOperator = "OPERATOR".equalsIgnoreCase(user.getRole()) || "ADMIN".equalsIgnoreCase(user.getRole());
-                isRider = "RIDER".equalsIgnoreCase(user.getRole());
-            }
-        }
-        boolean stationActive = !station.isOutOfService();
-        boolean hasAvailableBike = station.getAvailableBikeCount() > 0;
-        boolean hasFreeDock = station.getFreeDockCount() > 0;
-        boolean canReserve = stationActive && hasAvailableBike;
-        boolean canStartTrip = stationActive && hasAvailableBike;
-        boolean canReturn = false;
-        boolean canMove = isOperator && stationActive;
-        boolean canToggleStatus = isOperator;
-
-        if(isRider && principalUserId != null) {
-            boolean riderHasActiveTrip = tripRepository.riderHasActiveTrip(principalUserId);
-            Reservation riderReservation = reservationRepository.findByRiderId(principalUserId);
-
-            if (riderHasActiveTrip) {
-                canReserve = false;
-                canStartTrip = false;
-                canReturn = hasFreeDock && stationActive;
-            } else if (riderReservation != null && riderReservation.isActive()) {
-                canReserve = false;
-                UUID reserveStationId = riderReservation.getStation() != null ? riderReservation.getStation().getId() : null;
-                canStartTrip = stationActive && reserveStationId != null && reserveStationId.equals(station.getId());
-                canReturn = false;
-            } else {
-                canReserve = stationActive && hasAvailableBike;
-                canStartTrip = stationActive && hasAvailableBike;
-                canReturn = false;
-            }
-        }
         return new StationDetailsDto(
                 station.getId(),
                 station.getName(),
@@ -213,12 +176,7 @@ public class BmsFacade {
                 station.getCapacity(),
                 station.getBikesDocked(),
                 station.getFreeDockCount(),
-                docks,
-                canReserve,
-                canStartTrip,
-                canReturn,
-                canMove,
-                canToggleStatus
+                docks
         );
     }
 }
