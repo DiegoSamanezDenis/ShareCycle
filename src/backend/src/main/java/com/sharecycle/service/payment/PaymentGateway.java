@@ -1,7 +1,6 @@
 package com.sharecycle.service.payment;
 
 import com.sharecycle.domain.model.User;
-import com.stripe.exception.StripeException;
 import org.springframework.stereotype.Service;
 
 @Service

@@ -2,13 +2,8 @@ package com.sharecycle.service.payment;
 
 import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Charge;
 import com.stripe.model.PaymentIntent;
-import com.stripe.model.Token;
-import com.stripe.param.ChargeCreateParams;
 import com.stripe.param.PaymentIntentCreateParams;
-import com.stripe.param.PaymentMethodListParams;
-import com.stripe.param.TokenCreateParams;
 import jakarta.annotation.PostConstruct;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -43,15 +38,9 @@ public class StripePaymentProcessor {
         logger.info("Stripe Secret Key is loaded");
     }
 
+    // For now rider token is not used
     public PaymentIntent charge(long amount, String riderToken)
             throws StripeException {
-        ChargeCreateParams chargeCreateParams =
-                new ChargeCreateParams.Builder()
-                        .setAmount((long) amount)
-                        .setCapture(true)
-                        .setCurrency("cad")
-                        .setDescription("ShareCycle payment")
-                        .setSource(riderToken).build();
         PaymentIntentCreateParams params =
                 PaymentIntentCreateParams.builder()
                         .setAmount(amount)
