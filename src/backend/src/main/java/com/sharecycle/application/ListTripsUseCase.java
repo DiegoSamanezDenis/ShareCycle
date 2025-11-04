@@ -1,5 +1,6 @@
 package com.sharecycle.application;
 
+import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.model.User;
 import com.sharecycle.infrastructure.persistence.JpaTripRepository;
@@ -7,6 +8,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
+import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
@@ -21,16 +23,14 @@ public class ListTripsUseCase {
     }
 
 
-    public List<Trip> execute(User user){
+    public List<Trip> execute(User user, LocalDateTime startTime, LocalDateTime endTime, Bike.BikeType bikeType) {
         String role = user.getRole();
         if (role.equals("OPERATOR")){
             logger.info("User is an operator, finding all trips");
-            List<Trip> allTrips = jpaTripRepository.findAll();
-            return allTrips;
+            return jpaTripRepository.findAllWithFilter(startTime, endTime, bikeType);
         } else {
             logger.info("User is a rider, finding all trips by this rider");
-            List<Trip> allTrips = jpaTripRepository.findAllByUserId(user.getUserId());
-            return allTrips;
+            return jpaTripRepository.findAllByUserIdWithFilter(user.getUserId(), startTime, endTime, bikeType);
         }
     }
 }

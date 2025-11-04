@@ -1,5 +1,6 @@
 package com.sharecycle.infrastructure.persistence;
 
+import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.infrastructure.persistence.jpa.JpaTripEntity;
@@ -9,6 +10,7 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
@@ -101,10 +103,53 @@ public class JpaTripRepository implements TripRepository {
     @Override
     public List<Trip> findAllByUserId(UUID userId) {
         return entityManager.createQuery(
-                        "select t from JpaTripEntity t where t.rider.userId = :userId and t.endTime is null",
+                        "select t from JpaTripEntity t where t.rider.userId = :userId",
                         JpaTripEntity.class)
                 .setParameter("userId", userId)
                 .getResultStream()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .toList();
+    }
+
+    @Override
+    public List<Trip> findAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        StringBuilder queryStr = new StringBuilder(
+                "SELECT t FROM JpaTripEntity t"
+        );
+
+
+        if (bikeType != null || startDate != null || endDate != null) queryStr.append(" WHERE ");
+        if (bikeType != null) queryStr.append(" AND t.bike.type = :bikeType");
+        if (startDate != null) queryStr.append(" AND t.startTime >= :startDate");
+        if (endDate != null) queryStr.append(" AND t.endTime <= :endDate");
+        var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class);
+
+        if (bikeType != null) query.setParameter("bikeType", bikeType);
+        if (startDate != null) query.setParameter("startDate", startDate);
+        if (endDate != null) query.setParameter("endDate", endDate);
+
+        return query.getResultList().stream()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .toList();
+    }
+    @Override
+    public List<Trip> findAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        StringBuilder queryStr = new StringBuilder(
+                "SELECT t FROM JpaTripEntity t WHERE t.rider.userId = :userId"
+        );
+
+        if (bikeType != null) queryStr.append(" AND t.bike.type = :bikeType");
+        if (startDate != null) queryStr.append(" AND t.startTime >= :startDate");
+        if (endDate != null) queryStr.append(" AND t.endTime <= :endDate");
+
+        var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class)
+                .setParameter("userId", userId);
+
+        if (bikeType != null) query.setParameter("bikeType", bikeType);
+        if (startDate != null) query.setParameter("startDate", startDate);
+        if (endDate != null) query.setParameter("endDate", endDate);
+
+        return query.getResultList().stream()
                 .map(entity -> entity.toDomain(new MapperContext()))
                 .toList();
     }
