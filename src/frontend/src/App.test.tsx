@@ -34,6 +34,6 @@ describe("App routing", () => {
 
 describe("App configuration", () => {
   it("exposes an API base URL", () => {
-    expect(appConfig.apiUrl).toBe("http://localhost:8080/api");
+    expect(appConfig.apiUrl).toBe("http://localhost:8081/api");
   });
 });
