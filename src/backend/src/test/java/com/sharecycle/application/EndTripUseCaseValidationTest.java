@@ -85,6 +85,25 @@ class EndTripAndBillUseCaseValidationTest {
         verify(ledgerEntryRepository, never()).save(any());
     }
 
+    @Test
+    void rejectsFullDestinationStationWithSpecificException() {
+        Trip activeTrip = buildTrip();
+        Station destination = buildStation(UUID.randomUUID());
+        Bike occupyingBike = new Bike();
+        occupyingBike.setId(UUID.randomUUID());
+        destination.getDocks().get(0).setOccupiedBike(occupyingBike);
+        destination.updateBikesDocked();
+
+        when(tripRepository.findById(activeTrip.getTripID())).thenReturn(activeTrip);
+        when(stationRepository.findByIdForUpdate(destination.getId())).thenReturn(destination);
+
+        assertThatThrownBy(() -> useCase.execute(activeTrip, destination))
+                .isInstanceOf(StationFullException.class)
+                .hasMessageContaining("no free docks");
+
+        verify(ledgerEntryRepository, never()).save(any());
+    }
+
     private Trip buildTrip() {
         Rider rider = new Rider();
         rider.setUserId(UUID.randomUUID());

@@ -102,3 +102,35 @@
   font-weight: bold;
   color: #065f46;
 }
+
+.blockedReturn {
+  background: linear-gradient(to bottom, #fef3c7, #fde68a);
+  border: 2px solid #f59e0b;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.blockedTitle {
+  font-size: 16px;
+  font-weight: bold;
+  color: #92400e;
+  margin-bottom: 8px;
+}
+
+.blockedMessage {
+  margin: 6px 0;
+  font-size: 14px;
+  color: #7c2d12;
+}
+
+.blockedSuggestions ul {
+  margin: 8px 0 0 18px;
+  padding: 0;
+  color: #7c2d12;
+  font-size: 14px;
+}
+
+.blockedSuggestions li {
+  margin-bottom: 4px;
+}

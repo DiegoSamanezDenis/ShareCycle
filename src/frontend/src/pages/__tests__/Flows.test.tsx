@@ -84,8 +84,9 @@ vi.mock("../../api/client", () => {
       }
       if (path.startsWith("/trips/") && opts?.method === "POST") {
         return {
+          status: "COMPLETED",
           tripId: "t1",
-          endStationId: "s1",
+          stationId: "s1",
           endedAt: new Date().toISOString(),
           durationMinutes: 3,
           ledgerId: "l1",
@@ -93,6 +94,8 @@ vi.mock("../../api/client", () => {
           timeCost: 1.0,
           eBikeSurcharge: 0.25,
           totalCost: 1.75,
+          message: "Trip completed successfully.",
+          suggestions: [],
         };
       }
       if (path.includes("/status") && opts?.method === "PATCH") {

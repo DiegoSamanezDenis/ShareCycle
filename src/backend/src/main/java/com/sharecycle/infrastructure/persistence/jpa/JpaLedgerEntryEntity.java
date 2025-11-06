@@ -40,6 +40,9 @@ public class JpaLedgerEntryEntity {
     @Column(name = "pricing_plan", length = 50)
     private String pricingPlan;
 
+    @Column(name = "description", length = 255)
+    private String description;
+
     // Bill snapshot fields
     @Column(name = "bill_id", columnDefinition = "BINARY(16)")
     private UUID billId;
@@ -68,9 +71,12 @@ public class JpaLedgerEntryEntity {
     private JpaLedgerEntryEntity(LedgerEntry ledgerEntry, MapperContext context) {
         this.ledgerId = ledgerEntry.getLedgerId();
         this.user = (JpaUserEntity) JpaUserEntity.fromDomain(ledgerEntry.getUser());
-        this.trip = JpaTripEntity.fromDomain(ledgerEntry.getTrip(), context);
+        if (ledgerEntry.getTrip() != null) {
+            this.trip = JpaTripEntity.fromDomain(ledgerEntry.getTrip(), context);
+        }
         this.status = ledgerEntry.getLedgerStatus();
         this.pricingPlan = ledgerEntry.getPricingPlan();
+        this.description = ledgerEntry.getDescription();
         Bill bill = ledgerEntry.getBill();
         if (bill != null) {
             this.billId = bill.getBillId();
@@ -107,15 +113,16 @@ public class JpaLedgerEntryEntity {
         eBikeSurcharge,
         totalCost
     );
-    LedgerEntry ledgerEntry = new LedgerEntry(
-        ledgerId,
-        user.toDomain(),
-        trip.toDomain(context),
-        bill,
-        status,
-        timestamp,
-        pricingPlan
-    );
+        LedgerEntry ledgerEntry = new LedgerEntry(
+                ledgerId,
+                user.toDomain(),
+                trip != null ? trip.toDomain(context) : null,
+                bill,
+                status,
+                timestamp,
+                pricingPlan,
+                description
+        );
         context.ledgers.put(ledgerId, ledgerEntry);
         return ledgerEntry;
     }
@@ -154,6 +161,10 @@ public class JpaLedgerEntryEntity {
 
     public String getPricingPlan() {
         return pricingPlan;
+    }
+
+    public String getDescription() {
+        return description;
     }
 
     public LocalDateTime getTimestamp() {

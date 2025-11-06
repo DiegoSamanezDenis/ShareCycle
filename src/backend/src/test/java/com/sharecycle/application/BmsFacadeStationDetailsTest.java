@@ -18,6 +18,7 @@ import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.repository.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
@@ -39,6 +40,7 @@ public class BmsFacadeStationDetailsTest {
     @Mock private JpaBikeRepository bikeRepository;
     @Mock private TripRepository tripRepository;
     @Mock private ReservationRepository reservationRepository;
+    @Mock private JpaLedgerEntryRepository ledgerEntryRepository;
 
     private BmsFacade bmsFacade;
 
@@ -56,7 +58,8 @@ public class BmsFacadeStationDetailsTest {
                 stationRepository,
                 bikeRepository,
                 tripRepository,
-                reservationRepository
+                reservationRepository,
+                ledgerEntryRepository
         );
     }
     private Rider buildRider() {
