@@ -1,10 +1,14 @@
+//src/routes.tsx
 import type { RouteObject } from "react-router-dom";
 import DashboardPage from "./pages/DashboardPage";
 import HomePage from "./pages/HomePage";
 import LoginPage from "./pages/LoginPage";
 import NotFoundPage from "./pages/NotFoundPage";
 import RegisterPage from "./pages/RegisterPage";
+import TripSummaryPage from "./pages/TripSummaryPage";
+
 import { useAuth } from "./auth/AuthContext";
+
 
 function RequireAuth({ children }: { children: JSX.Element }) {
   const { token } = useAuth();
@@ -26,5 +30,16 @@ export const routes: RouteObject[] = [
       </RequireAuth>
     ),
   },
+
+  {
+  path: "/trip-summary",
+  element: (
+    <RequireAuth>
+      <TripSummaryPage />
+    </RequireAuth>
+  ),
+},
+
+
   { path: "*", element: <NotFoundPage /> },
 ];
