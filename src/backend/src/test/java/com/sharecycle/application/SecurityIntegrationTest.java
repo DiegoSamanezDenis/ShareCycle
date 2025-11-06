@@ -1,5 +1,6 @@
 package com.sharecycle.application;
 
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.service.SessionStore;
@@ -39,7 +40,7 @@ class SecurityIntegrationTest {
         String username = "secure-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String email = username + "@example.com";
         String hashed = BCrypt.hashpw("secret123", BCrypt.gensalt());
-        Rider rider = new Rider("Secure Rider", "123 Rider St", email, username, hashed, "tok");
+        Rider rider = new Rider("Secure Rider", "123 Rider St", email, username, hashed, "tok", PricingPlan.PlanType.PAY_AS_YOU_GO);
         userRepository.save(rider);
         token = sessionStore.createSession(rider.getUserId());
     }

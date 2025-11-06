@@ -12,6 +12,7 @@ import com.sharecycle.domain.event.TripBilledEvent;
 import com.sharecycle.domain.event.TripEndedEvent;
 import com.sharecycle.domain.event.TripStartedEvent;
 import com.sharecycle.domain.event.BikeMovedEvent;
+import com.sharecycle.domain.event.BillIssuedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -104,6 +105,12 @@ public class EventController {
         }
         if (e instanceof TripBilledEvent) {
             return "Trip billed.";
+        }
+        if (e instanceof BillIssuedEvent event) {
+            return "Bill issued for trip %s totaling $%.2f".formatted(
+                    event.tripId().toString().substring(0, 8),
+                    event.totalCost()
+            );
         }
         if (e instanceof ReservationCreatedEvent) {
             return "Bike reserved.";

@@ -1,5 +1,6 @@
 package com.sharecycle.application;
 
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.repository.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,7 +36,7 @@ class LoginControllerTest {
         username = "loginuser-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
         String email = username + "@example.com";
         String hashed = BCrypt.hashpw("password123", BCrypt.gensalt());
-        Rider rider = new Rider("Login User", "Addr", email, username, hashed, "tok");
+        Rider rider = new Rider("Login User", "Addr", email, username, hashed, "tok", PricingPlan.PlanType.PAY_AS_YOU_GO);
         userRepository.save(rider);
     }
 

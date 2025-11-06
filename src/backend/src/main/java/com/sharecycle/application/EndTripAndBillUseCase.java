@@ -9,6 +9,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import com.sharecycle.domain.DefaultPricingPlans;
 import com.sharecycle.domain.MonthlySubscriberStrategy;
 import com.sharecycle.domain.PayAsYouGoStrategy;
 import com.sharecycle.domain.TripBuilder;
@@ -152,11 +153,10 @@ public class EndTripAndBillUseCase {
         eventPublisher.publish(new TripEndedEvent(editedTrip.getTripID()));
 
         // SELECT PRICING STRATEGY based on rider plan
-        PricingStrategyRepository strategy = selectStrategy(editedTrip.getRider());
-        String planName = resolvePlanName(editedTrip.getRider());
-        
-        // Create a pricing plan for the calculation
-        PricingPlan pricingPlan = createPricingPlan(planName);
+        PricingPlan.PlanType planType = resolvePlanType(editedTrip.getRider());
+        PricingStrategyRepository strategy = selectStrategy(planType);
+        PricingPlan pricingPlan = DefaultPricingPlans.planForType(planType);
+        String planName = planType.name();
         
         // Calculate bill using strategy
         Bill bill = strategy.calculate(editedTrip, pricingPlan);
@@ -193,34 +193,19 @@ public class EndTripAndBillUseCase {
         }
     }
 
-    private PricingStrategyRepository selectStrategy(Rider rider) {
-        // TODO: get actual plan from rider when subscription system is implemented
-        String planType = resolvePlanName(rider);
-        if ("MONTHLY_SUBSCRIBER".equalsIgnoreCase(planType)) {
+    private PricingStrategyRepository selectStrategy(PricingPlan.PlanType planType) {
+        if (planType == PricingPlan.PlanType.MONTHLY_SUBSCRIBER) {
             return monthlySubscriberStrategy;
         }
         return payAsYouGoStrategy;
     }
 
-    private String resolvePlanName(Rider rider) {
-        // TODO: integrate with rider's subscription info when available
-        return "PAY_AS_YOU_GO";
+    private PricingPlan.PlanType resolvePlanType(Rider rider) {
+        PricingPlan.PlanType planType = rider != null ? rider.getPricingPlanType() : null;
+        if (planType == null) {
+            return PricingPlan.PlanType.PAY_AS_YOU_GO;
+        }
+        return planType;
     }
 
-    private PricingPlan createPricingPlan(String planName) {
-        if ("MONTHLY_SUBSCRIBER".equalsIgnoreCase(planName)) {
-            return new PricingPlan(
-                UUID.randomUUID(),
-                "Monthly Subscriber",
-                20.0,
-                PricingPlan.PlanType.MONTHLY_SUBSCRIBER
-            );
-        }
-        return new PricingPlan(
-            UUID.randomUUID(),
-            "Pay As You Go",
-            0.0,
-            PricingPlan.PlanType.PAY_AS_YOU_GO
-        );
-    }
 }

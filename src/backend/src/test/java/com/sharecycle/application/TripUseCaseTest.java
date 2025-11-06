@@ -13,6 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Dock;
 import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.model.Trip;
@@ -129,7 +130,7 @@ public class TripUseCaseTest {
     }
 
     private Rider createRider() {
-        return new Rider("Rider", "Rider","Rider", "Rider", "Rider", "Rider");
+        return new Rider("Rider", "Rider","Rider", "Rider", "Rider", "Rider", PricingPlan.PlanType.PAY_AS_YOU_GO);
     }
 
 

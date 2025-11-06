@@ -14,4 +14,9 @@ public record BillIssuedEvent(
         double eBikeSurcharge,
         double totalCost,
         String pricingPlan
-) {}
+) implements DomainEvent {
+    @Override
+    public LocalDateTime occurredAt() {
+        return computedAt != null ? computedAt : LocalDateTime.now();
+    }
+}
