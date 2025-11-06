@@ -1,0 +1,104 @@
+.receiptCard {
+  background-color: #ffffff;
+  border: 2px solid #10b981;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin-top: 12px;
+}
+
+.receiptHeader {
+  font-size: 18px;
+  font-weight: bold;
+  color: #065f46;
+  margin-bottom: 12px;
+  padding-bottom: 8px;
+  border-bottom: 2px solid #10b981;
+}
+
+.receiptRow {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.receiptLabel {
+  font-weight: 500;
+  color: #374151;
+}
+
+.receiptValue {
+  color: #1f2937;
+}
+
+.billBreakdown {
+  margin-top: 16px;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.billBreakdownTitle {
+  font-weight: 600;
+  color: #374151;
+  margin-bottom: 8px;
+}
+
+.billItem {
+  display: flex;
+  justify-content: space-between;
+  margin-left: 12px;
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.billItemLabel {
+  flex: 1;
+}
+
+.billItemValue {
+  font-weight: 500;
+  color: #374151;
+}
+
+.totalRow {
+  margin-top: 12px;
+  padding-top: 12px;
+  border-top: 2px solid #10b981;
+  display: flex;
+  justify-content: space-between;
+  font-size: 18px;
+  font-weight: bold;
+  color: #065f46;
+}
+
+.feedbackReceipt {
+  background: linear-gradient(to bottom, #ecfdf5, #d1fae5);
+  border: 2px solid #10b981;
+  border-radius: 8px;
+  padding: 16px;
+  margin-top: 12px;
+}
+
+.feedbackTitle {
+  font-size: 16px;
+  font-weight: bold;
+  color: #065f46;
+  margin-bottom: 8px;
+}
+
+.feedbackRow {
+  margin-bottom: 6px;
+  font-size: 14px;
+  color: #374151;
+}
+
+.feedbackTotal {
+  margin-top: 12px;
+  padding-top: 8px;
+  border-top: 1px solid #10b981;
+  font-size: 16px;
+  font-weight: bold;
+  color: #065f46;
+}

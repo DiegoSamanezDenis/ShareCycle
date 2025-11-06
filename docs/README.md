@@ -195,6 +195,7 @@ Notes on controller tests:
   - `V3__create_station_dock_bike_tables.sql` – station/dock/bike tables
   - `V4__add_bike_station_fk.sql` – links bikes to their current station
   - `V5__create_reservation_trip_ledger.sql` – reservation, trip, ledger tables
+  - `V6__add_bill_columns_to_ledger.sql` – adds billing breakdown (pricing_plan, bill_id, bill_computed_at, base_cost, time_cost, ebike_surcharge, total_cost); drops old total_amount column; adds check constraints and indexes for analytics
 - Runs on startup in default profile; disabled in `local` and `test`.
 
 ## Troubleshooting

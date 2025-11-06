@@ -8,7 +8,9 @@ import { apiRequest } from "../api/client";
 
 import { useAuth } from "../auth/AuthContext";
 
-import type { StationSummary, StationDetails } from "../types/station";
+import styles from "./TripReceipt.module.css";
+
+import type { StationDetails, StationSummary } from "../types/station";
 
 import type { DomainEventEntry } from "../types/events";
 
@@ -49,7 +51,13 @@ type TripCompletionResponse = {
 
   ledgerId: string;
 
-  totalAmount: number;
+  baseCost: number;
+
+  timeCost: number;
+
+  eBikeSurcharge: number;
+
+  totalCost: number;
 };
 
 // Removed CapacityFormState; no standalone capacity form
@@ -1071,12 +1079,56 @@ const [tripCompletion, setTripCompletion] =
 
           {tripCompletion && (
             <div style={{ marginTop: 12 }}>
-              <h3>Last receipt</h3>
-              <p>
-                Trip {tripCompletion.tripId.slice(0, 8).toUpperCase()} ended at{" "}
-                {new Date(tripCompletion.endedAt).toLocaleString()} - total $
-                {tripCompletion.totalAmount.toFixed(2)}.
-              </p>
+              <h3>Last Trip Receipt</h3>
+              <div className={styles.receiptCard}>
+                <div className={styles.receiptRow}>
+                  <span className={styles.receiptLabel}>Trip ID:</span>
+                  <span className={styles.receiptValue}>
+                    {tripCompletion.tripId.slice(0, 8).toUpperCase()}
+                  </span>
+                </div>
+                <div className={styles.receiptRow}>
+                  <span className={styles.receiptLabel}>Ended at:</span>
+                  <span className={styles.receiptValue}>
+                    {new Date(tripCompletion.endedAt).toLocaleString()}
+                  </span>
+                </div>
+                <div className={styles.receiptRow}>
+                  <span className={styles.receiptLabel}>Duration:</span>
+                  <span className={styles.receiptValue}>
+                    {tripCompletion.durationMinutes} minutes
+                  </span>
+                </div>
+                
+                <div className={styles.billBreakdown}>
+                  <div className={styles.billBreakdownTitle}>Bill Breakdown</div>
+                  <div className={styles.billItem}>
+                    <span className={styles.billItemLabel}>Base Cost:</span>
+                    <span className={styles.billItemValue}>
+                      ${tripCompletion.baseCost.toFixed(2)}
+                    </span>
+                  </div>
+                  <div className={styles.billItem}>
+                    <span className={styles.billItemLabel}>Time Cost:</span>
+                    <span className={styles.billItemValue}>
+                      ${tripCompletion.timeCost.toFixed(2)}
+                    </span>
+                  </div>
+                  {tripCompletion.eBikeSurcharge > 0 && (
+                    <div className={styles.billItem}>
+                      <span className={styles.billItemLabel}>E-Bike Surcharge:</span>
+                      <span className={styles.billItemValue}>
+                        ${tripCompletion.eBikeSurcharge.toFixed(2)}
+                      </span>
+                    </div>
+                  )}
+                </div>
+                
+                <div className={styles.totalRow}>
+                  <span>Total:</span>
+                  <span>${tripCompletion.totalCost.toFixed(2)}</span>
+                </div>
+              </div>
             </div>
           )}
 
@@ -1154,11 +1206,28 @@ const [tripCompletion, setTripCompletion] =
         )}
 
         {tripCompletion && (
-          <p>
-            Trip {tripCompletion.tripId} ended at{" "}
-            {new Date(tripCompletion.endedAt).toLocaleString()}. Charge: $
-            {tripCompletion.totalAmount.toFixed(2)}.
-          </p>
+          <div className={styles.feedbackReceipt}>
+            <div className={styles.feedbackTitle}>
+              ✓ Trip Completed!
+            </div>
+            <div className={styles.feedbackRow}>
+              Trip {tripCompletion.tripId.slice(0, 8).toUpperCase()} ended at{" "}
+              {new Date(tripCompletion.endedAt).toLocaleString()}
+            </div>
+            <div className={styles.feedbackRow}>
+              Duration: {tripCompletion.durationMinutes} minutes
+            </div>
+            <div className={styles.feedbackRow}>
+              Base: ${tripCompletion.baseCost.toFixed(2)} + 
+              Time: ${tripCompletion.timeCost.toFixed(2)}
+              {tripCompletion.eBikeSurcharge > 0 && (
+                <span> + E-Bike: ${tripCompletion.eBikeSurcharge.toFixed(2)}</span>
+              )}
+            </div>
+            <div className={styles.feedbackTotal}>
+              Total Charge: ${tripCompletion.totalCost.toFixed(2)}
+            </div>
+          </div>
         )}
       </section>
 

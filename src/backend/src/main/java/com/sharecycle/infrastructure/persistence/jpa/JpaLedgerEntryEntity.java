@@ -1,6 +1,11 @@
 package com.sharecycle.infrastructure.persistence.jpa;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.LedgerEntry;
+
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -11,9 +16,6 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
 import jakarta.persistence.Table;
-
-import java.time.Instant;
-import java.util.UUID;
 
 @Entity
 @Table(name = "ledger_entry")
@@ -35,11 +37,30 @@ public class JpaLedgerEntryEntity {
     @Column(name = "status", nullable = false)
     private LedgerEntry.LedgerStatus status;
 
-    @Column(name = "total_amount", nullable = false)
-    private double totalAmount;
+    @Column(name = "pricing_plan", length = 50)
+    private String pricingPlan;
+
+    // Bill snapshot fields
+    @Column(name = "bill_id", columnDefinition = "BINARY(16)")
+    private UUID billId;
+
+    @Column(name = "bill_computed_at")
+    private LocalDateTime billComputedAt;
+
+    @Column(name = "base_cost")
+    private double baseCost;
+
+    @Column(name = "time_cost")
+    private double timeCost;
+
+    @Column(name = "ebike_surcharge")
+    private double eBikeSurcharge;
+
+    @Column(name = "total_cost")
+    private double totalCost;
 
     @Column(name = "timestamp", nullable = false)
-    private Instant timestamp;
+    private LocalDateTime timestamp;
 
     public JpaLedgerEntryEntity() {
     }
@@ -49,7 +70,16 @@ public class JpaLedgerEntryEntity {
         this.user = (JpaUserEntity) JpaUserEntity.fromDomain(ledgerEntry.getUser());
         this.trip = JpaTripEntity.fromDomain(ledgerEntry.getTrip(), context);
         this.status = ledgerEntry.getLedgerStatus();
-        this.totalAmount = ledgerEntry.getTotalAmount();
+        this.pricingPlan = ledgerEntry.getPricingPlan();
+        Bill bill = ledgerEntry.getBill();
+        if (bill != null) {
+            this.billId = bill.getBillId();
+            this.billComputedAt = bill.getComputedAt();
+            this.baseCost = bill.getBaseCost();
+            this.timeCost = bill.getTimeCost();
+            this.eBikeSurcharge = bill.getEBikeSurcharge();
+            this.totalCost = bill.getTotalCost();
+        }
         this.timestamp = ledgerEntry.getTimestamp();
     }
 
@@ -69,14 +99,23 @@ public class JpaLedgerEntryEntity {
         if (existing != null) {
             return existing;
         }
-        LedgerEntry ledgerEntry = new LedgerEntry(
-                ledgerId,
-                user.toDomain(),
-                trip.toDomain(context),
-                status,
-                totalAmount,
-                timestamp
-        );
+    Bill bill = new Bill(
+        billId,
+        billComputedAt,
+        baseCost,
+        timeCost,
+        eBikeSurcharge,
+        totalCost
+    );
+    LedgerEntry ledgerEntry = new LedgerEntry(
+        ledgerId,
+        user.toDomain(),
+        trip.toDomain(context),
+        bill,
+        status,
+        timestamp,
+        pricingPlan
+    );
         context.ledgers.put(ledgerId, ledgerEntry);
         return ledgerEntry;
     }
@@ -87,5 +126,37 @@ public class JpaLedgerEntryEntity {
 
     public void setLedgerId(UUID ledgerId) {
         this.ledgerId = ledgerId;
+    }
+
+    public UUID getBillId() {
+        return billId;
+    }
+
+    public LocalDateTime getBillComputedAt() {
+        return billComputedAt;
+    }
+
+    public double getBaseCost() {
+        return baseCost;
+    }
+
+    public double getTimeCost() {
+        return timeCost;
+    }
+
+    public double getEBikeSurcharge() {
+        return eBikeSurcharge;
+    }
+
+    public double getTotalCost() {
+        return totalCost;
+    }
+
+    public String getPricingPlan() {
+        return pricingPlan;
+    }
+
+    public LocalDateTime getTimestamp() {
+        return timestamp;
     }
 }

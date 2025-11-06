@@ -1,9 +1,16 @@
 package com.sharecycle.application;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.LedgerEntry;
-import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.model.User;
@@ -14,19 +21,13 @@ import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.model.dto.StationDetailsDto;
 import com.sharecycle.model.dto.StationSummaryDto;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 
 @Service
 public class BmsFacade {
 
     private final ReserveBikeUseCase reserveBikeUseCase;
     private final StartTripUseCase startTripUseCase;
-    private final EndTripUseCase endTripUseCase;
+    private final EndTripAndBillUseCase endTripAndBillUseCase;
     private final MoveBikeUseCase moveBikeUseCase;
     private final SetStationStatusUseCase setStationStatusUseCase;
     private final AdjustStationCapacityUseCase adjustStationCapacityUseCase;
@@ -40,7 +41,7 @@ public class BmsFacade {
 
     public BmsFacade(ReserveBikeUseCase reserveBikeUseCase,
                      StartTripUseCase startTripUseCase,
-                     EndTripUseCase endTripUseCase,
+                     EndTripAndBillUseCase endTripAndBillUseCase,
                      MoveBikeUseCase moveBikeUseCase,
                      SetStationStatusUseCase setStationStatusUseCase,
                      AdjustStationCapacityUseCase adjustStationCapacityUseCase,
@@ -52,7 +53,7 @@ public class BmsFacade {
                      ReservationRepository reservationRepository) {
         this.reserveBikeUseCase = reserveBikeUseCase;
         this.startTripUseCase = startTripUseCase;
-        this.endTripUseCase = endTripUseCase;
+    this.endTripAndBillUseCase = endTripAndBillUseCase;
         this.moveBikeUseCase = moveBikeUseCase;
         this.setStationStatusUseCase = setStationStatusUseCase;
         this.adjustStationCapacityUseCase = adjustStationCapacityUseCase;
@@ -94,7 +95,7 @@ public class BmsFacade {
     public TripCompletionResult endTrip(UUID tripId, UUID stationId) {
         Trip trip = requireTrip(tripId);
         Station endStation = requireStation(stationId);
-        LedgerEntry ledgerEntry = endTripUseCase.execute(trip, endStation);
+    LedgerEntry ledgerEntry = endTripAndBillUseCase.execute(trip, endStation);
         Trip updatedTrip = requireTrip(tripId);
         return new TripCompletionResult(updatedTrip, ledgerEntry);
     }

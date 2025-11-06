@@ -1,0 +1,48 @@
+-- ALTERNATIVE VERSION: Add bill breakdown columns with data migration
+-- Use this version if you have existing ledger_entry records you want to preserve
+
+-- Step 1: Add new columns (nullable initially to allow for data migration)
+ALTER TABLE ledger_entry
+    ADD COLUMN pricing_plan VARCHAR(50) NULL AFTER status,
+    ADD COLUMN bill_id BINARY(16) NULL AFTER pricing_plan,
+    ADD COLUMN bill_computed_at DATETIME NULL AFTER bill_id,
+    ADD COLUMN base_cost DECIMAL(10,2) NULL AFTER bill_computed_at,
+    ADD COLUMN time_cost DECIMAL(10,2) NULL AFTER base_cost,
+    ADD COLUMN ebike_surcharge DECIMAL(10,2) NULL AFTER time_cost,
+    ADD COLUMN total_cost DECIMAL(10,2) NULL AFTER ebike_surcharge;
+
+-- Step 2: Migrate existing data from total_amount to total_cost
+-- Assume all existing entries are PAY_AS_YOU_GO with no base cost or e-bike surcharge
+UPDATE ledger_entry
+SET 
+    pricing_plan = 'PAY_AS_YOU_GO',
+    bill_id = UUID(),
+    bill_computed_at = timestamp,
+    base_cost = 0.0,
+    time_cost = total_amount,
+    ebike_surcharge = 0.0,
+    total_cost = total_amount
+WHERE total_cost IS NULL;
+
+-- Step 3: Make the new columns NOT NULL now that they have values
+ALTER TABLE ledger_entry
+    MODIFY COLUMN base_cost DECIMAL(10,2) NOT NULL,
+    MODIFY COLUMN time_cost DECIMAL(10,2) NOT NULL,
+    MODIFY COLUMN ebike_surcharge DECIMAL(10,2) NOT NULL,
+    MODIFY COLUMN total_cost DECIMAL(10,2) NOT NULL;
+
+-- Step 4: Add constraints
+ALTER TABLE ledger_entry
+    ADD CONSTRAINT ck_ledger_total_cost CHECK (total_cost >= 0),
+    ADD CONSTRAINT ck_ledger_base_cost CHECK (base_cost >= 0),
+    ADD CONSTRAINT ck_ledger_time_cost CHECK (time_cost >= 0),
+    ADD CONSTRAINT ck_ledger_ebike_surcharge CHECK (ebike_surcharge >= 0);
+
+-- Step 5: Create indexes
+CREATE INDEX idx_ledger_pricing_plan ON ledger_entry (pricing_plan, timestamp DESC);
+CREATE INDEX idx_ledger_bill_id ON ledger_entry (bill_id);
+
+-- Step 6: Drop the old total_amount column
+ALTER TABLE ledger_entry
+    DROP COLUMN total_amount,
+    DROP CONSTRAINT ck_ledger_total_amount;

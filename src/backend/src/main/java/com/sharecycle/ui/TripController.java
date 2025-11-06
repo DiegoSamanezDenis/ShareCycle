@@ -1,8 +1,8 @@
 package com.sharecycle.ui;
 
-import com.sharecycle.application.BmsFacade;
-import com.sharecycle.application.BmsFacade.TripCompletionResult;
-import com.sharecycle.domain.model.Trip;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -11,8 +11,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
-import java.time.LocalDateTime;
-import java.util.UUID;
+import com.sharecycle.application.BmsFacade;
+import com.sharecycle.application.BmsFacade.TripCompletionResult;
+import com.sharecycle.domain.model.Trip;
 
 @RestController
 @RequestMapping("/api/trips")
@@ -49,13 +50,17 @@ public class TripController {
         TripCompletionResult result = bmsFacade.endTrip(tripId, request.stationId());
         Trip updatedTrip = result.trip();
 
+        var bill = result.ledgerEntry().getBill();
         return new TripCompletionResponse(
                 updatedTrip.getTripID(),
                 updatedTrip.getEndStation().getId(),
                 updatedTrip.getEndTime(),
                 updatedTrip.getDurationMinutes(),
                 result.ledgerEntry().getLedgerId(),
-                result.ledgerEntry().getTotalAmount()
+                bill.getBaseCost(),
+                bill.getTimeCost(),
+                bill.getEBikeSurcharge(),
+                bill.getTotalCost()
         );
     }
 
@@ -83,6 +88,9 @@ public class TripController {
             LocalDateTime endedAt,
             int durationMinutes,
             UUID ledgerId,
-            double totalAmount
+            double baseCost,
+            double timeCost,
+            double eBikeSurcharge,
+            double totalCost
     ) { }
 }

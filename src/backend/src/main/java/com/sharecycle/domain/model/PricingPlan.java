@@ -8,7 +8,7 @@ public class PricingPlan {
     private double baseFee;
     private PlanType type;
     static double PER_MINUTE_RATE = 0.05;
-    static double eBikeSurchargePerMinute = 0.02;
+    static double EBIKE_SURCHARGE_PER_MINUTE = 0.01;
 
     public enum PlanType {
         PAY_AS_YOU_GO,
