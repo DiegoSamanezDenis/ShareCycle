@@ -1,6 +1,12 @@
 import { useEffect, useState } from "react";
+import { appConfig } from "../config/env";
 
-export default function EventConsole() {
+// 1. Define the props to accept the token
+type EventConsoleProps = {
+    token: string | null;
+};
+
+export default function EventConsole({ token }: EventConsoleProps) {
     const [events, setEvents] = useState<string[]>([]);
     const [connected, setConnected] = useState(false);
     const maxEvents = 300;
@@ -9,9 +15,17 @@ export default function EventConsole() {
         let es: EventSource | null = null;
         let isMounted = true;
 
+        // 2. Create headers for fetch() requests
+        const headers = {
+            "Authorization": `Bearer ${token}`,
+            "Content-Type": "application/json",
+        };
+
         async function loadInitial() {
+            if (!token) return; // <-- USES TOKEN
             try {
-                const res = await fetch("/events");
+                // 3. Use the headers in your fetch
+                const res = await fetch(`${appConfig.apiUrl}/events`, { headers });
                 if (!res.ok) return;
                 const list = await res.json();
                 if (!isMounted) return;
@@ -21,10 +35,19 @@ export default function EventConsole() {
             }
         }
 
-        loadInitial();
+        if (token) {
+            loadInitial();
+        }
 
         try {
-            es = new EventSource("/events/stream");
+            // 4. Don't connect if no token
+            if (!token) {
+                setConnected(false);
+                return;
+            }
+
+            // 5. Send the token as a query parameter for EventSource
+            es = new EventSource(`${appConfig.apiUrl}/events/stream?token=${token}`);
             setConnected(true);
 
             const push = (data: string) => {
@@ -34,10 +57,7 @@ export default function EventConsole() {
                 });
             };
 
-            // generic message fallback
             es.onmessage = (ev) => push(ev.data);
-
-            // register handlers for the known domain event names so named events are also caught
             const names = [
                 "ReservationCreated",
                 "ReservationExpired",
@@ -46,6 +66,9 @@ export default function EventConsole() {
                 "TripBilled",
                 "BikeStatusChanged",
                 "BillIssued",
+                "BikeMovedEvent",
+                "StationStatusChangedEvent",
+                "StationCapacityChangedEvent"
             ];
             for (const n of names) {
                 es.addEventListener(n, (ev: MessageEvent) => push(ev.data));
@@ -61,14 +84,16 @@ export default function EventConsole() {
         return () => {
             isMounted = false;
             if (es) {
-                try {
-                    es.close();
-                } catch (err){
-                    void err
-                }
+                es.close();
             }
         };
-    }, []);
+    }, [token]); // 6. Re-run this effect if the token changes
+
+    // 7. Define headers for the Refresh button's fetch
+    const refreshHeaders = {
+        "Authorization": `Bearer ${token}`,
+        "Content-Type": "application/json",
+    };
 
     return (
         <div style={{ padding: 12, border: "1px solid #e5e5e5", borderRadius: 6, background: "#fff", maxHeight: 520, overflow: "auto" }}>
@@ -78,7 +103,16 @@ export default function EventConsole() {
             </div>
 
             <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
-                <button onClick={() => { fetch("/events").then(r => r.json()).then((list) => setEvents(list.reverse ? list.slice().reverse() : list)); }}>
+                <button
+                    onClick={() => {
+                        if (!token) return;
+                        // 8. Use headers in the Refresh button
+                        fetch(`${appConfig.apiUrl}/events`, { headers: refreshHeaders })
+                            .then((r) => r.json())
+                            .then((list) => setEvents(list.reverse ? list.slice().reverse() : list));
+                    }}
+                    disabled={!token}
+                >
                     Refresh
                 </button>
                 <button onClick={() => setEvents([])}>Clear</button>

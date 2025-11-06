@@ -1,12 +1,13 @@
 package com.sharecycle.domain.event;
 
+import com.sharecycle.domain.model.Bike;
+
 import java.time.LocalDateTime;
 import java.util.UUID;
 
 public record BikeStatusChangedEvent(
         UUID bikeId,
-        String previousStatus,
-        String newStatus,
+        Bike.BikeStatus status,
         UUID stationId,
         LocalDateTime occurredAt
 ) implements DomainEvent {

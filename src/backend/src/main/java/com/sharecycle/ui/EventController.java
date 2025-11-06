@@ -3,10 +3,20 @@ package com.sharecycle.ui;
 import com.sharecycle.domain.event.DomainEvent;
 import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.DomainEventSubscriber;
+import com.sharecycle.domain.event.ReservationCreatedEvent;
+import com.sharecycle.domain.event.ReservationExpiredEvent;
+import com.sharecycle.domain.event.BikeStatusChangedEvent;
+import com.sharecycle.domain.event.StationCapacityChangedEvent;
+import com.sharecycle.domain.event.StationStatusChangedEvent;
+import com.sharecycle.domain.event.TripBilledEvent;
+import com.sharecycle.domain.event.TripEndedEvent;
+import com.sharecycle.domain.event.TripStartedEvent;
+import com.sharecycle.domain.event.BikeMovedEvent;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -17,6 +27,7 @@ import java.util.concurrent.TimeUnit;
 import java.util.stream.Collectors;
 
 @RestController
+@RequestMapping("/api")
 public class EventController {
     private static final Logger logger = LoggerFactory.getLogger(EventController.class);
     private static final long SSE_TIMEOUT_MS = TimeUnit.MINUTES.toMillis(30);
@@ -80,13 +91,47 @@ public class EventController {
     }
 
     private static String format(DomainEvent e) {
-        var ts = e.occurredAt().format(DateTimeFormatter.ISO_LOCAL_DATE_TIME);
+        var ts = e.occurredAt().format(DateTimeFormatter.ISO_LOCAL_TIME);
         return "%s - %s".formatted(ts, readable(e));
     }
 
     private static String readable(DomainEvent e) {
-        // Simple generic formatter: include class name and any known getter fields by toString.
-        // You can customize per-event type for friendlier messages.
-        return "%s %s".formatted(e.getClass().getSimpleName(), e.toString());
+        if (e instanceof TripStartedEvent) {
+            return "Trip started.";
+        }
+        if (e instanceof TripEndedEvent) {
+            return "Trip ended.";
+        }
+        if (e instanceof TripBilledEvent) {
+            return "Trip billed.";
+        }
+        if (e instanceof ReservationCreatedEvent) {
+            return "Bike reserved.";
+        }
+        if (e instanceof ReservationExpiredEvent) {
+            return "Reservation expired.";
+        }
+
+        if (e instanceof BikeStatusChangedEvent event) {
+            String bikeId = event.bikeId().toString().substring(0, 8);
+            return "Bike " + bikeId + " status changed to " + event.status();
+        }
+
+        if (e instanceof StationStatusChangedEvent event) {
+            String stationId = event.stationId().toString().substring(0, 8);
+            return "Station " + stationId + " status changed to " + event.status();
+        }
+
+        if (e instanceof StationCapacityChangedEvent event) {
+            String stationId = event.stationId().toString().substring(0, 8);
+            return "Station " + stationId + " capacity changed to " + event.capacity() + " (Free docks: " + event.freeDocks() + ")";
+        }
+
+        if (e instanceof BikeMovedEvent event) {
+            String bikeId = event.bikeId().toString().substring(0, 8);
+            return "Bike " + bikeId + " has been moved from " + event.sourceStationId() + " to " + event.destinationStationId();
+        }
+
+        return e.getClass().getSimpleName();
     }
 }
