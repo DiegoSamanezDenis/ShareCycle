@@ -12,5 +12,6 @@ public interface JpaLedgerEntryRepository {
     LedgerEntry findById(UUID id);
     LedgerEntry findByTrip(Trip trip);
     List<LedgerEntry> findAllByUser(User user);
+    List<LedgerEntry> findAllByTripIds(List<UUID> tripIds);
 
 }

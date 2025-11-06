@@ -104,6 +104,47 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
       suggestions: [],
     };
   }
+  if (path === "/trips" && (!opts || !opts.method || opts.method === "GET")) {
+    const start = new Date();
+    const end = new Date(start.getTime() + 15 * 60000);
+    return [
+      {
+        tripId: "history-1",
+        riderId: "u1",
+        riderName: "Rider One",
+        startStationName: "Station #1",
+        endStationName: "Station #2",
+        startTime: start.toISOString(),
+        endTime: end.toISOString(),
+        durationMinutes: 15,
+        bikeType: "E_BIKE",
+        totalCost: 3.75,
+        ledgerId: "ledger-1",
+        ledgerStatus: "PAID",
+      },
+    ];
+  }
+  if (path.startsWith("/trips/") && (!opts || !opts.method || opts.method === "GET")) {
+    const endTime = new Date();
+    const startTime = new Date(endTime.getTime() - 20 * 60000);
+    return {
+      tripId: "history-1",
+      riderId: "u1",
+      riderName: "Rider One",
+      startStationName: "Station #1",
+      endStationName: "Station #2",
+      startTime: startTime.toISOString(),
+      endTime: endTime.toISOString(),
+      durationMinutes: 20,
+      bikeType: "E_BIKE",
+      baseCost: 1.0,
+      timeCost: 2.0,
+      eBikeSurcharge: 0.75,
+      totalCost: 3.75,
+      ledgerId: "ledger-1",
+      ledgerStatus: "PAID",
+    };
+  }
   return undefined;
 }
 
@@ -205,6 +246,16 @@ describe("DashboardPage", () => {
     expect(screen.getByText(/Nearby stations with free docks/i)).toBeInTheDocument();
     expect(screen.getByText(/Station #2/i)).toBeInTheDocument();
     expect(screen.queryByText(/Trip Completed/i)).not.toBeInTheDocument();
+  });
+
+  it("renders ride history with returned trips", async () => {
+    renderWithAuth(<DashboardPage />);
+
+    expect(await screen.findByRole("heading", { name: /Ride History/i })).toBeInTheDocument();
+    expect(await screen.findByText(/HISTORY-1/)).toBeInTheDocument();
+    expect(screen.getByText("Station #1")).toBeInTheDocument();
+    expect(screen.getByText("Station #2")).toBeInTheDocument();
+    expect(screen.getByText("$3.75")).toBeInTheDocument();
   });
 });
 

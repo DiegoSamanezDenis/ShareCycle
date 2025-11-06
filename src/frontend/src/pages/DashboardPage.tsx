@@ -5,6 +5,7 @@ import { Map, Marker as PigeonMarker } from "pigeon-maps";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
+import RideHistory from "../components/RideHistory";
 import styles from "./TripReceipt.module.css";
 import type { StationDetails, StationSummary } from "../types/station";
 
@@ -1337,6 +1338,8 @@ export default function DashboardPage() {
           </div>
         )}
       </section>
+
+      <RideHistory token={auth.token} isOperator={auth.role === "OPERATOR"} />
 
       <section>
         <h2>Event console</h2>
