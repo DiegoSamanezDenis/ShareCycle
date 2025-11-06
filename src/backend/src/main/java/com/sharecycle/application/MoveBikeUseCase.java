@@ -1,6 +1,7 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.event.BikeMovedEvent;
+import com.sharecycle.domain.event.BikeStatusChangedEvent;
 import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.StationStatusChangedEvent;
 import com.sharecycle.domain.repository.JpaBikeRepository;
@@ -60,7 +61,14 @@ public class MoveBikeUseCase {
 
         sourceStation.undockBike(bike);
         destinationStation.dockBike(bike);
+        bike.setStatus(Bike.BikeStatus.AVAILABLE);
 
+        eventPublisher.publish(new BikeStatusChangedEvent(
+                bike.getId(),
+                bike.getStatus(),
+                destinationStation.getId(),
+                null
+        ));
         stationRepository.save(sourceStation);
         stationRepository.save(destinationStation);
         bikeRepository.save(bike);
@@ -69,18 +77,6 @@ public class MoveBikeUseCase {
                 bike.getId(),
                 sourceStation.getId(),
                 destinationStation.getId()
-        ));
-        eventPublisher.publish(new StationStatusChangedEvent(
-                sourceStation.getId(),
-                sourceStation.getStatus(),
-                sourceStation.getCapacity(),
-                sourceStation.getBikesDocked()
-        ));
-        eventPublisher.publish(new StationStatusChangedEvent(
-                destinationStation.getId(),
-                destinationStation.getStatus(),
-                destinationStation.getCapacity(),
-                destinationStation.getBikesDocked()
         ));
     }
 
