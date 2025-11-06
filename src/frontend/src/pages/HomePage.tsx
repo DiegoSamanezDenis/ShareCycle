@@ -1,6 +1,6 @@
+import { Map, Marker as PigeonMarker } from "pigeon-maps";
 import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
-import { Map, Marker as PigeonMarker } from "pigeon-maps";
 import { apiRequest } from "../api/client";
 import type { FullnessCategory, StationSummary } from "../types/station";
 
@@ -66,7 +66,8 @@ export default function HomePage() {
         <nav>
           <Link to="/register">Create rider account</Link> ·{" "}
           <Link to="/login">Sign in</Link> ·{" "}
-          <Link to="/dashboard">Go to dashboard</Link>
+          <Link to="/dashboard">Go to dashboard</Link> ·{" "}
+          <Link to="/pricing">View pricing plans</Link>
         </nav>
       </header>
 
