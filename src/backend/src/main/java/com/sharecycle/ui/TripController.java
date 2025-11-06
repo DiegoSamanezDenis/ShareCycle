@@ -2,7 +2,14 @@ package com.sharecycle.ui;
 
 import java.time.LocalDateTime;
 import java.util.UUID;
-
+import com.sharecycle.application.BmsFacade;
+import com.sharecycle.application.GetTripDetailsUseCase;
+import com.sharecycle.application.BmsFacade.TripCompletionResult;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.model.User;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -10,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.sharecycle.application.BmsFacade;
 import com.sharecycle.application.BmsFacade.TripCompletionResult;
@@ -20,9 +28,11 @@ import com.sharecycle.domain.model.Trip;
 public class TripController {
 
     private final BmsFacade bmsFacade;
+    private final GetTripDetailsUseCase getTripDetailsUseCase;
 
-    public TripController(BmsFacade bmsFacade) {
+    public TripController(BmsFacade bmsFacade, GetTripDetailsUseCase getTripDetailsUseCase) {
         this.bmsFacade = bmsFacade;
+        this.getTripDetailsUseCase = getTripDetailsUseCase;
     }
 
     @PostMapping
@@ -63,6 +73,18 @@ public class TripController {
                 bill.getTotalCost()
         );
     }
+
+    @GetMapping("/{tripId}")
+    public GetTripDetailsUseCase.TripDetails getTripDetails(@PathVariable UUID tripId) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        User currentUser = null;
+        if (auth != null && auth.getPrincipal() instanceof User user) {
+                currentUser = user;
+        } else {
+                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+        }
+        return getTripDetailsUseCase.execute(tripId, currentUser);
+}
 
     public record StartTripRequest(
             UUID tripId,

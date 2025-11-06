@@ -8,25 +8,28 @@
 
 ShareCycle is a bike sharing application providing docking stations and bikes available for rental. Payment is possible through the dashboard UI and operators are regularly notified with bike usage. Thus, they able to rebalance the docking stations to ensure proper availability to all users.
 
-
+## Setup Backend
+- Create Stripe Account
+- In `src/backend/src/main/resources` add a `.env.payment` file
+- In `.env.payment` file add `STRIPE_SECRET_KEY=[API_KEY]` where `[API_KEY]` can be found in your Stripe dev dashboard
 
 
 ## Quick Start (Real App)
 - Start DB + API: `cd src && docker compose up -d --build`
-- Verify API: open `http://localhost:8081/health` → should return `ok`
-- Frontend: `cd src/frontend && cp .env.example .env` then set `VITE_API_URL=http://localhost:8081`
+- Verify API: open `http://localhost:8080/health` → should return `ok`
+- Frontend: `cd src/frontend && cp .env.example .env` then set `VITE_API_URL=http://localhost:8080`
 - Install + run: `npm install && npm run dev` → open `http://localhost:5173`
 - Stop: Ctrl+C (frontend). To stop backend/DB: `cd ../.. && cd src && docker compose down`
 
 Notes
 - Uses real MySQL (not tests). Credentials are defined in `src/docker-compose.yml`.
-- If port 3306 or 8081 is occupied, change the mapping in `src/docker-compose.yml`.
+- If port 3306 or 8080 is occupied, change the mapping in `src/docker-compose.yml`.
 - For a production-like frontend bundle: `npm run build && npm run preview` (serves at `http://localhost:4173`).
 
 ## Backend Quickstart
 - Full guide: see `docs/README.md` (Backend Guide section)
 - One command (from `src/`): `docker compose up -d --build`
-  - Starts MySQL and the Spring Boot API at `http://localhost:8081`
+  - Starts MySQL and the Spring Boot API at `http://localhost:8080`
 - Local (no Docker): `cd src/backend && ./mvnw spring-boot:run -Dspring-boot.run.profiles=local`
 
 ## Prerequisites

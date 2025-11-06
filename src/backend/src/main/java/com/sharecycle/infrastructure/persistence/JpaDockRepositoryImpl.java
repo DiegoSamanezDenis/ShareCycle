@@ -18,11 +18,7 @@ import java.util.stream.Collectors;
 public class JpaDockRepositoryImpl implements JpaDockRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaDockRepositoryImpl(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(Dock dock) {

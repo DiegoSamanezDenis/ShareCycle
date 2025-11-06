@@ -72,13 +72,21 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
 
     private String resolveToken(HttpServletRequest request) {
         String header = request.getHeader("Authorization");
-        if (header == null || header.isBlank()) {
-            return null;
+        if (header != null && !header.isBlank()) {
+            String value = header.trim();
+            if (value.startsWith("Bearer ")) {
+                value = value.substring(7);
+            }
+            if (!value.isBlank()) {
+                return value;
+            }
         }
-        String value = header.trim();
-        if (value.startsWith("Bearer ")) {
-            value = value.substring(7);
+
+        String param = request.getParameter("token");
+        if (param != null && !param.isBlank()) {
+            return param.trim();
         }
-        return value.isBlank() ? null : value;
+
+        return null;
     }
 }

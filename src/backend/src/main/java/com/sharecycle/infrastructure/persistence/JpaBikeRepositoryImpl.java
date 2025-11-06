@@ -18,11 +18,7 @@ import java.util.stream.Collectors;
 public class JpaBikeRepositoryImpl implements JpaBikeRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaBikeRepositoryImpl(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public Bike findById(UUID id) {

@@ -22,11 +22,7 @@ import jakarta.transaction.Transactional;
 public class JpaBillRepositoryImpl implements JpaBillRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaBillRepositoryImpl(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public Bill findById(UUID billId) {
