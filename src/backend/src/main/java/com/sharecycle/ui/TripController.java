@@ -12,17 +12,21 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.format.annotation.DateTimeFormat;
 
 import com.sharecycle.application.BmsFacade;
 import com.sharecycle.application.BmsFacade.TripCompletionResult;
 import com.sharecycle.application.GetTripDetailsUseCase;
+import com.sharecycle.application.ListTripsUseCase;
 import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.model.User;
+import com.sharecycle.domain.model.Bike;
 
 @RestController
 @RequestMapping("/api/trips")
@@ -30,10 +34,14 @@ public class TripController {
 
     private final BmsFacade bmsFacade;
     private final GetTripDetailsUseCase getTripDetailsUseCase;
+    private final ListTripsUseCase listTripsUseCase;
 
-    public TripController(BmsFacade bmsFacade, GetTripDetailsUseCase getTripDetailsUseCase) {
+    public TripController(BmsFacade bmsFacade,
+                          GetTripDetailsUseCase getTripDetailsUseCase,
+                          ListTripsUseCase listTripsUseCase) {
         this.bmsFacade = bmsFacade;
         this.getTripDetailsUseCase = getTripDetailsUseCase;
+        this.listTripsUseCase = listTripsUseCase;
     }
 
     @PostMapping
@@ -115,17 +123,38 @@ public class TripController {
         throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Unhandled trip completion state.");
     }
 
+    @GetMapping
+    public List<ListTripsUseCase.TripHistoryEntry> listTrips(
+            @RequestParam(name = "startTime", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
+            @RequestParam(name = "endTime", required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
+            @RequestParam(name = "bikeType", required = false) String bikeTypeValue) {
+        User currentUser = requireAuthenticatedUser();
+        Bike.BikeType bikeType = null;
+        if (bikeTypeValue != null && !bikeTypeValue.isBlank()) {
+            try {
+                bikeType = Bike.BikeType.valueOf(bikeTypeValue.trim().toUpperCase());
+            } catch (IllegalArgumentException ex) {
+                throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid bikeType value: " + bikeTypeValue);
+            }
+        }
+        return listTripsUseCase.execute(currentUser, startTime, endTime, bikeType);
+    }
+
     @GetMapping("/{tripId}")
     public GetTripDetailsUseCase.TripDetails getTripDetails(@PathVariable UUID tripId) {
-        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
-        User currentUser = null;
-        if (auth != null && auth.getPrincipal() instanceof User user) {
-                currentUser = user;
-        } else {
-                throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
-        }
+        User currentUser = requireAuthenticatedUser();
         return getTripDetailsUseCase.execute(tripId, currentUser);
-}
+    }
+
+    private User requireAuthenticatedUser() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getPrincipal() instanceof User user) {
+            return user;
+        }
+        throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+    }
 
     public record StartTripRequest(
             UUID tripId,

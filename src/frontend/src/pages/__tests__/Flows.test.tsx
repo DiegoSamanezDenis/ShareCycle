@@ -73,6 +73,26 @@ vi.mock("../../api/client", () => {
           active: true,
         };
       }
+      if (path === "/trips" && (!opts || !opts.method || opts.method === "GET")) {
+        const start = new Date();
+        const end = new Date(start.getTime() + 10 * 60000);
+        return [
+          {
+            tripId: "history-1",
+            riderId: "u1",
+            riderName: "Rider One",
+            startStationName: "Station #1",
+            endStationName: "Station #2",
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            durationMinutes: 10,
+            bikeType: "STANDARD",
+            totalCost: 2.25,
+            ledgerId: "ledger-1",
+            ledgerStatus: "PAID",
+          },
+        ];
+      }
       if (path === "/trips" && opts?.method === "POST") {
         return {
           tripId: "t1",
@@ -80,6 +100,27 @@ vi.mock("../../api/client", () => {
           bikeId: "b1",
           riderId: "u1",
           startedAt: new Date().toISOString(),
+        };
+      }
+      if (path.startsWith("/trips/") && (!opts || !opts.method || opts.method === "GET")) {
+        const end = new Date();
+        const start = new Date(end.getTime() - 10 * 60000);
+        return {
+          tripId: "history-1",
+          riderId: "u1",
+          riderName: "Rider One",
+          startStationName: "Station #1",
+          endStationName: "Station #2",
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          durationMinutes: 10,
+          bikeType: "STANDARD",
+          baseCost: 0.75,
+          timeCost: 1.0,
+          eBikeSurcharge: 0,
+          totalCost: 1.75,
+          ledgerId: "ledger-1",
+          ledgerStatus: "PAID",
         };
       }
       if (path.startsWith("/trips/") && opts?.method === "POST") {
