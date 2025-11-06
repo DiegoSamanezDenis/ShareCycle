@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import type { CSSProperties } from "react";
 import { appConfig } from "../config/env";
 
 // 1. Define the props to accept the token
@@ -95,15 +96,88 @@ export default function EventConsole({ token }: EventConsoleProps) {
         "Content-Type": "application/json",
     };
 
+    const containerStyle: CSSProperties = {
+        padding: 12,
+        border: "1px solid #d4d4d8",
+        borderRadius: 8,
+        background: "linear-gradient(180deg, #0f172a 0%, #1e293b 60%, #111827 100%)",
+        color: "#e2e8f0",
+        maxHeight: 520,
+        overflow: "auto",
+        boxShadow: "0 6px 18px rgba(15, 23, 42, 0.3)",
+    };
+
+    const toolbarStyle: CSSProperties = {
+        display: "flex",
+        justifyContent: "space-between",
+        alignItems: "center",
+        marginBottom: 12,
+    };
+
+    const headerStyle: CSSProperties = {
+        fontWeight: 600,
+        letterSpacing: "0.04em",
+        textTransform: "uppercase",
+        color: "#f8fafc",
+    };
+
+    const statusStyle: CSSProperties = {
+        fontSize: 12,
+        color: connected ? "#22c55e" : "#94a3b8",
+    };
+
+    const buttonBarStyle: CSSProperties = {
+        display: "flex",
+        gap: 8,
+        marginBottom: 12,
+    };
+
+    const buttonStyle: CSSProperties = {
+        padding: "6px 10px",
+        borderRadius: 6,
+        border: "1px solid #334155",
+        background: "#1e293b",
+        color: "#e2e8f0",
+        fontSize: 12,
+        cursor: token ? "pointer" : "not-allowed",
+        transition: "transform 0.1s ease, background 0.2s ease",
+    };
+
+    const disabledButtonStyle: CSSProperties = {
+        ...buttonStyle,
+        opacity: 0.4,
+        cursor: "not-allowed",
+    };
+
+    const clearButtonStyle: CSSProperties = {
+        ...buttonStyle,
+        cursor: "pointer",
+    };
+
+    const eventsWrapperStyle: CSSProperties = {
+        fontFamily: "ui-monospace, SFMono-Regular, SFMono, Menlo, Monaco, Consolas, 'Liberation Mono', 'Courier New', monospace",
+        fontSize: 13,
+        whiteSpace: "pre-wrap",
+        background: "rgba(15, 23, 42, 0.6)",
+        borderRadius: 6,
+        border: "1px solid rgba(148, 163, 184, 0.2)",
+    };
+
+    const eventRowStyle: CSSProperties = {
+        padding: "6px 10px",
+        borderBottom: "1px solid rgba(148, 163, 184, 0.15)",
+    };
+
     return (
-        <div style={{ padding: 12, border: "1px solid #e5e5e5", borderRadius: 6, background: "#fff", maxHeight: 520, overflow: "auto" }}>
-            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 8 }}>
-                <strong>Event Console</strong>
-                <div style={{ fontSize: 12, color: connected ? "green" : "gray" }}>{connected ? "Live" : "Disconnected"}</div>
+        <div style={containerStyle}>
+            <div style={toolbarStyle}>
+                <strong style={headerStyle}>Event Console</strong>
+                <div style={statusStyle}>{connected ? "Live" : "Disconnected"}</div>
             </div>
 
-            <div style={{ display: "flex", gap: 8, marginBottom: 8 }}>
+            <div style={buttonBarStyle}>
                 <button
+                    style={token ? buttonStyle : disabledButtonStyle}
                     onClick={() => {
                         if (!token) return;
                         // 8. Use headers in the Refresh button
@@ -115,13 +189,18 @@ export default function EventConsole({ token }: EventConsoleProps) {
                 >
                     Refresh
                 </button>
-                <button onClick={() => setEvents([])}>Clear</button>
+                <button
+                    style={clearButtonStyle}
+                    onClick={() => setEvents([])}
+                >
+                    Clear
+                </button>
             </div>
 
-            <div style={{ fontFamily: "monospace", fontSize: 13, whiteSpace: "pre-wrap" }}>
-                {events.length === 0 && <div style={{ color: "#666" }}>No events yet</div>}
+            <div style={eventsWrapperStyle}>
+                {events.length === 0 && <div style={{ ...eventRowStyle, color: "#bae6fd" }}>No events yet</div>}
                 {events.map((e, idx) => (
-                    <div key={idx} style={{ padding: "6px 8px", borderBottom: "1px solid #f0f0f0" }}>
+                    <div key={idx} style={{ ...eventRowStyle, color: "#f8fafc" }}>
                         {e}
                     </div>
                 ))}

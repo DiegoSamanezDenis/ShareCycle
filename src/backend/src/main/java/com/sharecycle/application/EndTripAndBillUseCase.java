@@ -34,7 +34,7 @@ import com.sharecycle.domain.repository.PricingStrategyRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 
-import jakarta.transaction.Transactional;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class EndTripAndBillUseCase {
@@ -88,7 +88,7 @@ public class EndTripAndBillUseCase {
                 bikeRepository, reservationRepository);
     }
 
-    @Transactional
+    @Transactional(noRollbackFor = StationFullException.class)
     public LedgerEntry execute(Trip currentTrip, Station endStation) {
         Trip managedTrip = tripRepository.findById(currentTrip.getTripID());
         if (managedTrip == null) {
@@ -122,7 +122,14 @@ public class EndTripAndBillUseCase {
         dockRepository.clearBikeFromAllDocks(tripBike.getId());
 
         // Update the station and dock
-        managedEndStation.dockBike(tripBike);
+        try {
+            managedEndStation.dockBike(tripBike);
+        } catch (IllegalStateException ex) {
+            if (ex.getMessage() != null && ex.getMessage().toLowerCase().contains("no free dock")) {
+                throw new StationFullException(managedEndStation.getId(), ex.getMessage());
+            }
+            throw ex;
+        }
         stationRepository.save(managedEndStation);
         eventPublisher.publish(new StationStatusChangedEvent(
                 managedEndStation.getId(),
@@ -188,8 +195,8 @@ public class EndTripAndBillUseCase {
             throw new IllegalStateException("Destination station is out of service");
         }
         if (!station.hasFreeDock()){
-            logger.error("Unexpected error: Station is full");
-            throw new IllegalStateException("Unexpected error: Station is full");
+            logger.warn("Destination station {} has no free docks", station.getId());
+            throw new StationFullException(station.getId());
         }
     }
 

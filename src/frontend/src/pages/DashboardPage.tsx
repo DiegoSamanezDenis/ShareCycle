@@ -25,9 +25,23 @@ type TripResponse = {
   startedAt: string;
 };
 
-type TripCompletionResponse = {
+type CourtesyCredit = {
+  ledgerId: string;
+  amount: number;
+  description: string | null;
+};
+
+type ReturnSuggestion = {
+  stationId: string;
+  name: string | null;
+  freeDocks: number;
+  distanceMeters: number;
+};
+
+type TripCompletionSuccess = {
+  status: "COMPLETED";
   tripId: string;
-  endStationId: string;
+  stationId: string | null;
   endedAt: string;
   durationMinutes: number;
   ledgerId: string;
@@ -35,7 +49,19 @@ type TripCompletionResponse = {
   timeCost: number;
   eBikeSurcharge: number;
   totalCost: number;
+  message: string;
 };
+
+type TripCompletionBlocked = {
+  status: "BLOCKED";
+  tripId: string;
+  stationId: string;
+  message: string;
+  credit?: CourtesyCredit | null;
+  suggestions: ReturnSuggestion[];
+};
+
+type TripCompletionResponse = TripCompletionSuccess | TripCompletionBlocked;
 
 type MoveBikeFormState = {
   bikeId: string;
@@ -129,6 +155,16 @@ function writeActiveTripToStorage(userId: string | null, trip: TripResponse | nu
   } else {
     window.localStorage.removeItem(scopedKey);
   }
+}
+
+function formatDistance(meters: number): string {
+  if (!Number.isFinite(meters) || meters < 0) {
+    return "N/A";
+  }
+  if (meters < 1000) {
+    return `${Math.round(meters)} m`;
+  }
+  return `${(meters / 1000).toFixed(1)} km`;
 }
 
 const defaultMoveBikeForm: MoveBikeFormState = {
@@ -322,7 +358,8 @@ export default function DashboardPage() {
   const [reservationResult, setReservationResult] = useState<ReservationResponse | null>(null);
   const [reservationCountdown, setReservationCountdown] = useState<string | null>(null);
   const [tripResult, setTripResult] = useState<TripResponse | null>(storedActiveTrip);
-  const [tripCompletion, setTripCompletion] = useState<TripCompletionResponse | null>(null);
+  const [tripCompletion, setTripCompletion] = useState<TripCompletionSuccess | null>(null);
+  const [returnBlock, setReturnBlock] = useState<TripCompletionBlocked | null>(null);
   const [activeTripId, setActiveTripId] = useState<string | null>(storedActiveTrip?.tripId ?? null);
   const [pendingRideAction, setPendingRideAction] = useState<RideAction>(null);
   const [moveBikeForm, setMoveBikeForm] = useState(defaultMoveBikeForm);
@@ -528,6 +565,7 @@ export default function DashboardPage() {
       });
       setTripResult(response);
       setTripCompletion(null);
+      setReturnBlock(null);
       setActiveTripId(response.tripId);
       setReservationResult(null);
       setReservationCountdown(null);
@@ -580,18 +618,22 @@ export default function DashboardPage() {
     setFeedback(null);
     setPendingRideAction("end");
     try {
-      const response = await apiRequest<TripCompletionResponse>(
-        `/trips/${activeTripId}/end`,
-        {
-          method: "POST",
-          token: auth.token,
-          body: JSON.stringify({ stationId }),
-        },
-      );
-      setTripCompletion(response);
-      setTripResult(null);
-      setActiveTripId(null);
-      setFeedback("Trip completed.");
+      const response = await apiRequest<TripCompletionResponse>(`/trips/${activeTripId}/end`, {
+        method: "POST",
+        token: auth.token,
+        body: JSON.stringify({ stationId }),
+      });
+      if (response.status === "COMPLETED") {
+        setTripCompletion(response);
+        setReturnBlock(null);
+        setTripResult(null);
+        setActiveTripId(null);
+        setFeedback(response.message ?? "Trip completed.");
+      } else {
+        setTripCompletion(null);
+        setReturnBlock(response);
+        setFeedback(response.message || "Destination station is full.");
+      }
       await loadStations();
       await loadStationDetails(stationId);
     } catch (err) {
@@ -983,6 +1025,36 @@ export default function DashboardPage() {
             </div>
           </div>
         )}
+        {returnBlock && (
+          <div className={styles.blockedReturn}>
+            <div className={styles.blockedTitle}>Return Blocked</div>
+            <p className={styles.blockedMessage}>{returnBlock.message}</p>
+            {returnBlock.credit && (
+              <p className={styles.blockedMessage}>
+                Credit applied: ${returnBlock.credit.amount.toFixed(2)} —{" "}
+                {returnBlock.credit.description ?? "Courtesy credit"}
+              </p>
+            )}
+            {returnBlock.suggestions.length > 0 && (
+              <div className={styles.blockedSuggestions}>
+                <p>Nearby stations with free docks:</p>
+                <ul>
+                  {returnBlock.suggestions.map((suggestion) => (
+                    <li key={suggestion.stationId}>
+                      <strong>{suggestion.name ?? suggestion.stationId.slice(0, 8).toUpperCase()}</strong>
+                      <span>
+                        {" "}
+                        • {suggestion.freeDocks} dock
+                        {suggestion.freeDocks === 1 ? "" : "s"} free •{" "}
+                        {formatDistance(suggestion.distanceMeters)}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
+          </div>
+        )}
       </section>
 
       <section>
@@ -1230,20 +1302,26 @@ export default function DashboardPage() {
                     >
                       <button
                         type="button"
-                        disabled={
-                          summary.status === "OUT_OF_SERVICE" ||
-                          summary.freeDocks === 0 ||
-                          rideActionInFlight
-                        }
+                        disabled={summary.status === "OUT_OF_SERVICE" || rideActionInFlight}
                         onClick={() => completeTrip(stationIdForActions)}
+                        style={
+                          summary.status === "OUT_OF_SERVICE"
+                            ? undefined
+                            : summary.freeDocks === 0
+                              ? { borderColor: "#f97316", color: "#f97316" }
+                              : undefined
+                        }
                       >
                         End trip here
                       </button>
-                      {(summary.status === "OUT_OF_SERVICE" || summary.freeDocks === 0) && (
+                      {summary.status === "OUT_OF_SERVICE" && (
                         <span style={{ alignSelf: "center", fontSize: 12 }}>
-                          {summary.status === "OUT_OF_SERVICE"
-                            ? "Station is out of service."
-                            : "No free docks available."}
+                          Station is out of service.
+                        </span>
+                      )}
+                      {summary.freeDocks === 0 && summary.status !== "OUT_OF_SERVICE" && (
+                        <span style={{ alignSelf: "center", fontSize: 12, color: "#f97316" }}>
+                          No free docks available; ending here will offer alternatives.
                         </span>
                       )}
                       {rideActionInFlight && (

@@ -15,13 +15,14 @@ public class LedgerEntry {
     private LedgerStatus ledgerStatus;
     private LocalDateTime timestamp;
     private String pricingPlan;
+    private String description;
 
     public LedgerEntry() {
         this(UUID.randomUUID(), null, null, null, LedgerStatus.PENDING, LocalDateTime.now(), null);
     }
 
     public LedgerEntry(User user, Trip trip, Bill bill, String pricingPlan) {
-        this(UUID.randomUUID(), user, trip, bill, LedgerStatus.PENDING, LocalDateTime.now(), pricingPlan);
+        this(UUID.randomUUID(), user, trip, bill, LedgerStatus.PENDING, LocalDateTime.now(), pricingPlan, null);
     }
 
     public LedgerEntry(UUID ledgerId,
@@ -31,6 +32,25 @@ public class LedgerEntry {
                        LedgerStatus status,
                        LocalDateTime timestamp,
                        String pricingPlan) {
+        this(ledgerId, user, trip, bill, status, timestamp, pricingPlan, null);
+    }
+
+    public LedgerEntry(User user,
+                       Trip trip,
+                       Bill bill,
+                       String pricingPlan,
+                       String description) {
+        this(UUID.randomUUID(), user, trip, bill, LedgerStatus.PENDING, LocalDateTime.now(), pricingPlan, description);
+    }
+
+    public LedgerEntry(UUID ledgerId,
+                       User user,
+                       Trip trip,
+                       Bill bill,
+                       LedgerStatus status,
+                       LocalDateTime timestamp,
+                       String pricingPlan,
+                       String description) {
         this.ledgerId = ledgerId == null ? UUID.randomUUID() : ledgerId;
         this.user = user;
         this.trip = trip;
@@ -38,6 +58,7 @@ public class LedgerEntry {
         this.ledgerStatus = status == null ? LedgerStatus.PENDING : status;
         this.timestamp = timestamp == null ? LocalDateTime.now() : timestamp;
         this.pricingPlan = pricingPlan;
+        this.description = description;
     }
 
     public UUID getLedgerId() {
@@ -70,6 +91,14 @@ public class LedgerEntry {
 
     public String getPricingPlan() {
         return pricingPlan;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
     }
 
     public void markAsPaid() {
