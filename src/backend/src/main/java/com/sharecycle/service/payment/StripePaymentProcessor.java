@@ -17,7 +17,7 @@ import java.util.MissingResourceException;
 // TODO: Actually implement card token instead of using sample
 @Service
 @Configuration
-@PropertySource("classpath:.env.payment")
+@PropertySource(value = "classpath:.env", ignoreResourceNotFound = true)
 public class StripePaymentProcessor {
 
     Logger logger = LoggerFactory.getLogger(StripePaymentProcessor.class);
@@ -57,3 +57,4 @@ public class StripePaymentProcessor {
         return "";
     }
 }
+

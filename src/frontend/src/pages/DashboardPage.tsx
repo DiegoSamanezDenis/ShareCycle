@@ -10,7 +10,7 @@ import { useAuth } from "../auth/AuthContext";
 
 import type { StationSummary, StationDetails } from "../types/station";
 
-import type { DomainEventEntry } from "../types/events";
+import EventConsole from "../components/EventConsole";
 
 type ReservationResponse = {
   reservationId: string;
@@ -343,8 +343,6 @@ export default function DashboardPage() {
 
   const [feedback, setFeedback] = useState<string | null>(null);
 
-  const [events, setEvents] = useState<DomainEventEntry[]>([]);
-
   const [selectedStationId, setSelectedStationId] = useState<string | null>(
     null,
   );
@@ -383,16 +381,6 @@ const [tripCompletion, setTripCompletion] =
   const [stationDetailsError, setStationDetailsError] = useState<string | null>(
     null,
   );
-
-  const refreshEvents = useCallback(async () => {
-    try {
-      const data = await apiRequest<DomainEventEntry[]>("/public/events");
-
-      setEvents(data.slice(0, 20));
-    } catch (err) {
-      console.error(err);
-    }
-  }, [auth.token]);
 
   const loadStationDetails = useCallback(
     async (stationId: string) => {
@@ -444,24 +432,6 @@ const [tripCompletion, setTripCompletion] =
   const rideActionInFlight = pendingRideAction !== null;
 
   const markerSize = 72;
-
-  useEffect(() => {
-    if (!auth.token) {
-      setEvents([]);
-
-      return;
-    }
-
-    void refreshEvents();
-
-    const interval = window.setInterval(() => {
-      void refreshEvents();
-    }, 5000);
-
-    return () => {
-      window.clearInterval(interval);
-    };
-  }, [auth.token, refreshEvents]);
 
   useEffect(() => {
     if (!selectedStationId) {
@@ -621,7 +591,6 @@ const [tripCompletion, setTripCompletion] =
       }
 
       await loadStations();
-      await refreshEvents();
       await loadStationDetails(stationId);
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : "Reservation failed");
@@ -701,7 +670,6 @@ const [tripCompletion, setTripCompletion] =
       }
 
       await loadStations();
-      await refreshEvents();
       await loadStationDetails(stationId);
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : "Unable to start trip");
@@ -741,7 +709,6 @@ const [tripCompletion, setTripCompletion] =
       setFeedback("Trip completed.");
 
       await loadStations();
-      await refreshEvents();
       await loadStationDetails(stationId);
     } catch (err) {
       setFeedback(err instanceof Error ? err.message : "Unable to end trip");
@@ -803,8 +770,6 @@ const [tripCompletion, setTripCompletion] =
 
       await loadStations();
 
-      await refreshEvents();
-
       if (selectedStationId) {
         await loadStationDetails(selectedStationId);
       }
@@ -814,704 +779,688 @@ const [tripCompletion, setTripCompletion] =
   };
 
   return (
-    <main>
-      <section>
-        <h2>City Map</h2>
-
-        <div
-          style={{
-            display: "flex",
-
-            gap: 16,
-
-            alignItems: "center",
-
-            flexWrap: "wrap",
-
-            margin: "8px 0",
-
-            fontSize: 16,
-          }}
-        >
-          <strong>Legend:</strong>
+      <main>
+        <section>
+          <h2>City Map</h2>
 
           <div
-            style={{
-              display: "flex",
-              gap: 16,
-              alignItems: "center",
-              flexWrap: "wrap",
-            }}
+              style={{
+                display: "flex",
+
+                gap: 16,
+
+                alignItems: "center",
+
+                flexWrap: "wrap",
+
+                margin: "8px 0",
+
+                fontSize: 16,
+              }}
           >
-            {statusLegend.map(([category, label]) => (
-              <span
-                key={category}
-                style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
-              >
+            <strong>Legend:</strong>
+
+            <div
+                style={{
+                  display: "flex",
+                  gap: 16,
+                  alignItems: "center",
+                  flexWrap: "wrap",
+                }}
+            >
+              {statusLegend.map(([category, label]) => (
+                  <span
+                      key={category}
+                      style={{display: "inline-flex", alignItems: "center", gap: 6}}
+                  >
                 <span
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 3,
-                    background: statusColors[category],
-                  }}
+                    style={{
+                      width: 18,
+                      height: 18,
+                      borderRadius: 3,
+                      background: statusColors[category],
+                    }}
                 ></span>
 
-                {label}
+                    {label}
               </span>
-            ))}
-          </div>
-        </div>
-
-        <Map
-          defaultCenter={[45.508, -73.587]}
-          defaultZoom={13}
-          height={600}
-          provider={(x: number, y: number, z: number) =>
-            `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
-          }
-        >
-          {stations.map((s) => {
-            const lat = Number.isFinite(s.latitude) ? s.latitude : 45.508;
-
-            const lng = Number.isFinite(s.longitude) ? s.longitude : -73.587;
-
-            const status = (s.status as keyof typeof statusColors) ?? "EMPTY";
-            const statusLabel = (s.status ?? "").toLowerCase();
-            const markerColor = statusColors[status] ?? "#6b7280";
-
-            return (
-              <PigeonMarker
-                key={s.stationId}
-                width={markerSize}
-                anchor={[lat, lng]}
-                onClick={() => setSelectedStationId(s.stationId)}
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
-                  onClick={() => setSelectedStationId(s.stationId)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setSelectedStationId(s.stationId);
-                    }
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    cursor: "pointer",
-                    pointerEvents: "auto",
-                  }}
-                >
-                  <span
-                  aria-label={`Station status ${statusLabel}`}
-                  title={`${s.name ?? "Station"} - ${statusLabel}`}
-                    style={{
-                      width: 40,
-
-                      height: 40,
-
-                      borderRadius: "50%",
-
-                      background: markerColor,
-
-                      border: "3px solid #fff",
-
-                      boxShadow: "0 0 0 3px rgba(0,0,0,0.35)",
-                    }}
-                  />
-
-                  <span
-                    style={{
-                      background: "rgba(255,255,255,0.9)",
-
-                      padding: "6px 10px",
-
-                      borderRadius: 8,
-
-                      fontSize: 16,
-
-                      fontWeight: 700,
-
-                      color: "#222",
-                    }}
-                  >
-                    {s.name ?? "Station"}
-                  </span>
-                </div>
-              </PigeonMarker>
-            );
-          })}
-        </Map>
-      </section>
-
-      <header>
-        <h1>ShareCycle Dashboard</h1>
-
-        <p>
-          Signed in as <strong>{auth.username}</strong> (
-          {auth.role.toLowerCase()}).
-        </p>
-
-        <button type="button" onClick={() => auth.logout()}>
-          Logout
-        </button>
-      </header>
-
-      <section>
-        <h2>Station Overview</h2>
-
-        {loadingStations && <p>Loading stations…</p>}
-
-        {stationsError && <p role="alert">{stationsError}</p>}
-
-        {!loadingStations && !stationsError && (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-
-                <th>Status</th>
-
-                <th>Bikes available</th>
-
-                <th>Bikes docked</th>
-
-                <th>Free docks</th>
-
-                <th>Capacity</th>
-
-                <th>Details</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {stations.map((station) => (
-                <tr key={station.stationId}>
-                  <td>{station.name ?? "Unnamed station"}</td>
-
-                  <td>{formatStationStatus(station.status)}</td>
-
-                  <td>{station.bikesAvailable}</td>
-
-                  <td>{station.bikesDocked}</td>
-
-                  <td>{station.freeDocks}</td>
-
-                  <td>{station.capacity}</td>
-
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStationId(station.stationId)}
-                    >
-                      View
-                    </button>
-                  </td>
-                </tr>
               ))}
-            </tbody>
-          </table>
-        )}
-      </section>
-
-      {auth.role === "RIDER" && (
-        <section>
-          <h2>My Ride</h2>
-          <p>
-            Pick a station from the map or the overview table to see available
-            bikes. Actions now live directly beside each dock in the station
-            details panel.
-          </p>
-
-          <div style={{ marginTop: 12 }}>
-            <h3>Reservation</h3>
-            {reservationResult ? (
-              <p>
-                Bike{" "}
-                <strong>
-                  {reservationResult.bikeId.slice(0, 8).toUpperCase()}
-                </strong>{" "}
-                at station{" "}
-                <strong>
-                  {reservationResult.stationId.slice(0, 8).toUpperCase()}
-                </strong>{" "}
-                {reservationCountdown === "expired"
-                  ? "reservation expired."
-                  : reservationCountdown
-                    ? `expires in ${reservationCountdown}.`
-                    : "reservation active."}
-              </p>
-            ) : (
-              <p>No active reservations.</p>
-            )}
-            <p style={{ fontSize: 12, marginTop: 4 }}>
-              Reservations hold a bike for {DEFAULT_RESERVATION_MINUTES} minutes.
-            </p>
-          </div>
-
-          <div style={{ marginTop: 12 }}>
-            <h3>Trip</h3>
-            {activeTripId && tripResult ? (
-              <p>
-                Trip <strong>{tripResult.tripId.slice(0, 8).toUpperCase()}</strong>{" "}
-                started at station{" "}
-                <strong>
-                  {tripResult.stationId.slice(0, 8).toUpperCase()}
-                </strong>
-                . Select a destination station and use “End trip here” in the
-                details panel.
-              </p>
-            ) : (
-              <p>No active trip.</p>
-            )}
-          </div>
-
-          {tripCompletion && (
-            <div style={{ marginTop: 12 }}>
-              <h3>Last receipt</h3>
-              <p>
-                Trip {tripCompletion.tripId.slice(0, 8).toUpperCase()} ended at{" "}
-                {new Date(tripCompletion.endedAt).toLocaleString()} - total $
-                {tripCompletion.totalAmount.toFixed(2)}.
-              </p>
             </div>
-          )}
+          </div>
 
-          {rideActionInFlight && (
-            <p style={{ marginTop: 8, fontSize: 12 }}>
-              Processing your ride request…
-            </p>
-          )}
-        </section>
-      )}
+          <Map
+              defaultCenter={[45.508, -73.587]}
+              defaultZoom={13}
+              height={600}
+              provider={(x: number, y: number, z: number) =>
+                  `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
+              }
+          >
+            {stations.map((s) => {
+              const lat = Number.isFinite(s.latitude) ? s.latitude : 45.508;
 
-      {auth.role === "OPERATOR" && (
-        <section>
-          <h2>Operator Controls</h2>
+              const lng = Number.isFinite(s.longitude) ? s.longitude : -73.587;
 
-          {/* Removed standalone toggle/capacity forms; use inline controls in Station details */}
-
-          <form onSubmit={handleMoveBike}>
-            <h3>Move a bike</h3>
-
-            <label>
-              Bike ID
-              <input
-                required
-                value={moveBikeForm.bikeId}
-                onChange={(event) =>
-                  setMoveBikeForm((current) => ({
-                    ...current,
-                    bikeId: event.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            <label>
-              Destination ID
-              <input
-                required
-                value={moveBikeForm.destinationId}
-                onChange={(event) =>
-                  setMoveBikeForm((current) => ({
-                    ...current,
-                    destinationId: event.target.value,
-                  }))
-                }
-              />
-            </label>
-
-            <button type="submit">Move bike</button>
-          </form>
-        </section>
-      )}
-
-      <section>
-        <h2>Activity feedback</h2>
-
-        {feedback && <p>{feedback}</p>}
-
-        {reservationResult && (
-          <p>
-            Reservation {reservationResult.reservationId} valid until{" "}
-            {new Date(reservationResult.expiresAt).toLocaleString()}.
-            {reservationCountdown && reservationCountdown !== "expired" && (
-              <span> Time left: {reservationCountdown}</span>
-            )}
-            {reservationCountdown === "expired" && <span> (expired)</span>}
-          </p>
-        )}
-
-        {tripResult && (
-          <p>
-            Trip {tripResult.tripId} started at{" "}
-            {new Date(tripResult.startedAt).toLocaleString()}.
-          </p>
-        )}
-
-        {tripCompletion && (
-          <p>
-            Trip {tripCompletion.tripId} ended at{" "}
-            {new Date(tripCompletion.endedAt).toLocaleString()}. Charge: $
-            {tripCompletion.totalAmount.toFixed(2)}.
-          </p>
-        )}
-      </section>
-
-      <section>
-        <h2>Station details</h2>
-
-        {!selectedStationId && (
-          <p>Select a station from the table to view details.</p>
-        )}
-
-        {selectedStationId && (
-          <div>
-            {(() => {
-              const summary = stations.find(
-                (st) => st.stationId === selectedStationId,
-              );
-
-              if (!summary) return <p>Station not found.</p>;
-
-              const detailed =
-                stationDetails && stationDetails.stationId === summary.stationId
-                  ? stationDetails
-                  : null;
-
-              const docks = detailed?.docks ?? [];
-              const stationIdForActions =
-                detailed?.stationId ?? summary.stationId;
-
-              const isRider = auth.role === "RIDER";
-              const isOperator = auth.role === "OPERATOR";
-              const reservationActive =
-                !rideActionInFlight &&
-                Boolean(reservationResult?.active) &&
-                reservationCountdown !== "expired";
-              const activeReservationBikeId =
-                reservationActive && reservationResult?.bikeId
-                  ? reservationResult?.bikeId
-                  : null;
-              const hasActiveTrip = Boolean(activeTripId);
-              // Removed Move bike here button; use global form
-
-              const canToggleStatus = isOperator;
-
-              const canAdjustCapacity = isOperator;
-
-              // Note: inline condition is used where this was referenced
+              const status = (s.status as keyof typeof statusColors) ?? "EMPTY";
+              const statusLabel = (s.status ?? "").toLowerCase();
+              const markerColor = statusColors[status] ?? "#6b7280";
 
               return (
-                <div>
-                  <p>
-                    <strong>{summary.name ?? "Unnamed station"}</strong> -
-                    Status: {formatStationStatus(summary.status)}
-                  </p>
-                  <p style={{ fontSize: 12, color: "#FFFFFF" }}>
-                    Station ID: <code>{summary.stationId}</code>
-                  </p>
-
-                  <p>
-                    Bikes available: {summary.bikesAvailable} | Docked: {" "}
-                    {summary.bikesDocked} | Free docks: {summary.freeDocks} |
-                    Capacity: {summary.capacity}
-                  </p>
-
-                  {loadingStationDetails && <p>Loading station details�</p>}
-
-                  {stationDetailsError && (
-                    <p role="alert">{stationDetailsError}</p>
-                  )}
-
-                  {docks.length > 0 && (
+                  <PigeonMarker
+                      key={s.stationId}
+                      width={markerSize}
+                      anchor={[lat, lng]}
+                      onClick={() => setSelectedStationId(s.stationId)}
+                  >
                     <div
-                      style={{
-                        display: "grid",
-
-                        gridTemplateColumns:
-                          "repeat(auto-fill, minmax(140px, 1fr))",
-
-                        gap: 8,
-
-                        margin: "12px 0",
-                      }}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => setSelectedStationId(s.stationId)}
+                        onKeyDown={(event) => {
+                          if (event.key === "Enter" || event.key === " ") {
+                            event.preventDefault();
+                            setSelectedStationId(s.stationId);
+                          }
+                        }}
+                        style={{
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
+                          cursor: "pointer",
+                          pointerEvents: "auto",
+                        }}
                     >
-                      {docks.map((dock) => {
-                        const bikeId = dock.bikeId ?? null;
-                        const isBikeDocked =
-                          (dock.status === "OCCUPIED" ||
-                            dock.status === "RESERVED") && Boolean(bikeId);
-                        const isReservedBike =
-                          Boolean(
-                            activeReservationBikeId &&
-                              bikeId &&
-                              activeReservationBikeId === bikeId,
-                          );
-                        const reserveDisabled =
-                          !isBikeDocked ||
-                          summary.status === "OUT_OF_SERVICE" ||
-                          hasActiveTrip ||
-                          (reservationActive && !isReservedBike) ||
-                          isReservedBike ||
-                          rideActionInFlight;
-                        const startDisabled =
-                          !Boolean(bikeId) ||
-                          summary.status === "OUT_OF_SERVICE" ||
-                          hasActiveTrip ||
-                          (reservationActive && !isReservedBike) ||
-                          rideActionInFlight;
-                        const palette = isReservedBike
-                          ? DOCK_BACKGROUND.RESERVED
-                          : DOCK_BACKGROUND[dock.status] ??
-                            DOCK_BACKGROUND.EMPTY;
+                  <span
+                      aria-label={`Station status ${statusLabel}`}
+                      title={`${s.name ?? "Station"} - ${statusLabel}`}
+                      style={{
+                        width: 40,
 
-                        return (
-                          <div
-                            key={dock.dockId}
-                            style={{
-                              padding: 12,
-                              borderRadius: 10,
-                              border: `2px solid ${palette.border}`,
-                              background: palette.background,
-                              color: "#111827",
-                              boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
-                            }}
-                          >
-                            <strong>{formatDockStatus(dock.status)}</strong>
+                        height: 40,
 
-                            <div style={{ fontSize: 12 }}>
-                              Dock {dock.dockId.slice(0, 8)}
-                              {bikeId && (
-                                <div>Bike {bikeId.slice(0, 8)}</div>
-                              )}
-                            </div>
+                        borderRadius: "50%",
 
-                            {isRider && isBikeDocked && (
-                              <div
+                        background: markerColor,
+
+                        border: "3px solid #fff",
+
+                        boxShadow: "0 0 0 3px rgba(0,0,0,0.35)",
+                      }}
+                  />
+
+                      <span
+                          style={{
+                            background: "rgba(255,255,255,0.9)",
+
+                            padding: "6px 10px",
+
+                            borderRadius: 8,
+
+                            fontSize: 16,
+
+                            fontWeight: 700,
+
+                            color: "#222",
+                          }}
+                      >
+                    {s.name ?? "Station"}
+                  </span>
+                    </div>
+                  </PigeonMarker>
+              );
+            })}
+          </Map>
+        </section>
+
+        <header>
+          <h1>ShareCycle Dashboard</h1>
+
+          <p>
+            Signed in as <strong>{auth.username}</strong> (
+            {auth.role.toLowerCase()}).
+          </p>
+
+          <button type="button" onClick={() => auth.logout()}>
+            Logout
+          </button>
+        </header>
+
+        <section>
+          <h2>Station Overview</h2>
+
+          {loadingStations && <p>Loading stations…</p>}
+
+          {stationsError && <p role="alert">{stationsError}</p>}
+
+          {!loadingStations && !stationsError && (
+              <table>
+                <thead>
+                <tr>
+                  <th>Name</th>
+
+                  <th>Status</th>
+
+                  <th>Bikes available</th>
+
+                  <th>Bikes docked</th>
+
+                  <th>Free docks</th>
+
+                  <th>Capacity</th>
+
+                  <th>Details</th>
+                </tr>
+                </thead>
+
+                <tbody>
+                {stations.map((station) => (
+                    <tr key={station.stationId}>
+                      <td>{station.name ?? "Unnamed station"}</td>
+
+                      <td>{formatStationStatus(station.status)}</td>
+
+                      <td>{station.bikesAvailable}</td>
+
+                      <td>{station.bikesDocked}</td>
+
+                      <td>{station.freeDocks}</td>
+
+                      <td>{station.capacity}</td>
+
+                      <td>
+                        <button
+                            type="button"
+                            onClick={() => setSelectedStationId(station.stationId)}
+                        >
+                          View
+                        </button>
+                      </td>
+                    </tr>
+                ))}
+                </tbody>
+              </table>
+          )}
+        </section>
+
+        {auth.role === "RIDER" && (
+            <section>
+              <h2>My Ride</h2>
+              <p>
+                Pick a station from the map or the overview table to see available
+                bikes. Actions now live directly beside each dock in the station
+                details panel.
+              </p>
+
+              <div style={{marginTop: 12}}>
+                <h3>Reservation</h3>
+                {reservationResult ? (
+                    <p>
+                      Bike{" "}
+                      <strong>
+                        {reservationResult.bikeId.slice(0, 8).toUpperCase()}
+                      </strong>{" "}
+                      at station{" "}
+                      <strong>
+                        {reservationResult.stationId.slice(0, 8).toUpperCase()}
+                      </strong>{" "}
+                      {reservationCountdown === "expired"
+                          ? "reservation expired."
+                          : reservationCountdown
+                              ? `expires in ${reservationCountdown}.`
+                              : "reservation active."}
+                    </p>
+                ) : (
+                    <p>No active reservations.</p>
+                )}
+                <p style={{fontSize: 12, marginTop: 4}}>
+                  Reservations hold a bike for {DEFAULT_RESERVATION_MINUTES} minutes.
+                </p>
+              </div>
+
+              <div style={{marginTop: 12}}>
+                <h3>Trip</h3>
+                {activeTripId && tripResult ? (
+                    <p>
+                      Trip <strong>{tripResult.tripId.slice(0, 8).toUpperCase()}</strong>{" "}
+                      started at station{" "}
+                      <strong>
+                        {tripResult.stationId.slice(0, 8).toUpperCase()}
+                      </strong>
+                      . Select a destination station and use “End trip here” in the
+                      details panel.
+                    </p>
+                ) : (
+                    <p>No active trip.</p>
+                )}
+              </div>
+
+              {tripCompletion && (
+                  <div style={{marginTop: 12}}>
+                    <h3>Last receipt</h3>
+                    <p>
+                      Trip {tripCompletion.tripId.slice(0, 8).toUpperCase()} ended at{" "}
+                      {new Date(tripCompletion.endedAt).toLocaleString()} - total $
+                      {tripCompletion.totalAmount.toFixed(2)}.
+                    </p>
+                  </div>
+              )}
+
+              {rideActionInFlight && (
+                  <p style={{marginTop: 8, fontSize: 12}}>
+                    Processing your ride request…
+                  </p>
+              )}
+            </section>
+        )}
+
+        {auth.role === "OPERATOR" && (
+            <section>
+              <h2>Operator Controls</h2>
+
+              {/* Removed standalone toggle/capacity forms; use inline controls in Station details */}
+
+              <form onSubmit={handleMoveBike}>
+                <h3>Move a bike</h3>
+
+                <label>
+                  Bike ID
+                  <input
+                      required
+                      value={moveBikeForm.bikeId}
+                      onChange={(event) =>
+                          setMoveBikeForm((current) => ({
+                            ...current,
+                            bikeId: event.target.value,
+                          }))
+                      }
+                  />
+                </label>
+
+                <label>
+                  Destination ID
+                  <input
+                      required
+                      value={moveBikeForm.destinationId}
+                      onChange={(event) =>
+                          setMoveBikeForm((current) => ({
+                            ...current,
+                            destinationId: event.target.value,
+                          }))
+                      }
+                  />
+                </label>
+
+                <button type="submit">Move bike</button>
+              </form>
+            </section>
+        )}
+
+        <section>
+          <h2>Activity feedback</h2>
+
+          {feedback && <p>{feedback}</p>}
+
+          {reservationResult && (
+              <p>
+                Reservation {reservationResult.reservationId} valid until{" "}
+                {new Date(reservationResult.expiresAt).toLocaleString()}.
+                {reservationCountdown && reservationCountdown !== "expired" && (
+                    <span> Time left: {reservationCountdown}</span>
+                )}
+                {reservationCountdown === "expired" && <span> (expired)</span>}
+              </p>
+          )}
+
+          {tripResult && (
+              <p>
+                Trip {tripResult.tripId} started at{" "}
+                {new Date(tripResult.startedAt).toLocaleString()}.
+              </p>
+          )}
+
+          {tripCompletion && (
+              <p>
+                Trip {tripCompletion.tripId} ended at{" "}
+                {new Date(tripCompletion.endedAt).toLocaleString()}. Charge: $
+                {tripCompletion.totalAmount.toFixed(2)}.
+              </p>
+          )}
+        </section>
+
+        <section>
+          <h2>Station details</h2>
+
+          {!selectedStationId && (
+              <p>Select a station from the table to view details.</p>
+          )}
+
+          {selectedStationId && (
+              <div>
+                {(() => {
+                  const summary = stations.find(
+                      (st) => st.stationId === selectedStationId,
+                  );
+
+                  if (!summary) return <p>Station not found.</p>;
+
+                  const detailed =
+                      stationDetails && stationDetails.stationId === summary.stationId
+                          ? stationDetails
+                          : null;
+
+                  const docks = detailed?.docks ?? [];
+                  const stationIdForActions =
+                      detailed?.stationId ?? summary.stationId;
+
+                  const isRider = auth.role === "RIDER";
+                  const isOperator = auth.role === "OPERATOR";
+                  const reservationActive =
+                      !rideActionInFlight &&
+                      Boolean(reservationResult?.active) &&
+                      reservationCountdown !== "expired";
+                  const activeReservationBikeId =
+                      reservationActive && reservationResult?.bikeId
+                          ? reservationResult?.bikeId
+                          : null;
+                  const hasActiveTrip = Boolean(activeTripId);
+                  // Removed Move bike here button; use global form
+
+                  const canToggleStatus = isOperator;
+
+                  const canAdjustCapacity = isOperator;
+
+                  // Note: inline condition is used where this was referenced
+
+                  return (
+                      <div>
+                        <p>
+                          <strong>{summary.name ?? "Unnamed station"}</strong> -
+                          Status: {formatStationStatus(summary.status)}
+                        </p>
+                        <p style={{fontSize: 12, color: "#FFFFFF"}}>
+                          Station ID: <code>{summary.stationId}</code>
+                        </p>
+
+                        <p>
+                          Bikes available: {summary.bikesAvailable} | Docked: {" "}
+                          {summary.bikesDocked} | Free docks: {summary.freeDocks} |
+                          Capacity: {summary.capacity}
+                        </p>
+
+                        {loadingStationDetails && <p>Loading station details�</p>}
+
+                        {stationDetailsError && (
+                            <p role="alert">{stationDetailsError}</p>
+                        )}
+
+                        {docks.length > 0 && (
+                            <div
                                 style={{
-                                  marginTop: 8,
-                                  display: "flex",
+                                  display: "grid",
+
+                                  gridTemplateColumns:
+                                      "repeat(auto-fill, minmax(140px, 1fr))",
 
                                   gap: 8,
 
-                                  flexWrap: "wrap",
+                                  margin: "12px 0",
                                 }}
+                            >
+                              {docks.map((dock) => {
+                                const bikeId = dock.bikeId ?? null;
+                                const isBikeDocked =
+                                    (dock.status === "OCCUPIED" ||
+                                        dock.status === "RESERVED") && Boolean(bikeId);
+                                const isReservedBike =
+                                    Boolean(
+                                        activeReservationBikeId &&
+                                        bikeId &&
+                                        activeReservationBikeId === bikeId,
+                                    );
+                                const reserveDisabled =
+                                    !isBikeDocked ||
+                                    summary.status === "OUT_OF_SERVICE" ||
+                                    hasActiveTrip ||
+                                    (reservationActive && !isReservedBike) ||
+                                    isReservedBike ||
+                                    rideActionInFlight;
+                                const startDisabled =
+                                    !bikeId ||
+                                    summary.status === "OUT_OF_SERVICE" ||
+                                    hasActiveTrip ||
+                                    (reservationActive && !isReservedBike) ||
+                                    rideActionInFlight;
+                                const palette = isReservedBike
+                                    ? DOCK_BACKGROUND.RESERVED
+                                    : DOCK_BACKGROUND[dock.status] ??
+                                    DOCK_BACKGROUND.EMPTY;
+
+                                return (
+                                    <div
+                                        key={dock.dockId}
+                                        style={{
+                                          padding: 12,
+                                          borderRadius: 10,
+                                          border: `2px solid ${palette.border}`,
+                                          background: palette.background,
+                                          color: "#111827",
+                                          boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
+                                        }}
+                                    >
+                                      <strong>{formatDockStatus(dock.status)}</strong>
+
+                                      <div style={{fontSize: 12}}>
+                                        Dock {dock.dockId.slice(0, 8)}
+                                        {bikeId && (
+                                            <div>Bike {bikeId.slice(0, 8)}</div>
+                                        )}
+                                      </div>
+
+                                      {isRider && isBikeDocked && (
+                                          <div
+                                              style={{
+                                                marginTop: 8,
+                                                display: "flex",
+
+                                                gap: 8,
+
+                                                flexWrap: "wrap",
+                                              }}
+                                          >
+                                            <button
+                                                type="button"
+                                                disabled={reserveDisabled}
+                                                onClick={() =>
+                                                    reserveBike(
+                                                        stationIdForActions,
+                                                        bikeId,
+                                                        dock.dockId,
+                                                    )
+                                                }
+                                            >
+                                              {isReservedBike ? "Reserved" : "Reserve"}
+                                            </button>
+
+                                            <button
+                                                type="button"
+                                                disabled={startDisabled}
+                                                onClick={() =>
+                                                    startTrip(
+                                                        stationIdForActions,
+                                                        bikeId,
+                                                        dock.dockId,
+                                                    )
+                                                }
+                                            >
+                                              Start trip
+                                            </button>
+                                          </div>
+                                      )}
+
+                                      {isReservedBike &&
+                                          reservationCountdown &&
+                                          reservationCountdown !== "expired" && (
+                                              <div style={{marginTop: 6, fontSize: 12}}>
+                                                Expires in {reservationCountdown}
+                                              </div>
+                                          )}
+                                    </div>
+                                );
+                              })}
+                            </div>
+                        )}
+
+                        {isOperator && (
+                            <div style={{display: "flex", gap: 8, flexWrap: "wrap"}}>
+                              <button
+                                  type="button"
+                                  disabled={!canToggleStatus}
+                                  onClick={async () => {
+                                    try {
+                                      await apiRequest<StationSummary>(
+                                          `/stations/${summary.stationId}/status`,
+                                          {
+                                            method: "PATCH",
+                                            token: auth.token,
+                                            body: JSON.stringify({
+                                              operatorId: auth.userId,
+                                              outOfService:
+                                                  summary.status !== "OUT_OF_SERVICE",
+                                            }),
+                                          },
+                                      );
+                                      setFeedback("Station status updated.");
+                                      await loadStations();
+                                      await loadStationDetails(summary.stationId);
+                                    } catch (err) {
+                                      setFeedback(
+                                          err instanceof Error
+                                              ? err.message
+                                              : "Unable to update station status",
+                                      );
+                                    }
+                                  }}
                               >
-                                <button
+                                Toggle Status
+                              </button>
+
+                              <button
                                   type="button"
-                                  disabled={reserveDisabled}
+                                  disabled={!canAdjustCapacity}
                                   onClick={() =>
-                                    reserveBike(
-                                      stationIdForActions,
-                                      bikeId,
-                                      dock.dockId,
-                                    )
+                                      (async () => {
+                                        try {
+                                          await apiRequest<StationSummary>(
+                                              `/stations/${summary.stationId}/capacity`,
+                                              {
+                                                method: "PATCH",
+                                                token: auth.token,
+                                                body: JSON.stringify({
+                                                  operatorId: auth.userId,
+                                                  delta: 1,
+                                                }),
+                                              },
+                                          );
+                                          setFeedback("Station capacity updated.");
+                                          await loadStations();
+                                          await loadStationDetails(summary.stationId);
+                                        } catch (err) {
+                                          setFeedback(
+                                              err instanceof Error
+                                                  ? err.message
+                                                  : "Unable to update capacity",
+                                          );
+                                        }
+                                      })()
                                   }
-                                >
-                                  {isReservedBike ? "Reserved" : "Reserve"}
-                                </button>
+                              >
+                                +1 Dock
+                              </button>
 
-                                <button
+                              <button
                                   type="button"
-                                  disabled={startDisabled}
+                                  disabled={!canAdjustCapacity}
                                   onClick={() =>
-                                    startTrip(
-                                      stationIdForActions,
-                                      bikeId,
-                                      dock.dockId,
-                                    )
+                                      (async () => {
+                                        try {
+                                          await apiRequest<StationSummary>(
+                                              `/stations/${summary.stationId}/capacity`,
+                                              {
+                                                method: "PATCH",
+                                                token: auth.token,
+                                                body: JSON.stringify({
+                                                  operatorId: auth.userId,
+                                                  delta: -1,
+                                                }),
+                                              },
+                                          );
+                                          setFeedback("Station capacity updated.");
+                                          await loadStations();
+                                          await loadStationDetails(summary.stationId);
+                                        } catch (err) {
+                                          setFeedback(
+                                              err instanceof Error
+                                                  ? err.message
+                                                  : "Unable to update capacity",
+                                          );
+                                        }
+                                      })()
                                   }
-                                >
-                                  Start trip
-                                </button>
-                              </div>
-                            )}
+                              >
+                                -1 Dock
+                              </button>
 
-                            {isReservedBike &&
-                              reservationCountdown &&
-                              reservationCountdown !== "expired" && (
-                                <div style={{ marginTop: 6, fontSize: 12 }}>
-                                  Expires in {reservationCountdown}
-                                </div>
-                              )}
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
+                              {/* Removed: use global Move a bike form */}
+                            </div>
+                        )}
 
-                  {isOperator && (
-                    <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
-                      <button
-                        type="button"
-                        disabled={!canToggleStatus}
-                        onClick={async () => {
-                          try {
-                            await apiRequest<StationSummary>(
-                              `/stations/${summary.stationId}/status`,
-                              {
-                                method: "PATCH",
-                                token: auth.token,
-                                body: JSON.stringify({
-                                  operatorId: auth.userId,
-                                  outOfService:
-                                    summary.status !== "OUT_OF_SERVICE",
-                                }),
-                              },
-                            );
-                            setFeedback("Station status updated.");
-                            await loadStations();
-                            await refreshEvents();
-                            await loadStationDetails(summary.stationId);
-                          } catch (err) {
-                            setFeedback(
-                              err instanceof Error
-                                ? err.message
-                                : "Unable to update station status",
-                            );
-                          }
-                        }}
-                      >
-                        Toggle Status
-                      </button>
+                        {isRider && hasActiveTrip && (
+                            <div
+                                style={{
+                                  display: "flex",
+                                  gap: 8,
+                                  flexWrap: "wrap",
+                                  marginTop: 12,
+                                }}
+                            >
+                              <button
+                                  type="button"
+                                  disabled={
+                                      summary.status === "OUT_OF_SERVICE" ||
+                                      summary.freeDocks === 0 ||
+                                      rideActionInFlight
+                                  }
+                                  onClick={() => completeTrip(stationIdForActions)}
+                              >
+                                End trip here
+                              </button>
 
-                      <button
-                        type="button"
-                        disabled={!canAdjustCapacity}
-                        onClick={() =>
-                          (async () => {
-                            try {
-                              await apiRequest<StationSummary>(
-                                `/stations/${summary.stationId}/capacity`,
-                                {
-                                  method: "PATCH",
-                                  token: auth.token,
-                                  body: JSON.stringify({
-                                    operatorId: auth.userId,
-                                    delta: 1,
-                                  }),
-                                },
-                              );
-                              setFeedback("Station capacity updated.");
-                              await loadStations();
-                              await refreshEvents();
-                              await loadStationDetails(summary.stationId);
-                            } catch (err) {
-                              setFeedback(
-                                err instanceof Error
-                                  ? err.message
-                                  : "Unable to update capacity",
-                              );
-                            }
-                          })()
-                        }
-                      >
-                        +1 Dock
-                      </button>
-
-                      <button
-                        type="button"
-                        disabled={!canAdjustCapacity}
-                        onClick={() =>
-                          (async () => {
-                            try {
-                              await apiRequest<StationSummary>(
-                                `/stations/${summary.stationId}/capacity`,
-                                {
-                                  method: "PATCH",
-                                  token: auth.token,
-                                  body: JSON.stringify({
-                                    operatorId: auth.userId,
-                                    delta: -1,
-                                  }),
-                                },
-                              );
-                              setFeedback("Station capacity updated.");
-                              await loadStations();
-                              await refreshEvents();
-                              await loadStationDetails(summary.stationId);
-                            } catch (err) {
-                              setFeedback(
-                                err instanceof Error
-                                  ? err.message
-                                  : "Unable to update capacity",
-                              );
-                            }
-                          })()
-                        }
-                      >
-                        -1 Dock
-                      </button>
-
-                      {/* Removed: use global Move a bike form */}
-                    </div>
-                  )}
-
-                  {isRider && hasActiveTrip && (
-                    <div
-                      style={{
-                        display: "flex",
-                        gap: 8,
-                        flexWrap: "wrap",
-                        marginTop: 12,
-                      }}
-                      >
-                      <button
-                        type="button"
-                        disabled={
-                          summary.status === "OUT_OF_SERVICE" ||
-                          summary.freeDocks === 0 ||
-                          rideActionInFlight
-                        }
-                        onClick={() => completeTrip(stationIdForActions)}
-                      >
-                        End trip here
-                      </button>
-
-                        {(summary.status === "OUT_OF_SERVICE" ||
-                        summary.freeDocks === 0) && (
-                      <span style={{ alignSelf: "center", fontSize: 12 }}>
+                              {(summary.status === "OUT_OF_SERVICE" ||
+                                  summary.freeDocks === 0) && (
+                                  <span style={{alignSelf: "center", fontSize: 12}}>
                         {summary.status === "OUT_OF_SERVICE"
-                          ? "Station is out of service."
-                          : "No free docks available."}
+                            ? "Station is out of service."
+                            : "No free docks available."}
                       </span>
-                    )}
-                    {rideActionInFlight && (
-                      <span style={{ alignSelf: "center", fontSize: 12 }}>
+                              )}
+                              {rideActionInFlight && (
+                                  <span style={{alignSelf: "center", fontSize: 12}}>
                         Finishing previous request…
                       </span>
-                    )}
-                  </div>
-                )}
-                </div>
-              );
-            })()}
-          </div>
-        )}
-      </section>
-
-      <section>
-        <h2>Event console</h2>
-
-        {events.length === 0 && <p>No events yet.</p>}
-
-        {events.length > 0 && (
-          <ol>
-            {events.map((event) => (
-              <li key={`${event.type}-${event.occurredAt}`}>
-                [{new Date(event.occurredAt).toLocaleTimeString()}] {event.type}{" "}
-                � {event.payload}
-              </li>
-            ))}
-          </ol>
-        )}
-      </section>
-    </main>
+                              )}
+                            </div>
+                        )}
+                      </div>
+                  );
+                })()}
+              </div>
+          )}
+        </section>
+        <section>
+          <h2>Event console</h2>
+          <EventConsole token={auth.token}/>
+        </section>
+      </main>
   );
 }
 
