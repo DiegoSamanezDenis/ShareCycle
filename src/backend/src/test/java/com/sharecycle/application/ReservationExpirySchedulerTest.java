@@ -1,6 +1,7 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
@@ -41,7 +42,7 @@ class ReservationExpirySchedulerTest {
     @Transactional
     void expiresReservationAndPersistsBikeAvailable() {
         // rider
-        Rider rider = new Rider("Rider Name", "123 Street", "rider2@example.com", "rider2", "hash", "tok_xyz");
+        Rider rider = new Rider("Rider Name", "123 Street", "rider2@example.com", "rider2", "hash", "tok_xyz", PricingPlan.PlanType.PAY_AS_YOU_GO);
         userRepository.save(rider);
 
         // station + reserved bike with expired timestamp

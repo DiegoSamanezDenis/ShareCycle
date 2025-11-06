@@ -13,11 +13,7 @@ import java.util.List;
 public class JpaDomainEventRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaDomainEventRepository(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     public void save(JpaDomainEventEntity entity) {
         entityManager.persist(entity);

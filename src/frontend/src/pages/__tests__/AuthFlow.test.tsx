@@ -3,11 +3,10 @@ import { render, screen, fireEvent } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { routes } from "../../routes";
 import { AuthProvider } from "../../auth/AuthContext";
-import LoginPage from "../../pages/LoginPage";
 
 vi.mock("../../api/client", () => {
   return {
-    apiRequest: vi.fn(async (path: string, opts?: any) => {
+    apiRequest: vi.fn(async (path: string, opts?: RequestInit) => {
       if (path === "/auth/login" && opts?.method === "POST") {
         return {
           token: "demo-token",
@@ -15,6 +14,25 @@ vi.mock("../../api/client", () => {
           userId: "u1",
           username: "rider1",
         };
+      }
+      if (path === "/pricing") {
+        return [
+          {
+            planId: "p1",
+            name: "Pay As You Go",
+            description: "Pay for minutes only.",
+            planType: "PAY_AS_YOU_GO",
+            baseCost: 0,
+            perMinuteRate: 0.05,
+            eBikeSurchargePerMinute: 0.01,
+            subscriptionFee: null,
+            sample: {
+              durationMinutes: 30,
+              standardBikeCost: 1.5,
+              eBikeCost: 1.8,
+            },
+          },
+        ];
       }
       if (path === "/stations") {
         return [];

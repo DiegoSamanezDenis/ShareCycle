@@ -1,5 +1,18 @@
 package com.sharecycle.application;
 
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.ArgumentMatchers.*;
+import static org.mockito.Mockito.*;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.Mock;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.sharecycle.domain.TripBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.model.Bike;
@@ -11,23 +24,9 @@ import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.never;
-import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-class EndTripUseCaseValidationTest {
+class EndTripAndBillUseCaseValidationTest {
 
     @Mock
     private DomainEventPublisher eventPublisher;
@@ -42,11 +41,11 @@ class EndTripUseCaseValidationTest {
     @Mock
     private ReservationRepository reservationRepository;
 
-    private EndTripUseCase useCase;
+    private EndTripAndBillUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new EndTripUseCase(
+        useCase = new EndTripAndBillUseCase(
                 eventPublisher,
                 tripRepository,
                 ledgerEntryRepository,

@@ -15,6 +15,7 @@ public class User {
     private String paymentMethodToken;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private PricingPlan.PlanType pricingPlanType;
 
     public User() {
     }
@@ -39,6 +40,7 @@ public class User {
         this.paymentMethodToken = paymentMethodToken;
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
+        this.pricingPlanType = null;
     }
 
     public UUID getUserId() {
@@ -115,6 +117,14 @@ public class User {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    public PricingPlan.PlanType getPricingPlanType() {
+        return pricingPlanType;
+    }
+
+    public void setPricingPlanType(PricingPlan.PlanType pricingPlanType) {
+        this.pricingPlanType = pricingPlanType;
     }
 
     public void setUpdatedAt(LocalDateTime updatedAt) {

@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import DockGrid from "./DockGrid";
 
 type Dock = { index: number; status: "empty" | "occupied" | "out_of_service"; bikeId?: string | null };
@@ -37,7 +37,7 @@ export default function StationDetailsDrawer({ stationId, onClose }: Props) {
     const [error, setError] = useState<string | null>(null);
     const [message, setMessage] = useState<string | null>(null);
 
-    async function fetchDetails() {
+    const fetchDetails = useCallback(async () => {
         setLoading(true);
         setError(null);
         try {
@@ -50,14 +50,16 @@ export default function StationDetailsDrawer({ stationId, onClose }: Props) {
         } finally {
             setLoading(false);
         }
-    }
+    }, [stationId]);
 
     useEffect(() => {
-        fetchDetails();
+        void fetchDetails();
         // also refresh after a short interval to reflect actions (optional)
-        const interval = setInterval(fetchDetails, 30_000);
+        const interval = setInterval(() => {
+            void fetchDetails();
+        }, 30_000);
         return () => clearInterval(interval);
-    }, [stationId]);
+    }, [fetchDetails]);
 
     async function runAction(path: string, body?: Record<string, unknown>) {
         setActionLoading(true);
@@ -91,7 +93,7 @@ export default function StationDetailsDrawer({ stationId, onClose }: Props) {
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
                 <h3 style={{ margin: 0 }}>{details.name}</h3>
                 <div>
-                    <button onClick={() => { fetchDetails(); }} disabled={loading} style={{ marginRight: 8 }}>
+                    <button onClick={() => { void fetchDetails(); }} disabled={loading} style={{ marginRight: 8 }}>
                         Refresh
                     </button>
                     <button onClick={onClose}>Close</button>

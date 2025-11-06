@@ -1,6 +1,7 @@
 package com.sharecycle.application;
 
 import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
@@ -48,7 +49,7 @@ class ReserveBikeUseCaseTest {
     @Transactional
     void reservesBikeAndPersistsBikeStatus() {
         // rider
-        Rider rider = new Rider("Rider Name", "123 Street", "rider@example.com", "rider1", "hash", "tok_abc");
+        Rider rider = new Rider("Rider Name", "123 Street", "rider@example.com", "rider1", "hash", "tok_abc", PricingPlan.PlanType.PAY_AS_YOU_GO);
         userRepository.save(rider);
 
         // station with an available bike
@@ -80,7 +81,7 @@ class ReserveBikeUseCaseTest {
     @Test
     @Transactional
     void failsWhenRiderHasActiveTrip() {
-        Rider rider = new Rider("Trip Rider", "456 Street", "triprider@example.com", "riderTrip", "hash", "tok_trip");
+        Rider rider = new Rider("Trip Rider", "456 Street", "triprider@example.com", "riderTrip", "hash", "tok_trip", PricingPlan.PlanType.PAY_AS_YOU_GO);
         userRepository.save(rider);
 
         Station reservationStation = new Station();

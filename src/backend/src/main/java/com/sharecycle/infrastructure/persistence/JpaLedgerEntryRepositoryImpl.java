@@ -20,11 +20,7 @@ import java.util.stream.Collectors;
 public class JpaLedgerEntryRepositoryImpl implements JpaLedgerEntryRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaLedgerEntryRepositoryImpl(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(LedgerEntry ledgerEntry) {

@@ -1,27 +1,35 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.model.*;
-import com.sharecycle.domain.repository.*;
-import com.sharecycle.model.dto.StationDetailsDto;
+import static org.assertj.core.api.Assertions.*;
+import static org.mockito.Mockito.*;
+
+import java.time.Instant;
+import java.time.temporal.ChronoUnit;
+import java.util.UUID;
+
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import java.time.Instant;
-import java.time.temporal.ChronoUnit;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.mockito.Mockito.when;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.repository.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.domain.repository.ReservationRepository;
+import com.sharecycle.domain.repository.TripRepository;
+import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.model.dto.StationDetailsDto;
 
 @ExtendWith(MockitoExtension.class)
 public class BmsFacadeStationDetailsTest {
 
     @Mock private ReserveBikeUseCase reserveBikeUseCase;
     @Mock private StartTripUseCase startTripUseCase;
-    @Mock private EndTripUseCase endTripUseCase;
+    @Mock private EndTripAndBillUseCase endTripAndBillUseCase;
     @Mock private MoveBikeUseCase moveBikeUseCase;
     @Mock private SetStationStatusUseCase setStationStatusUseCase;
     @Mock private AdjustStationCapacityUseCase adjustStationCapacityUseCase;
@@ -39,7 +47,7 @@ public class BmsFacadeStationDetailsTest {
         bmsFacade = new BmsFacade(
                 reserveBikeUseCase,
                 startTripUseCase,
-                endTripUseCase,
+                endTripAndBillUseCase,
                 moveBikeUseCase,
                 setStationStatusUseCase,
                 adjustStationCapacityUseCase,

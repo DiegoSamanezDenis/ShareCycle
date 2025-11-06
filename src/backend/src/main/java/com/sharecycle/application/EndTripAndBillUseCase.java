@@ -1,55 +1,65 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.TripBuilder;
-import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.event.StationStatusChangedEvent;
-import com.sharecycle.domain.event.TripBilledEvent;
-import com.sharecycle.domain.event.TripEndedEvent;
-import com.sharecycle.domain.model.Bike;
-import com.sharecycle.domain.model.Dock;
-import com.sharecycle.domain.model.LedgerEntry;
-import com.sharecycle.domain.model.Reservation;
-import com.sharecycle.domain.model.Station;
-import com.sharecycle.domain.model.Trip;
-import com.sharecycle.domain.repository.JpaBikeRepository;
-import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
-import com.sharecycle.domain.repository.JpaStationRepository;
-import com.sharecycle.domain.repository.JpaDockRepository;
-import com.sharecycle.domain.repository.ReservationRepository;
-import com.sharecycle.domain.repository.TripRepository;
-import jakarta.transaction.Transactional;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
+
+import com.sharecycle.domain.DefaultPricingPlans;
+import com.sharecycle.domain.MonthlySubscriberStrategy;
+import com.sharecycle.domain.PayAsYouGoStrategy;
+import com.sharecycle.domain.TripBuilder;
+import com.sharecycle.domain.event.BillIssuedEvent;
+import com.sharecycle.domain.event.DomainEventPublisher;
+import com.sharecycle.domain.event.StationStatusChangedEvent;
+import com.sharecycle.domain.event.TripEndedEvent;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Bill;
+import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.PricingPlan;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.repository.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaDockRepository;
+import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
+import com.sharecycle.domain.repository.JpaStationRepository;
+import com.sharecycle.domain.repository.PricingStrategyRepository;
+import com.sharecycle.domain.repository.ReservationRepository;
+import com.sharecycle.domain.repository.TripRepository;
+
+import jakarta.transaction.Transactional;
 
 @Service
-public class EndTripUseCase {
+public class EndTripAndBillUseCase {
 
-    private final Logger logger = LoggerFactory.getLogger(EndTripUseCase.class);
+    private static final Logger logger = LoggerFactory.getLogger(EndTripAndBillUseCase.class);
 
     private final DomainEventPublisher eventPublisher;
-
     private final TripRepository tripRepository;
     private final JpaLedgerEntryRepository ledgerEntryRepository;
     private final JpaStationRepository stationRepository;
     private final JpaDockRepository dockRepository;
     private final JpaBikeRepository bikeRepository;
     private final ReservationRepository reservationRepository;
-
+    
+    private final PayAsYouGoStrategy payAsYouGoStrategy;
+    private final MonthlySubscriberStrategy monthlySubscriberStrategy;
 
     @Autowired
-    public EndTripUseCase(DomainEventPublisher eventPublisher,
-                          TripRepository tripRepository,
-                          JpaLedgerEntryRepository ledgerEntryRepository,
-                          JpaStationRepository stationRepository,
-                          JpaDockRepository dockRepository,
-                          JpaBikeRepository bikeRepository,
-                          ReservationRepository reservationRepository) {
+    public EndTripAndBillUseCase(DomainEventPublisher eventPublisher,
+                                 TripRepository tripRepository,
+                                 JpaLedgerEntryRepository ledgerEntryRepository,
+                                 JpaStationRepository stationRepository,
+                                 JpaDockRepository dockRepository,
+                                 JpaBikeRepository bikeRepository,
+                                 ReservationRepository reservationRepository) {
         this.eventPublisher = eventPublisher;
         this.tripRepository = tripRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
@@ -57,39 +67,29 @@ public class EndTripUseCase {
         this.dockRepository = dockRepository;
         this.bikeRepository = bikeRepository;
         this.reservationRepository = reservationRepository;
+        this.payAsYouGoStrategy = new PayAsYouGoStrategy();
+        this.monthlySubscriberStrategy = new MonthlySubscriberStrategy();
     }
 
-    // Backward-compat constructor for existing tests
-    public EndTripUseCase(DomainEventPublisher eventPublisher,
-                          TripRepository tripRepository,
-                          JpaLedgerEntryRepository ledgerEntryRepository,
-                          JpaStationRepository stationRepository,
-                          JpaBikeRepository bikeRepository,
-                          ReservationRepository reservationRepository) {
-        this(
-                eventPublisher,
-                tripRepository,
-                ledgerEntryRepository,
-                stationRepository,
+    // Test-friendly constructor (no dock repo operations)
+    public EndTripAndBillUseCase(DomainEventPublisher eventPublisher,
+                                 TripRepository tripRepository,
+                                 JpaLedgerEntryRepository ledgerEntryRepository,
+                                 JpaStationRepository stationRepository,
+                                 JpaBikeRepository bikeRepository,
+                                 ReservationRepository reservationRepository) {
+        this(eventPublisher, tripRepository, ledgerEntryRepository, stationRepository,
                 new JpaDockRepository() {
-                    @Override
-                    public void save(Dock dock) { /* no-op for tests */ }
-
-                    @Override
-                    public Dock findById(UUID id) { return null; }
-
-                    @Override
-                    public List<Dock> findAll() { return List.of(); }
-
-                    @Override
-                    public int clearBikeFromAllDocks(UUID bikeId) { return 0; }
+                    @Override public void save(Dock dock) { }
+                    @Override public Dock findById(UUID id) { return null; }
+                    @Override public List<Dock> findAll() { return List.of(); }
+                    @Override public int clearBikeFromAllDocks(UUID bikeId) { return 0; }
                 },
-                bikeRepository,
-                reservationRepository
-        );
+                bikeRepository, reservationRepository);
     }
+
     @Transactional
-    public LedgerEntry execute(Trip currentTrip, Station endStation){
+    public LedgerEntry execute(Trip currentTrip, Station endStation) {
         Trip managedTrip = tripRepository.findById(currentTrip.getTripID());
         if (managedTrip == null) {
             throw new IllegalArgumentException("Trip not found.");
@@ -124,7 +124,6 @@ public class EndTripUseCase {
         // Update the station and dock
         managedEndStation.dockBike(tripBike);
         stationRepository.save(managedEndStation);
-
         eventPublisher.publish(new StationStatusChangedEvent(
                 managedEndStation.getId(),
                 managedEndStation.getStatus(),
@@ -139,30 +138,51 @@ public class EndTripUseCase {
         tripBike.setCurrentStation(managedEndStation);
         bikeRepository.save(tripBike);
 
+        // Clear any active reservation for rider
         Reservation activeReservation = reservationRepository.findByRiderId(managedTrip.getRider().getUserId());
         if (activeReservation != null) {
             activeReservation.expire();
             reservationRepository.save(activeReservation);
         }
 
-        // Update the trip
+        // End the trip and persist
         TripBuilder tripBuilder = new TripBuilder(managedTrip);
         tripBuilder.endAt(managedEndStation, endTime);
         Trip editedTrip = tripBuilder.build();
         tripRepository.save(editedTrip);
         eventPublisher.publish(new TripEndedEvent(editedTrip.getTripID()));
 
-        // Generate ledger
-        LedgerEntry ledgerEntry = new LedgerEntry(editedTrip);
+        // SELECT PRICING STRATEGY based on rider plan
+        PricingPlan.PlanType planType = resolvePlanType(editedTrip.getRider());
+        PricingStrategyRepository strategy = selectStrategy(planType);
+        PricingPlan pricingPlan = DefaultPricingPlans.planForType(planType);
+        String planName = planType.name();
+        
+        // Calculate bill using strategy
+        Bill bill = strategy.calculate(editedTrip, pricingPlan);
+
+        // Create and persist ledger entry
+        LedgerEntry ledgerEntry = new LedgerEntry(editedTrip.getRider(), editedTrip, bill, planName);
         ledgerEntryRepository.save(ledgerEntry);
-        eventPublisher.publish(new TripBilledEvent(editedTrip.getTripID(), ledgerEntry.getLedgerId()));
+
+        // Publish BillIssued for UI/history
+        eventPublisher.publish(new BillIssuedEvent(
+                editedTrip.getTripID(),
+                editedTrip.getRider().getUserId(),
+                bill.getBillId(),
+                ledgerEntry.getLedgerId(),
+                bill.getComputedAt(),
+                bill.getBaseCost(),
+                bill.getTimeCost(),
+                bill.getEBikeSurcharge(),
+                bill.getTotalCost(),
+                planName
+        ));
 
         return ledgerEntry;
     }
 
-
-    // Simple validation
-    private void validate(Trip currentTrip, Station station){
+    private void validate(Trip currentTrip, Station station) {
         if (station.isOutOfService()) {
             logger.error("Destination station is out of service");
             throw new IllegalStateException("Destination station is out of service");
@@ -172,4 +192,20 @@ public class EndTripUseCase {
             throw new IllegalStateException("Unexpected error: Station is full");
         }
     }
+
+    private PricingStrategyRepository selectStrategy(PricingPlan.PlanType planType) {
+        if (planType == PricingPlan.PlanType.MONTHLY_SUBSCRIBER) {
+            return monthlySubscriberStrategy;
+        }
+        return payAsYouGoStrategy;
+    }
+
+    private PricingPlan.PlanType resolvePlanType(Rider rider) {
+        PricingPlan.PlanType planType = rider != null ? rider.getPricingPlanType() : null;
+        if (planType == null) {
+            return PricingPlan.PlanType.PAY_AS_YOU_GO;
+        }
+        return planType;
+    }
+
 }

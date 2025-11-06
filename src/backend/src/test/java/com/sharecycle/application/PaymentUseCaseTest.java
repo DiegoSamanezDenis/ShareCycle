@@ -3,21 +3,15 @@ package com.sharecycle.application;
 import com.sharecycle.domain.model.*;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
-import com.sharecycle.infrastructure.SimpleDomainEventPublisher;
 import com.sharecycle.infrastructure.persistence.JpaTripRepository;
 import com.sharecycle.infrastructure.persistence.JpaUserRepository;
-import com.stripe.Stripe;
 import com.stripe.exception.StripeException;
-import com.stripe.model.Balance;
 import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.AfterEach;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 
-import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -111,13 +105,8 @@ class PaymentUseCaseTest {
 
 
     void createLedgerEntry() {
-        testLedgerEntry = new LedgerEntry();
-        testLedgerEntry.setLedgerId(UUID.randomUUID());
-        testLedgerEntry.setLedgerStatus(LedgerEntry.LedgerStatus.PENDING);
-        testLedgerEntry.setTimestamp(Instant.now());
-        testLedgerEntry.setUser(testUser);
-        testLedgerEntry.setTrip(testTrip);
-        testLedgerEntry.setTotalAmount(10.00);
+        Bill bill = new Bill(5.0, 3.0, 2.0);
+        testLedgerEntry = new LedgerEntry(testUser, testTrip, bill, "TEST_PLAN");
         jpaLedgerEntryRepository.save(testLedgerEntry);
     }
 

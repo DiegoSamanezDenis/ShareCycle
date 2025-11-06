@@ -65,7 +65,7 @@ export default function EventConsole({ token }: EventConsoleProps) {
                 "TripEnded",
                 "TripBilled",
                 "BikeStatusChanged",
-                "BillIssued",
+                "BillIssuedEvent",
                 "BikeMovedEvent",
                 "StationStatusChangedEvent",
                 "StationCapacityChangedEvent"

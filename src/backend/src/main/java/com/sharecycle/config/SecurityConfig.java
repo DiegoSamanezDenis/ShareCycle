@@ -33,6 +33,7 @@ public class SecurityConfig {
         .requestMatchers(HttpMethod.OPTIONS, "/**").permitAll()
         .requestMatchers("/health").permitAll()
         .requestMatchers(HttpMethod.GET, "/api/public/**").permitAll()
+        .requestMatchers(HttpMethod.GET, "/api/pricing").permitAll()
         .requestMatchers("/api/auth/**").permitAll()
         .anyRequest().authenticated()
       )

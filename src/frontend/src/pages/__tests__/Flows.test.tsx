@@ -6,7 +6,7 @@ import { routes } from "../../routes";
 
 vi.mock("../../api/client", () => {
   return {
-    apiRequest: vi.fn(async (path: string, opts?: any) => {
+    apiRequest: vi.fn(async (path: string, opts?: RequestInit) => {
       if (path === "/stations" && (!opts || !opts.method)) {
         return [
           {
@@ -44,6 +44,25 @@ vi.mock("../../api/client", () => {
       if (path === "/public/events") {
         return [];
       }
+      if (path === "/pricing") {
+        return [
+          {
+            planId: "p1",
+            name: "Pay As You Go",
+            description: "Pay for each ride.",
+            planType: "PAY_AS_YOU_GO",
+            baseCost: 0,
+            perMinuteRate: 0.05,
+            eBikeSurchargePerMinute: 0.01,
+            subscriptionFee: null,
+            sample: {
+              durationMinutes: 30,
+              standardBikeCost: 1.5,
+              eBikeCost: 1.8,
+            },
+          },
+        ];
+      }
       if (path === "/reservations" && opts?.method === "POST") {
         return {
           reservationId: "r1",
@@ -70,7 +89,10 @@ vi.mock("../../api/client", () => {
           endedAt: new Date().toISOString(),
           durationMinutes: 3,
           ledgerId: "l1",
-          totalAmount: 1.75,
+          baseCost: 0.5,
+          timeCost: 1.0,
+          eBikeSurcharge: 0.25,
+          totalCost: 1.75,
         };
       }
       if (path.includes("/status") && opts?.method === "PATCH") {

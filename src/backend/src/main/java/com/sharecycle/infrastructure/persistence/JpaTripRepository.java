@@ -19,11 +19,7 @@ import java.util.UUID;
 public class JpaTripRepository implements TripRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaTripRepository(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(Trip trip) {

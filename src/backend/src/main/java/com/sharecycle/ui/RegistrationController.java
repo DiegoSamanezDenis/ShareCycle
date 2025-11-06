@@ -27,7 +27,8 @@ public class RegistrationController {
                 request.email(),
                 request.username(),
                 request.password(),
-                request.paymentMethodToken()
+                request.paymentMethodToken(),
+                request.pricingPlanType()
         );
     }
 
@@ -37,6 +38,7 @@ public class RegistrationController {
             String email,
             String username,
             String password,
-            String paymentMethodToken
+            String paymentMethodToken,
+            String pricingPlanType
     ) { }
 }
