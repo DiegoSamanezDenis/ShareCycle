@@ -6,6 +6,7 @@ public class Rider extends User {
 
     public Rider() {
         super.setRole("RIDER");
+        super.setPricingPlanType(PricingPlan.PlanType.PAY_AS_YOU_GO);
     }
 
     public Rider(User user) {
@@ -19,6 +20,7 @@ public class Rider extends User {
                 user.getPaymentMethodToken(),
                 user.getCreatedAt(),
                 user.getUpdatedAt());
+        super.setPricingPlanType(user.getPricingPlanType());
     }
 
     public Rider(String fullName,
@@ -26,7 +28,8 @@ public class Rider extends User {
                  String email,
                  String username,
                  String passwordHash,
-                 String paymentMethodToken) {
+                 String paymentMethodToken,
+                 PricingPlan.PlanType pricingPlanType) {
         super(UUID.randomUUID(),
                 fullName,
                 streetAddress,
@@ -37,5 +40,6 @@ public class Rider extends User {
                 paymentMethodToken,
                 null,
                 null);
+        super.setPricingPlanType(pricingPlanType);
     }
 }

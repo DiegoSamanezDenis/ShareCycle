@@ -6,7 +6,7 @@ import { routes } from "../../routes";
 
 vi.mock("../../api/client", () => {
   return {
-    apiRequest: vi.fn(async (path: string, opts?: any) => {
+    apiRequest: vi.fn(async (path: string, opts?: RequestInit) => {
       if (path === "/stations" && (!opts || !opts.method)) {
         return [
           {
@@ -44,6 +44,25 @@ vi.mock("../../api/client", () => {
       if (path === "/public/events") {
         return [];
       }
+      if (path === "/pricing") {
+        return [
+          {
+            planId: "p1",
+            name: "Pay As You Go",
+            description: "Pay for each ride.",
+            planType: "PAY_AS_YOU_GO",
+            baseCost: 0,
+            perMinuteRate: 0.05,
+            eBikeSurchargePerMinute: 0.01,
+            subscriptionFee: null,
+            sample: {
+              durationMinutes: 30,
+              standardBikeCost: 1.5,
+              eBikeCost: 1.8,
+            },
+          },
+        ];
+      }
       if (path === "/reservations" && opts?.method === "POST") {
         return {
           reservationId: "r1",
@@ -54,6 +73,26 @@ vi.mock("../../api/client", () => {
           active: true,
         };
       }
+      if (path === "/trips" && (!opts || !opts.method || opts.method === "GET")) {
+        const start = new Date();
+        const end = new Date(start.getTime() + 10 * 60000);
+        return [
+          {
+            tripId: "history-1",
+            riderId: "u1",
+            riderName: "Rider One",
+            startStationName: "Station #1",
+            endStationName: "Station #2",
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            durationMinutes: 10,
+            bikeType: "STANDARD",
+            totalCost: 2.25,
+            ledgerId: "ledger-1",
+            ledgerStatus: "PAID",
+          },
+        ];
+      }
       if (path === "/trips" && opts?.method === "POST") {
         return {
           tripId: "t1",
@@ -63,14 +102,41 @@ vi.mock("../../api/client", () => {
           startedAt: new Date().toISOString(),
         };
       }
+      if (path.startsWith("/trips/") && (!opts || !opts.method || opts.method === "GET")) {
+        const end = new Date();
+        const start = new Date(end.getTime() - 10 * 60000);
+        return {
+          tripId: "history-1",
+          riderId: "u1",
+          riderName: "Rider One",
+          startStationName: "Station #1",
+          endStationName: "Station #2",
+          startTime: start.toISOString(),
+          endTime: end.toISOString(),
+          durationMinutes: 10,
+          bikeType: "STANDARD",
+          baseCost: 0.75,
+          timeCost: 1.0,
+          eBikeSurcharge: 0,
+          totalCost: 1.75,
+          ledgerId: "ledger-1",
+          ledgerStatus: "PAID",
+        };
+      }
       if (path.startsWith("/trips/") && opts?.method === "POST") {
         return {
+          status: "COMPLETED",
           tripId: "t1",
-          endStationId: "s1",
+          stationId: "s1",
           endedAt: new Date().toISOString(),
           durationMinutes: 3,
           ledgerId: "l1",
-          totalAmount: 1.75,
+          baseCost: 0.5,
+          timeCost: 1.0,
+          eBikeSurcharge: 0.25,
+          totalCost: 1.75,
+          message: "Trip completed successfully.",
+          suggestions: [],
         };
       }
       if (path.includes("/status") && opts?.method === "PATCH") {

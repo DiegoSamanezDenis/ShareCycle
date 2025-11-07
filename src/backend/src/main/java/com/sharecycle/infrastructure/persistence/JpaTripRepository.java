@@ -1,5 +1,6 @@
 package com.sharecycle.infrastructure.persistence;
 
+import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.infrastructure.persistence.jpa.JpaTripEntity;
@@ -9,6 +10,8 @@ import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Repository
@@ -16,11 +19,7 @@ import java.util.UUID;
 public class JpaTripRepository implements TripRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaTripRepository(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(Trip trip) {
@@ -90,6 +89,104 @@ public class JpaTripRepository implements TripRepository {
         entityManager.createQuery("delete from JpaTripEntity t where t.bike.bikeId = :bikeId")
                 .setParameter("bikeId", bikeId)
                 .executeUpdate();
+    }
+    @Override
+    public List<Trip> findAll(){
+        return entityManager.createQuery("select t from JpaTripEntity t ", JpaTripEntity.class).getResultList().stream()
+                .map(entity -> entity.toDomain(new MapperContext())) // define a mapping method
+                .toList();
+    }
+
+    @Override
+    public Trip findMostRecentCompletedByUserId(UUID userId) {
+        return entityManager.createQuery(
+                        "select t from JpaTripEntity t where t.rider.userId = :userId and t.endTime is not null order by t.endTime desc",
+                        JpaTripEntity.class)
+                .setParameter("userId", userId)
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .orElse(null);
+    }
+    @Override
+    public List<Trip> findAllByUserId(UUID userId) {
+        return entityManager.createQuery(
+                        "select t from JpaTripEntity t where t.rider.userId = :userId",
+                        JpaTripEntity.class)
+                .setParameter("userId", userId)
+                .getResultStream()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .toList();
+    }
+
+    @Override
+    public List<Trip> findAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        StringBuilder queryStr = new StringBuilder("SELECT t FROM JpaTripEntity t");
+        var predicates = new java.util.ArrayList<String>();
+
+        if (bikeType != null) {
+            predicates.add("t.bike.type = :bikeType");
+        }
+        if (startDate != null) {
+            predicates.add("t.startTime >= :startDate");
+        }
+        if (endDate != null) {
+            predicates.add("t.endTime <= :endDate");
+        }
+
+        if (!predicates.isEmpty()) {
+            queryStr.append(" WHERE ").append(String.join(" AND ", predicates));
+        }
+
+        var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class);
+
+        if (bikeType != null) {
+            query.setParameter("bikeType", bikeType);
+        }
+        if (startDate != null) {
+            query.setParameter("startDate", startDate);
+        }
+        if (endDate != null) {
+            query.setParameter("endDate", endDate);
+        }
+
+        return query.getResultList().stream()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .toList();
+    }
+    @Override
+    public List<Trip> findAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        StringBuilder queryStr = new StringBuilder(
+                "SELECT t FROM JpaTripEntity t WHERE t.rider.userId = :userId"
+        );
+
+        if (bikeType != null) {
+            queryStr.append(" AND t.bike.type = :bikeType");
+        }
+        if (startDate != null) {
+            queryStr.append(" AND t.startTime >= :startDate");
+        }
+        if (endDate != null) {
+            queryStr.append(" AND t.endTime <= :endDate");
+        }
+
+        var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class)
+                .setParameter("userId", userId);
+
+        if (bikeType != null) {
+            query.setParameter("bikeType", bikeType);
+        }
+        if (startDate != null) {
+            query.setParameter("startDate", startDate);
+        }
+        if (endDate != null) {
+            query.setParameter("endDate", endDate);
+        }
+
+        return query.getResultList().stream()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .toList();
     }
 
     // clearAssociationsForTrip removed to avoid nulling rider/bike which breaks toDomain

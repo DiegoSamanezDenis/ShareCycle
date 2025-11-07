@@ -1,13 +1,13 @@
 package com.sharecycle.infrastructure.persistence.jpa;
 
 import com.sharecycle.domain.model.Operator;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.User;
 import jakarta.persistence.Column;
 import jakarta.persistence.DiscriminatorColumn;
 import jakarta.persistence.DiscriminatorValue;
 import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.Id;
 import jakarta.persistence.Inheritance;
 import jakarta.persistence.InheritanceType;
@@ -53,6 +53,9 @@ public class JpaUserEntity {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "pricing_plan_type")
+    private String pricingPlanType;
+
     public JpaUserEntity() {
     }
 
@@ -67,6 +70,7 @@ public class JpaUserEntity {
         this.paymentMethodToken = user.getPaymentMethodToken();
         this.createdAt = user.getCreatedAt();
         this.updatedAt = user.getUpdatedAt();
+        this.pricingPlanType = user.getPricingPlanType() != null ? user.getPricingPlanType().name() : null;
     }
 
     public static JpaUserEntity fromDomain(User user) {
@@ -80,7 +84,15 @@ public class JpaUserEntity {
     }
 
     public User toDomain() {
-        return new User(userId, fullName, streetAddress, email, username, passwordHash, role, paymentMethodToken, createdAt, updatedAt);
+        User user = new User(userId, fullName, streetAddress, email, username, passwordHash, role, paymentMethodToken, createdAt, updatedAt);
+        if (pricingPlanType != null && !pricingPlanType.isBlank()) {
+            try {
+                user.setPricingPlanType(PricingPlan.PlanType.valueOf(pricingPlanType));
+            } catch (IllegalArgumentException ignored) {
+                user.setPricingPlanType(null);
+            }
+        }
+        return user;
     }
 
     public UUID getUserId() {
@@ -163,6 +175,14 @@ public class JpaUserEntity {
         this.updatedAt = updatedAt;
     }
 
+    public String getPricingPlanType() {
+        return pricingPlanType;
+    }
+
+    public void setPricingPlanType(String pricingPlanType) {
+        this.pricingPlanType = pricingPlanType;
+    }
+
     @Entity
     @DiscriminatorValue("RIDER")
     public static class JpaRiderEntity extends JpaUserEntity {
@@ -197,5 +217,33 @@ public class JpaUserEntity {
             User base = super.toDomain();
             return new Operator(base);
         }
+    }
+
+    public User toDomain(MapperContext context) {
+        User existing = context.users.get(userId);
+        if (existing != null) {
+            return existing;
+        }
+        User user;
+        if (role.equals("RIDER")) {
+            user = new Rider();
+        } else {
+            user = new Operator();
+        }
+        user.setFullName(fullName);
+        user.setStreetAddress(streetAddress);
+        user.setEmail(email);
+        user.setUsername(username);
+        user.setRole(role);
+        user.setPasswordHash(passwordHash);
+        user.setPaymentMethodToken(paymentMethodToken);
+        user.setCreatedAt(createdAt);
+        user.setUpdatedAt(updatedAt);
+        context.users.put(userId, user);
+        if (role.equals("RIDER")) {
+            assert user instanceof Rider;
+            context.riders.put(userId, (Rider) user);
+        }
+        return user;
     }
 }

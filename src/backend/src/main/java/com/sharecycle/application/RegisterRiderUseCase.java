@@ -1,10 +1,13 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.domain.DefaultPricingPlans;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.service.PasswordHasher;
 import org.springframework.stereotype.Service;
 
+import java.util.Locale;
 import java.util.UUID;
 import java.util.regex.Pattern;
 
@@ -14,13 +17,19 @@ public class RegisterRiderUseCase {
     private final PasswordHasher passwordHasher;
     private static final Pattern EMAIL_PATTERN = Pattern.compile("^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$");
 
-    //constructor
-    public RegisterRiderUseCase(UserRepository userRepository, PasswordHasher passwordHasher) {
+    public RegisterRiderUseCase(UserRepository userRepository,
+                                PasswordHasher passwordHasher) {
         this.userRepository = userRepository;
         this.passwordHasher = passwordHasher;
     }
 
-    public RegistrationResult register(String fullName, String address, String email, String username, String password, String paymentToken) {
+    public RegistrationResult register(String fullName,
+                                       String address,
+                                       String email,
+                                       String username,
+                                       String password,
+                                       String paymentToken,
+                                       String pricingPlanType) {
         if (fullName == null || fullName.isBlank()) {
             throw new IllegalArgumentException("Full name is required");
         }
@@ -39,6 +48,9 @@ public class RegisterRiderUseCase {
         if (paymentToken == null || paymentToken.isBlank()) {
             throw new IllegalArgumentException("Payment method token is required");
         }
+        if (pricingPlanType == null || pricingPlanType.isBlank()) {
+            throw new IllegalArgumentException("Pricing plan selection is required");
+        }
         String normalizedUsername = username.trim();
         String normalizedEmail = email.trim().toLowerCase();
         if (userRepository.existsByEmail(normalizedEmail) || userRepository.existsByUsername(normalizedUsername.toLowerCase())) {
@@ -47,11 +59,30 @@ public class RegisterRiderUseCase {
         if (password.length() > 72) {
             throw new IllegalArgumentException("Password is too long");
         }
+        PricingPlan.PlanType selectedPlanType;
+        try {
+            selectedPlanType = PricingPlan.PlanType.valueOf(pricingPlanType.trim().toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException ex) {
+            throw new IllegalArgumentException("Selected pricing plan is invalid");
+        }
+        PricingPlan selectedPlan = DefaultPricingPlans.planForType(selectedPlanType);
         String hashedPassword = passwordHasher.hash(password);
-        Rider rider = new Rider(fullName.trim(), address.trim(), normalizedEmail, normalizedUsername, hashedPassword, paymentToken.trim());
+        Rider rider = new Rider(fullName.trim(),
+                                address.trim(),
+                                normalizedEmail,
+                                normalizedUsername,
+                                hashedPassword,
+                                paymentToken.trim(),
+                                selectedPlan.getType());
         userRepository.save(rider);
-        return new RegistrationResult(rider.getUserId(), rider.getUsername(), rider.getRole(), rider.getEmail(), rider.getFullName());
+        rider.setPricingPlanType(selectedPlan.getType());
+        return new RegistrationResult(rider.getUserId(), rider.getUsername(), rider.getRole(), rider.getEmail(), rider.getFullName(), rider.getPricingPlanType());
     }
 
-    public record RegistrationResult(UUID userId, String username, String role, String email, String fullName) { }
+    public record RegistrationResult(UUID userId,
+                                     String username,
+                                     String role,
+                                     String email,
+                                     String fullName,
+                                     PricingPlan.PlanType pricingPlanType) { }
 }

@@ -1,6 +1,6 @@
 package com.sharecycle.domain.model;
 
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 public class LedgerEntry {
@@ -11,59 +11,70 @@ public class LedgerEntry {
     private UUID ledgerId;
     private User user;
     private Trip trip;
+    private Bill bill;
     private LedgerStatus ledgerStatus;
-    private double totalAmount;
-    private Instant timestamp;
+    private LocalDateTime timestamp;
+    private String pricingPlan;
+    private String description;
 
     public LedgerEntry() {
+        this(UUID.randomUUID(), null, null, null, LedgerStatus.PENDING, LocalDateTime.now(), null);
+    }
+
+    public LedgerEntry(User user, Trip trip, Bill bill, String pricingPlan) {
+        this(UUID.randomUUID(), user, trip, bill, LedgerStatus.PENDING, LocalDateTime.now(), pricingPlan, null);
     }
 
     public LedgerEntry(UUID ledgerId,
                        User user,
                        Trip trip,
+                       Bill bill,
                        LedgerStatus status,
-                       double totalAmount,
-                       Instant timestamp) {
+                       LocalDateTime timestamp,
+                       String pricingPlan) {
+        this(ledgerId, user, trip, bill, status, timestamp, pricingPlan, null);
+    }
+
+    public LedgerEntry(User user,
+                       Trip trip,
+                       Bill bill,
+                       String pricingPlan,
+                       String description) {
+        this(UUID.randomUUID(), user, trip, bill, LedgerStatus.PENDING, LocalDateTime.now(), pricingPlan, description);
+    }
+
+    public LedgerEntry(UUID ledgerId,
+                       User user,
+                       Trip trip,
+                       Bill bill,
+                       LedgerStatus status,
+                       LocalDateTime timestamp,
+                       String pricingPlan,
+                       String description) {
         this.ledgerId = ledgerId == null ? UUID.randomUUID() : ledgerId;
         this.user = user;
         this.trip = trip;
-        this.ledgerStatus = status;
-        this.totalAmount = totalAmount;
-        this.timestamp = timestamp;
-    }
-
-    public LedgerEntry(Trip trip) {
-        this(UUID.randomUUID(), trip.getRider(), trip, LedgerStatus.PENDING, 0.0, Instant.now());
-        Bill bill = generateBill();
-        this.totalAmount = bill.getTotal();
-    }
-
-    public Bill generateBill() {
-        return new Bill(this.trip);
+        this.bill = bill;
+        this.ledgerStatus = status == null ? LedgerStatus.PENDING : status;
+        this.timestamp = timestamp == null ? LocalDateTime.now() : timestamp;
+        this.pricingPlan = pricingPlan;
+        this.description = description;
     }
 
     public UUID getLedgerId() {
         return ledgerId;
     }
 
-    public void setLedgerId(UUID ledgerId) {
-        this.ledgerId = ledgerId;
-    }
-
     public User getUser() {
         return user;
-    }
-
-    public void setUser(User user) {
-        this.user = user;
     }
 
     public Trip getTrip() {
         return trip;
     }
 
-    public void setTrip(Trip trip) {
-        this.trip = trip;
+    public Bill getBill() {
+        return bill;
     }
 
     public LedgerStatus getLedgerStatus() {
@@ -74,19 +85,23 @@ public class LedgerEntry {
         this.ledgerStatus = ledgerStatus;
     }
 
-    public double getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(double totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public Instant getTimestamp() {
+    public LocalDateTime getTimestamp() {
         return timestamp;
     }
 
-    public void setTimestamp(Instant timestamp) {
-        this.timestamp = timestamp;
+    public String getPricingPlan() {
+        return pricingPlan;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+
+    public void setDescription(String description) {
+        this.description = description;
+    }
+
+    public void markAsPaid() {
+        this.ledgerStatus = LedgerStatus.PAID;
     }
 }

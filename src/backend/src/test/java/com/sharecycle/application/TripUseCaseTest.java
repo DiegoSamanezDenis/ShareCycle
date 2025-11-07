@@ -1,9 +1,19 @@
 package com.sharecycle.application;
 
+import static org.assertj.core.api.Assertions.*;
+
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.ActiveProfiles;
+
 import com.sharecycle.domain.model.Bike;
-import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.Dock;
 import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.model.Trip;
@@ -12,16 +22,8 @@ import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
+
 import jakarta.transaction.Transactional;
-import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.test.context.ActiveProfiles;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
-
-import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
@@ -31,7 +33,7 @@ public class TripUseCaseTest {
     private StartTripUseCase startTripUseCase;
 
     @Autowired
-    private EndTripUseCase endTripUseCase;
+    private EndTripAndBillUseCase endTripAndBillUseCase;
     
     @Autowired
     private TripRepository tripRepository;
@@ -103,7 +105,7 @@ public class TripUseCaseTest {
         Station managedEndStation = stationRepository.findById(endStation.getId());
         int endBikeDockedNumber = managedEndStation.getBikesDocked();
 
-        LedgerEntry ledgerEntry = endTripUseCase.execute(trip, managedEndStation);
+        LedgerEntry ledgerEntry = endTripAndBillUseCase.execute(trip, managedEndStation);
 
         entityManager.flush();
         entityManager.clear();
@@ -120,15 +122,16 @@ public class TripUseCaseTest {
 
         // Ledger
         LedgerEntry updatedLedgerEntry = ledgerEntryRepository.findById(ledgerEntry.getLedgerId());
-        Bill bill = new Bill(updatedTrip);
 
         assertThat(updatedLedgerEntry.getTrip().getTripID()).isEqualTo(updatedTrip.getTripID());
-        assertThat(ledgerEntry.getTotalAmount()).isEqualTo(bill.getTotal());
+        assertThat(updatedLedgerEntry.getBill()).isNotNull();
+        assertThat(updatedLedgerEntry.getBill().getTotalCost()).isGreaterThan(0);
+        assertThat(updatedLedgerEntry.getLedgerStatus()).isEqualTo(LedgerEntry.LedgerStatus.PENDING);
 
     }
 
     private Rider createRider() {
-        return new Rider("Rider", "Rider","Rider", "Rider", "Rider", "Rider");
+        return new Rider("Rider", "Rider","Rider", "Rider", "Rider", "Rider", PricingPlan.PlanType.PAY_AS_YOU_GO);
     }
 
 

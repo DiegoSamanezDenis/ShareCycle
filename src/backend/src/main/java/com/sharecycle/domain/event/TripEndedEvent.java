@@ -7,6 +7,9 @@ import java.util.UUID;
 
 public record TripEndedEvent (
         UUID tripId
-){
-
+) implements DomainEvent {
+    @Override
+    public LocalDateTime occurredAt() {
+        return LocalDateTime.now();
+    }
 }

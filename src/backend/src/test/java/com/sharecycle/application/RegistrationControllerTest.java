@@ -28,7 +28,8 @@ class RegistrationControllerTest {
                 "  \"email\": \"test@example.com\",\n" +
                 "  \"username\": \"testuser\",\n" +
                 "  \"password\": \"password123\",\n" +
-                "  \"paymentMethodToken\": \"tok_123\"\n" +
+                "  \"paymentMethodToken\": \"tok_123\",\n" +
+                "  \"pricingPlanType\": \"PAY_AS_YOU_GO\"\n" +
                 "}";
 
         mockMvc.perform(post("/api/auth/register")

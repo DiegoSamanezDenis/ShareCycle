@@ -19,11 +19,7 @@ import java.util.stream.Collectors;
 public class JpaReservationRepository implements ReservationRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaReservationRepository(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(Reservation reservation) {

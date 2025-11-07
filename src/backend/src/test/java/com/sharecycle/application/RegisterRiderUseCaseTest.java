@@ -1,5 +1,6 @@
 package com.sharecycle.application;
 
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.service.PasswordHasher;
@@ -43,7 +44,8 @@ class RegisterRiderUseCaseTest {
                 "Jane.Rider@Example.com ",
                 "  JaneUser ",
                 "secret123",
-                " pm_tok "
+                " pm_tok ",
+                "PAY_AS_YOU_GO"
         );
 
         ArgumentCaptor<Rider> riderCaptor = ArgumentCaptor.forClass(Rider.class);
@@ -54,12 +56,13 @@ class RegisterRiderUseCaseTest {
         assertThat(rider.getUsername()).isEqualTo("JaneUser");
         assertThat(rider.getPasswordHash()).isEqualTo("hashedPass");
         assertThat(rider.getPaymentMethodToken()).isEqualTo("pm_tok");
+        assertThat(rider.getPricingPlanType()).isEqualTo(PricingPlan.PlanType.PAY_AS_YOU_GO);
     }
 
     @Test
     void registerRejectsInvalidEmail() {
         assertThatThrownBy(() -> useCase.register(
-                "Name", "Addr", "not-an-email", "user", "secret123", "tok"
+                "Name", "Addr", "not-an-email", "user", "secret123", "tok", "PAY_AS_YOU_GO"
         )).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Email address is invalid");
     }
@@ -69,7 +72,7 @@ class RegisterRiderUseCaseTest {
         doReturn(true).when(userRepository).existsByEmail("jane@example.com");
 
         assertThatThrownBy(() -> useCase.register(
-                "Name", "Addr", "jane@example.com", "user", "secret123", "tok"
+                "Name", "Addr", "jane@example.com", "user", "secret123", "tok", "PAY_AS_YOU_GO"
         )).isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("already in use");
     }

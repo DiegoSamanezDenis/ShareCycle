@@ -32,3 +32,4 @@ build/
 
 ### VS Code ###
 .vscode/
+src/backend/src/main/resources/.env.payment

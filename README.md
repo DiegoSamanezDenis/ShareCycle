@@ -8,7 +8,10 @@
 
 ShareCycle is a bike sharing application providing docking stations and bikes available for rental. Payment is possible through the dashboard UI and operators are regularly notified with bike usage. Thus, they able to rebalance the docking stations to ensure proper availability to all users.
 
-
+## Setup Backend
+- Create Stripe Account
+- In `src/backend/src/main/resources` add a `.env.payment` file
+- In `.env.payment` file add `STRIPE_SECRET_KEY=[API_KEY]` where `[API_KEY]` can be found in your Stripe dev dashboard
 
 
 ## Quick Start (Real App)
