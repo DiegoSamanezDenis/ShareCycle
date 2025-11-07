@@ -104,6 +104,7 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
     bikeType?: BikeType | null;
   }>({});
   const [history, setHistory] = useState<TripHistoryEntry[]>([]);
+  const [tripSearch, setTripSearch] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -202,6 +203,14 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
     await loadDetails(tripId);
   };
 
+  const historyToDisplay = useMemo(() => {
+    const needle = tripSearch.trim().toLowerCase();
+    if (!needle) {
+      return history;
+    }
+    return history.filter((entry) => entry.tripId.toLowerCase().includes(needle));
+  }, [history, tripSearch]);
+
   const selectedHistoryEntry = useMemo(() => {
     if (!selectedTripId) return null;
     return history.find((entry) => entry.tripId === selectedTripId) ?? null;
@@ -283,13 +292,29 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
         </span>
       </div>
 
+      <div style={{ marginBottom: 12 }}>
+        <label style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          Search by Trip ID
+          <input
+            type="text"
+            placeholder="e.g. 4f8c2a..."
+            value={tripSearch}
+            onChange={(event) => setTripSearch(event.target.value)}
+          />
+        </label>
+      </div>
+
       {loadingHistory && <p>Loading ride history...</p>}
       {historyError && <p role="alert">{historyError}</p>}
 
       {!loadingHistory && !historyError && (
         <>
-          {history.length === 0 ? (
-            <p>No rides matched the selected filters.</p>
+          {historyToDisplay.length === 0 ? (
+            <p>
+              {history.length === 0
+                ? "No rides matched the selected filters."
+                : "No trips match the current trip ID search."}
+            </p>
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table style={{ minWidth: 760 }}>
@@ -310,7 +335,7 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
                   </tr>
                 </thead>
                 <tbody>
-                  {history.map((entry) => {
+                  {historyToDisplay.map((entry) => {
                     const isSelected = entry.tripId === selectedTripId;
                     const riderLabel =
                       entry.riderName ??
