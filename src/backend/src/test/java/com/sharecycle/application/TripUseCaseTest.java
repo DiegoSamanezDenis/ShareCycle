@@ -126,6 +126,7 @@ public class TripUseCaseTest {
         assertThat(updatedLedgerEntry.getTrip().getTripID()).isEqualTo(updatedTrip.getTripID());
         assertThat(updatedLedgerEntry.getBill()).isNotNull();
         assertThat(updatedLedgerEntry.getBill().getTotalCost()).isGreaterThan(0);
+        assertThat(updatedLedgerEntry.getLedgerStatus()).isEqualTo(LedgerEntry.LedgerStatus.PENDING);
 
     }
 

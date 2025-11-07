@@ -6,6 +6,9 @@ import com.sharecycle.domain.event.DomainEventSubscriber;
 import com.sharecycle.domain.event.ReservationCreatedEvent;
 import com.sharecycle.domain.event.ReservationExpiredEvent;
 import com.sharecycle.domain.event.BikeStatusChangedEvent;
+import com.sharecycle.domain.event.PaymentFailedEvent;
+import com.sharecycle.domain.event.PaymentStartedEvent;
+import com.sharecycle.domain.event.PaymentSucceedEvent;
 import com.sharecycle.domain.event.StationCapacityChangedEvent;
 import com.sharecycle.domain.event.StationStatusChangedEvent;
 import com.sharecycle.domain.event.TripBilledEvent;
@@ -105,6 +108,15 @@ public class EventController {
         }
         if (e instanceof TripBilledEvent) {
             return "Trip billed.";
+        }
+        if (e instanceof PaymentStartedEvent) {
+            return "Payment processing started.";
+        }
+        if (e instanceof PaymentSucceedEvent) {
+            return "Payment completed successfully.";
+        }
+        if (e instanceof PaymentFailedEvent) {
+            return "Payment failed.";
         }
         if (e instanceof BillIssuedEvent event) {
             return "Bill issued for trip %s totaling $%.2f".formatted(

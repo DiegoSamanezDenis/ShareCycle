@@ -32,11 +32,9 @@ public class StripePaymentGateway implements PaymentGateway {
         }
     }
 
-    // TODO: create a use case to create actual card token instead of sample card
     @Override
     public String createPaymentToken(User user) throws PaymentException {
         logger.info("Creating Stripe payment token");
-        StripePaymentProcessor processor = new StripePaymentProcessor();
         return processor.createSampleCardToken();
     }
 

@@ -38,7 +38,8 @@ public class ListTripsUseCase {
                                           Bike.BikeType bikeType) {
         String role = user.getRole();
         List<Trip> trips;
-        if ("OPERATOR".equals(role)) {
+        boolean riderRequest = "RIDER".equalsIgnoreCase(role);
+        if (!riderRequest) {
             logger.info("User is an operator, finding all trips");
             trips = jpaTripRepository.findAllWithFilter(startTime, endTime, bikeType);
         } else {
@@ -58,20 +59,21 @@ public class ListTripsUseCase {
                 .filter(entry -> entry.getTrip() != null && entry.getTrip().getTripID() != null)
                 .collect(Collectors.toMap(entry -> entry.getTrip().getTripID(), Function.identity(), (existing, replacement) -> replacement));
 
+        boolean includeBilling = true;
         return trips.stream()
-                .map(trip -> toHistoryEntry(trip, ledgerEntriesByTripId.get(trip.getTripID())))
+                .map(trip -> toHistoryEntry(trip, ledgerEntriesByTripId.get(trip.getTripID()), includeBilling))
                 .toList();
     }
 
-    private TripHistoryEntry toHistoryEntry(Trip trip, LedgerEntry ledgerEntry) {
+    private TripHistoryEntry toHistoryEntry(Trip trip, LedgerEntry ledgerEntry, boolean includeBilling) {
         var rider = trip.getRider();
         var startStation = trip.getStartStation();
         var endStation = trip.getEndStation();
-        double totalCost = ledgerEntry != null && ledgerEntry.getBill() != null
+        double totalCost = includeBilling && ledgerEntry != null && ledgerEntry.getBill() != null
                 ? ledgerEntry.getBill().getTotalCost()
                 : 0.0;
-        UUID ledgerId = ledgerEntry != null ? ledgerEntry.getLedgerId() : null;
-        LedgerEntry.LedgerStatus ledgerStatus = ledgerEntry != null ? ledgerEntry.getLedgerStatus() : null;
+        UUID ledgerId = includeBilling && ledgerEntry != null ? ledgerEntry.getLedgerId() : null;
+        LedgerEntry.LedgerStatus ledgerStatus = includeBilling && ledgerEntry != null ? ledgerEntry.getLedgerStatus() : null;
         return new TripHistoryEntry(
                 trip.getTripID(),
                 rider != null ? rider.getUserId() : null,
@@ -82,6 +84,7 @@ public class ListTripsUseCase {
                 trip.getEndTime(),
                 trip.getDurationMinutes(),
                 trip.getBike() != null ? trip.getBike().getType() : null,
+                trip.getBike() != null ? trip.getBike().getId() : null,
                 totalCost,
                 ledgerId,
                 ledgerStatus
@@ -98,6 +101,7 @@ public class ListTripsUseCase {
             LocalDateTime endTime,
             int durationMinutes,
             Bike.BikeType bikeType,
+            UUID bikeId,
             double totalCost,
             UUID ledgerId,
             LedgerEntry.LedgerStatus ledgerStatus

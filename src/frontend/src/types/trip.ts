@@ -12,6 +12,7 @@ export type TripHistoryEntry = {
   endTime: string | null;
   durationMinutes: number;
   bikeType: BikeType | null;
+  bikeId: string | null;
   totalCost: number;
   ledgerId: string | null;
   ledgerStatus: LedgerStatus;
@@ -33,6 +34,7 @@ export type TripDetails = {
   startTime: string | null;
   endTime: string | null;
   durationMinutes: number;
+  bikeId: string | null;
   bikeType: BikeType | null;
   baseCost: number;
   timeCost: number;

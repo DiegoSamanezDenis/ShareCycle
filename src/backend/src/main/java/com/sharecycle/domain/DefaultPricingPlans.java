@@ -35,10 +35,10 @@ public final class DefaultPricingPlans {
             case PAY_AS_YOU_GO -> new PricingPlan(
                     PAYG_ID,
                     "Pay As You Go",
-                    "Only pay for what you ride with a low per-minute rate and optional e-bike surcharge.",
+                    "Only pay for what you ride with a fast demo-friendly rate and optional e-bike surcharge.",
                     0.0,
-                    0.05,
-                    0.01,
+                    6.0,
+                    0.60,
                     PricingPlan.PlanType.PAY_AS_YOU_GO
             );
         };

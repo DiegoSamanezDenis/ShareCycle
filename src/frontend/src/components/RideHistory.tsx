@@ -303,6 +303,7 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
                     <th>Ended</th>
                     <th>Duration</th>
                     <th>Bike</th>
+                    <th>Bike ID</th>
                     <th>Total</th>
                     <th>Ledger</th>
                     <th>Actions</th>
@@ -336,6 +337,13 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
                         <td>{formatDateTime(entry.endTime)}</td>
                         <td>{formatDuration(entry.durationMinutes)}</td>
                         <td>{renderBikeTypeLabel(entry.bikeType)}</td>
+                        <td>
+                          {entry.bikeId ? (
+                            <code>{entry.bikeId.slice(0, 8).toUpperCase()}</code>
+                          ) : (
+                            "—"
+                          )}
+                        </td>
                         <td>{formatCurrency(entry.totalCost)}</td>
                         <td>{renderLedgerStatus(entry.ledgerStatus)}</td>
                         <td>
@@ -430,6 +438,16 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
                   <div>
                     <strong>Bike type</strong>
                     <p>{renderBikeTypeLabel(tripDetails.bikeType)}</p>
+                  </div>
+                  <div>
+                    <strong>Bike ID</strong>
+                    <p>
+                      {tripDetails.bikeId ? (
+                        <code>{tripDetails.bikeId.slice(0, 8).toUpperCase()}</code>
+                      ) : (
+                        "Unknown"
+                      )}
+                    </p>
                   </div>
                   <div>
                     <strong>Ledger</strong>
