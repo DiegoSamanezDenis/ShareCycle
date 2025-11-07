@@ -20,8 +20,11 @@ import org.springframework.format.annotation.DateTimeFormat;
 
 import com.sharecycle.application.BmsFacade;
 import com.sharecycle.application.BmsFacade.TripCompletionResult;
+import com.sharecycle.application.GetLastCompletedTripSummaryUseCase;
 import com.sharecycle.application.GetTripDetailsUseCase;
 import com.sharecycle.application.ListTripsUseCase;
+import com.sharecycle.application.PaymentUseCase;
+import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.Trip;
@@ -35,13 +38,22 @@ public class TripController {
     private final BmsFacade bmsFacade;
     private final GetTripDetailsUseCase getTripDetailsUseCase;
     private final ListTripsUseCase listTripsUseCase;
+    private final GetLastCompletedTripSummaryUseCase getLastCompletedTripSummaryUseCase;
+    private final JpaLedgerEntryRepository ledgerEntryRepository;
+    private final PaymentUseCase paymentUseCase;
 
     public TripController(BmsFacade bmsFacade,
                           GetTripDetailsUseCase getTripDetailsUseCase,
-                          ListTripsUseCase listTripsUseCase) {
+                          ListTripsUseCase listTripsUseCase,
+                          GetLastCompletedTripSummaryUseCase getLastCompletedTripSummaryUseCase,
+                          JpaLedgerEntryRepository ledgerEntryRepository,
+                          PaymentUseCase paymentUseCase) {
         this.bmsFacade = bmsFacade;
         this.getTripDetailsUseCase = getTripDetailsUseCase;
         this.listTripsUseCase = listTripsUseCase;
+        this.getLastCompletedTripSummaryUseCase = getLastCompletedTripSummaryUseCase;
+        this.ledgerEntryRepository = ledgerEntryRepository;
+        this.paymentUseCase = paymentUseCase;
     }
 
     @PostMapping
@@ -72,17 +84,22 @@ public class TripController {
             if (updatedTrip == null || result.ledgerEntry() == null) {
                 throw new ResponseStatusException(HttpStatus.INTERNAL_SERVER_ERROR, "Trip completion data missing.");
             }
-            Bill bill = result.ledgerEntry().getBill();
+            LedgerEntry ledgerEntry = result.ledgerEntry();
+            Bill bill = ledgerEntry.getBill();
+            LedgerEntry.LedgerStatus ledgerStatus = ledgerEntry.getLedgerStatus();
+            String paymentStatus = derivePaymentStatus(ledgerStatus, bill != null ? bill.getTotalCost() : 0.0);
             return TripCompletionResponse.completed(
                     updatedTrip.getTripID(),
                     updatedTrip.getEndStation() != null ? updatedTrip.getEndStation().getId() : null,
                     updatedTrip.getEndTime(),
                     updatedTrip.getDurationMinutes(),
-                    result.ledgerEntry().getLedgerId(),
+                    ledgerEntry.getLedgerId(),
                     bill != null ? bill.getBaseCost() : 0.0,
                     bill != null ? bill.getTimeCost() : 0.0,
                     bill != null ? bill.getEBikeSurcharge() : 0.0,
-                    bill != null ? bill.getTotalCost() : 0.0
+                    bill != null ? bill.getTotalCost() : 0.0,
+                    ledgerStatus,
+                    paymentStatus
             );
         }
 
@@ -148,12 +165,76 @@ public class TripController {
         return getTripDetailsUseCase.execute(tripId, currentUser);
     }
 
+    @GetMapping("/last-completed")
+    public TripSummaryResponse getLastCompletedTrip() {
+        User currentUser = requireAuthenticatedUser();
+        if (!"RIDER".equalsIgnoreCase(currentUser.getRole())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Trip summary is available to riders only.");
+        }
+        GetLastCompletedTripSummaryUseCase.TripSummary summary =
+                getLastCompletedTripSummaryUseCase.execute(currentUser.getUserId());
+        if (summary == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "No completed trips found.");
+        }
+        String paymentStatus = derivePaymentStatus(summary.ledgerStatus(), summary.totalCost());
+        return TripSummaryResponse.from(summary, paymentStatus);
+    }
+
+    @PostMapping("/ledger/{ledgerId}/pay")
+    public PaymentResult payLedger(@PathVariable UUID ledgerId) {
+        User currentUser = requireAuthenticatedUser();
+        LedgerEntry ledgerEntry = ledgerEntryRepository.findById(ledgerId);
+        if (ledgerEntry == null) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Ledger entry not found.");
+        }
+        if (!ownsLedger(currentUser, ledgerEntry) && !isOperator(currentUser)) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You cannot pay this ledger entry.");
+        }
+        LedgerEntry processed = paymentUseCase.execute(ledgerEntry);
+        LedgerEntry finalEntry = processed != null ? processed : ledgerEntry;
+        Bill bill = finalEntry.getBill();
+        double total = bill != null ? bill.getTotalCost() : 0.0;
+        String paymentStatus = derivePaymentStatus(finalEntry.getLedgerStatus(), total);
+        return new PaymentResult(
+                finalEntry.getLedgerId(),
+                finalEntry.getLedgerStatus(),
+                total,
+                paymentStatus
+        );
+    }
+
     private User requireAuthenticatedUser() {
         Authentication auth = SecurityContextHolder.getContext().getAuthentication();
         if (auth != null && auth.getPrincipal() instanceof User user) {
             return user;
         }
         throw new ResponseStatusException(HttpStatus.UNAUTHORIZED);
+    }
+
+    private String derivePaymentStatus(LedgerEntry.LedgerStatus ledgerStatus, double totalCost) {
+        if (totalCost <= 0) {
+            return "NOT_REQUIRED";
+        }
+        if (ledgerStatus == LedgerEntry.LedgerStatus.PAID) {
+            return "PAID";
+        }
+        return "PENDING";
+    }
+
+    private boolean ownsLedger(User requester, LedgerEntry ledgerEntry) {
+        if (requester == null || ledgerEntry == null || ledgerEntry.getUser() == null) {
+            return false;
+        }
+        UUID requesterId = requester.getUserId();
+        return requesterId != null && requesterId.equals(ledgerEntry.getUser().getUserId());
+    }
+
+    private boolean isOperator(User requester) {
+        if (requester == null || requester.getRole() == null) {
+            return false;
+        }
+        String role = requester.getRole().toUpperCase();
+        return "OPERATOR".equals(role) || "ADMIN".equals(role);
     }
 
     public record StartTripRequest(
@@ -185,6 +266,8 @@ public class TripController {
             Double timeCost,
             Double eBikeSurcharge,
             Double totalCost,
+            LedgerEntry.LedgerStatus ledgerStatus,
+            String paymentStatus,
             String message,
             Credit credit,
             List<StationSuggestion> suggestions
@@ -197,7 +280,9 @@ public class TripController {
                                                        Double baseCost,
                                                        Double timeCost,
                                                        Double eBikeSurcharge,
-                                                       Double totalCost) {
+                                                       Double totalCost,
+                                                       LedgerEntry.LedgerStatus ledgerStatus,
+                                                       String paymentStatus) {
             return new TripCompletionResponse(
                     "COMPLETED",
                     tripId,
@@ -209,6 +294,8 @@ public class TripController {
                     timeCost,
                     eBikeSurcharge,
                     totalCost,
+                    ledgerStatus,
+                    paymentStatus,
                     "Trip completed successfully.",
                     null,
                     List.of()
@@ -231,6 +318,8 @@ public class TripController {
                     null,
                     null,
                     null,
+                    null,
+                    null,
                     message,
                     credit,
                     suggestions
@@ -241,4 +330,42 @@ public class TripController {
 
         public record StationSuggestion(UUID stationId, String name, int freeDocks, double distanceMeters) { }
     }
+
+    public record TripSummaryResponse(
+            UUID tripId,
+            UUID endStationId,
+            LocalDateTime endedAt,
+            Integer durationMinutes,
+            UUID ledgerId,
+            double baseCost,
+            double timeCost,
+            double eBikeSurcharge,
+            double totalCost,
+            LedgerEntry.LedgerStatus ledgerStatus,
+            String paymentStatus
+    ) {
+        static TripSummaryResponse from(GetLastCompletedTripSummaryUseCase.TripSummary summary,
+                                        String paymentStatus) {
+            return new TripSummaryResponse(
+                    summary.tripId(),
+                    summary.endStationId(),
+                    summary.endedAt(),
+                    summary.durationMinutes(),
+                    summary.ledgerId(),
+                    summary.baseCost(),
+                    summary.timeCost(),
+                    summary.eBikeSurcharge(),
+                    summary.totalCost(),
+                    summary.ledgerStatus(),
+                    paymentStatus
+            );
+        }
+    }
+
+    public record PaymentResult(
+            UUID ledgerId,
+            LedgerEntry.LedgerStatus ledgerStatus,
+            double totalCost,
+            String paymentStatus
+    ) { }
 }

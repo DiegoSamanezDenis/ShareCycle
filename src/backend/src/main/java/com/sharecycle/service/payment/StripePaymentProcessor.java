@@ -38,14 +38,16 @@ public class StripePaymentProcessor {
         logger.info("Stripe Secret Key is loaded");
     }
 
-    // For now rider token is not used
     public PaymentIntent charge(long amount, String riderToken)
             throws StripeException {
+        String paymentMethod = (riderToken != null && !riderToken.isBlank())
+                ? riderToken
+                : "pm_card_visa";
         PaymentIntentCreateParams params =
                 PaymentIntentCreateParams.builder()
                         .setAmount(amount)
                         .setCurrency("cad")
-                        .setPaymentMethod("pm_card_ca")
+                        .setPaymentMethod(paymentMethod)
                         .addPaymentMethodType("card")
                         .setConfirm(true)
                         .build();
@@ -54,7 +56,7 @@ public class StripePaymentProcessor {
     }
 
     public String createSampleCardToken() throws PaymentException {
-        return "";
+        // Stripe test payment method for demo charges
+        return "pm_card_visa";
     }
 }
-

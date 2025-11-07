@@ -8,6 +8,8 @@ import EventConsole from "../components/EventConsole";
 import RideHistory from "../components/RideHistory";
 import styles from "./TripReceipt.module.css";
 import type { StationDetails, StationSummary } from "../types/station";
+import type { LedgerStatus } from "../types/trip";
+import { payLedger } from "../api/payments";
 
 type ReservationResponse = {
   reservationId: string;
@@ -39,6 +41,8 @@ type ReturnSuggestion = {
   distanceMeters: number;
 };
 
+type PaymentStatus = "PAID" | "PENDING" | "NOT_REQUIRED" | "UNKNOWN";
+
 type TripCompletionSuccess = {
   status: "COMPLETED";
   tripId: string;
@@ -50,6 +54,8 @@ type TripCompletionSuccess = {
   timeCost: number;
   eBikeSurcharge: number;
   totalCost: number;
+  ledgerStatus: LedgerStatus | null;
+  paymentStatus: PaymentStatus;
   message: string;
 };
 
@@ -60,6 +66,8 @@ type TripCompletionBlocked = {
   message: string;
   credit?: CourtesyCredit | null;
   suggestions: ReturnSuggestion[];
+  ledgerStatus?: LedgerStatus | null;
+  paymentStatus?: PaymentStatus | null;
 };
 
 type TripCompletionResponse = TripCompletionSuccess | TripCompletionBlocked;
@@ -195,6 +203,20 @@ function formatStationStatus(status?: string | null): string {
 function formatDockStatus(status?: string | null): string {
   if (!status) return "Unknown";
   return DOCK_STATUS_LABEL[status] ?? status;
+}
+
+function formatPaymentStatus(status?: PaymentStatus | null): string {
+  switch (status) {
+    case "PAID":
+      return "Paid";
+    case "PENDING":
+      return "Pending";
+    case "NOT_REQUIRED":
+      return "Not required";
+    case "UNKNOWN":
+    default:
+      return "Unknown";
+  }
 }
 
 function isUuid(value: string): boolean {
@@ -360,6 +382,7 @@ export default function DashboardPage() {
   const [reservationCountdown, setReservationCountdown] = useState<string | null>(null);
   const [tripResult, setTripResult] = useState<TripResponse | null>(storedActiveTrip);
   const [tripCompletion, setTripCompletion] = useState<TripCompletionSuccess | null>(null);
+  const [payingLedgerId, setPayingLedgerId] = useState<string | null>(null);
   const [returnBlock, setReturnBlock] = useState<TripCompletionBlocked | null>(null);
   const [activeTripId, setActiveTripId] = useState<string | null>(storedActiveTrip?.tripId ?? null);
   const [pendingRideAction, setPendingRideAction] = useState<RideAction>(null);
@@ -641,6 +664,31 @@ export default function DashboardPage() {
       setFeedback(err instanceof Error ? err.message : "Unable to end trip");
     } finally {
       setPendingRideAction(null);
+    }
+  };
+
+  const settleLedger = async (ledgerId: string) => {
+    if (!ledgerId) return;
+    setPayingLedgerId(ledgerId);
+    setFeedback(null);
+    try {
+      const response = await payLedger(ledgerId, auth.token);
+      setTripCompletion((current) => {
+        if (!current) return current;
+        if (current.ledgerId !== ledgerId) {
+          return current;
+        }
+        return {
+          ...current,
+          ledgerStatus: response.ledgerStatus ?? current.ledgerStatus,
+          paymentStatus: response.paymentStatus ?? current.paymentStatus,
+        };
+      });
+      setFeedback("Payment processed successfully.");
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : "Unable to process payment.");
+    } finally {
+      setPayingLedgerId(null);
     }
   };
 
@@ -941,6 +989,23 @@ export default function DashboardPage() {
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
                 </div>
+                <div className={styles.receiptRow}>
+                  <span className={styles.receiptLabel}>Payment:</span>
+                  <span className={styles.receiptValue}>
+                    {formatPaymentStatus(tripCompletion.paymentStatus)}
+                  </span>
+                </div>
+                {tripCompletion.paymentStatus === "PENDING" && tripCompletion.ledgerId && (
+                  <button
+                    type="button"
+                    className={styles.button}
+                    onClick={() => settleLedger(tripCompletion.ledgerId)}
+                    disabled={payingLedgerId === tripCompletion.ledgerId}
+                    style={{ marginTop: 12 }}
+                  >
+                    {payingLedgerId === tripCompletion.ledgerId ? "Processing..." : "Pay now"}
+                  </button>
+                )}
               </div>
             </div>
           )}
@@ -1024,6 +1089,19 @@ export default function DashboardPage() {
             <div className={styles.feedbackTotal}>
               Total Charge: ${tripCompletion.totalCost.toFixed(2)}
             </div>
+            <div className={styles.feedbackRow}>
+              Payment: {formatPaymentStatus(tripCompletion.paymentStatus)}
+            </div>
+            {tripCompletion.paymentStatus === "PENDING" && tripCompletion.ledgerId && (
+              <button
+                type="button"
+                className={styles.button}
+                onClick={() => settleLedger(tripCompletion.ledgerId)}
+                disabled={payingLedgerId === tripCompletion.ledgerId}
+              >
+                {payingLedgerId === tripCompletion.ledgerId ? "Processing..." : "Pay now"}
+              </button>
+            )}
           </div>
         )}
         {returnBlock && (
@@ -1339,7 +1417,14 @@ export default function DashboardPage() {
         )}
       </section>
 
-      <RideHistory token={auth.token} isOperator={auth.role === "OPERATOR"} />
+      {auth.role === "OPERATOR" ? (
+        <section>
+          <h2>Ride history</h2>
+          <p>Billing history is available to riders only.</p>
+        </section>
+      ) : (
+        <RideHistory token={auth.token} isOperator={false} />
+      )}
 
       <section>
         <h2>Event console</h2>

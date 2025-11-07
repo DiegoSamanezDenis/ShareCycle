@@ -18,6 +18,7 @@ public interface TripRepository {
     void deleteByBikeId(UUID bikeId);
 
     List<Trip> findAll();
+    Trip findMostRecentCompletedByUserId(UUID userId);
 
     List<Trip> findAllByUserId(UUID userId);
 

@@ -96,6 +96,19 @@ public class JpaTripRepository implements TripRepository {
                 .map(entity -> entity.toDomain(new MapperContext())) // define a mapping method
                 .toList();
     }
+
+    @Override
+    public Trip findMostRecentCompletedByUserId(UUID userId) {
+        return entityManager.createQuery(
+                        "select t from JpaTripEntity t where t.rider.userId = :userId and t.endTime is not null order by t.endTime desc",
+                        JpaTripEntity.class)
+                .setParameter("userId", userId)
+                .setMaxResults(1)
+                .getResultStream()
+                .findFirst()
+                .map(entity -> entity.toDomain(new MapperContext()))
+                .orElse(null);
+    }
     @Override
     public List<Trip> findAllByUserId(UUID userId) {
         return entityManager.createQuery(
