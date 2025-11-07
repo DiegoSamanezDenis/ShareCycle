@@ -1,6 +1,8 @@
 package com.sharecycle.domain.event;
 
-public class ReservationCreatedEvent {
+import java.time.LocalDateTime;
+
+public class ReservationCreatedEvent implements DomainEvent {
     private java.util.UUID reservationId;
     private java.util.UUID riderId;
 
@@ -15,5 +17,10 @@ public class ReservationCreatedEvent {
 
     public java.util.UUID getRiderId() {
         return riderId;
+    }
+
+    @Override
+    public LocalDateTime occurredAt() {
+        return LocalDateTime.now();
     }
 }

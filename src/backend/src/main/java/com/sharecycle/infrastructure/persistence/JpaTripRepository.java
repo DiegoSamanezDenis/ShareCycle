@@ -19,11 +19,7 @@ import java.util.UUID;
 public class JpaTripRepository implements TripRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaTripRepository(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(Trip trip) {
@@ -113,20 +109,34 @@ public class JpaTripRepository implements TripRepository {
 
     @Override
     public List<Trip> findAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
-        StringBuilder queryStr = new StringBuilder(
-                "SELECT t FROM JpaTripEntity t"
-        );
+        StringBuilder queryStr = new StringBuilder("SELECT t FROM JpaTripEntity t");
+        var predicates = new java.util.ArrayList<String>();
 
+        if (bikeType != null) {
+            predicates.add("t.bike.type = :bikeType");
+        }
+        if (startDate != null) {
+            predicates.add("t.startTime >= :startDate");
+        }
+        if (endDate != null) {
+            predicates.add("t.endTime <= :endDate");
+        }
 
-        if (bikeType != null || startDate != null || endDate != null) queryStr.append(" WHERE ");
-        if (bikeType != null) queryStr.append(" AND t.bike.type = :bikeType");
-        if (startDate != null) queryStr.append(" AND t.startTime >= :startDate");
-        if (endDate != null) queryStr.append(" AND t.endTime <= :endDate");
+        if (!predicates.isEmpty()) {
+            queryStr.append(" WHERE ").append(String.join(" AND ", predicates));
+        }
+
         var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class);
 
-        if (bikeType != null) query.setParameter("bikeType", bikeType);
-        if (startDate != null) query.setParameter("startDate", startDate);
-        if (endDate != null) query.setParameter("endDate", endDate);
+        if (bikeType != null) {
+            query.setParameter("bikeType", bikeType);
+        }
+        if (startDate != null) {
+            query.setParameter("startDate", startDate);
+        }
+        if (endDate != null) {
+            query.setParameter("endDate", endDate);
+        }
 
         return query.getResultList().stream()
                 .map(entity -> entity.toDomain(new MapperContext()))
@@ -138,16 +148,28 @@ public class JpaTripRepository implements TripRepository {
                 "SELECT t FROM JpaTripEntity t WHERE t.rider.userId = :userId"
         );
 
-        if (bikeType != null) queryStr.append(" AND t.bike.type = :bikeType");
-        if (startDate != null) queryStr.append(" AND t.startTime >= :startDate");
-        if (endDate != null) queryStr.append(" AND t.endTime <= :endDate");
+        if (bikeType != null) {
+            queryStr.append(" AND t.bike.type = :bikeType");
+        }
+        if (startDate != null) {
+            queryStr.append(" AND t.startTime >= :startDate");
+        }
+        if (endDate != null) {
+            queryStr.append(" AND t.endTime <= :endDate");
+        }
 
         var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class)
                 .setParameter("userId", userId);
 
-        if (bikeType != null) query.setParameter("bikeType", bikeType);
-        if (startDate != null) query.setParameter("startDate", startDate);
-        if (endDate != null) query.setParameter("endDate", endDate);
+        if (bikeType != null) {
+            query.setParameter("bikeType", bikeType);
+        }
+        if (startDate != null) {
+            query.setParameter("startDate", startDate);
+        }
+        if (endDate != null) {
+            query.setParameter("endDate", endDate);
+        }
 
         return query.getResultList().stream()
                 .map(entity -> entity.toDomain(new MapperContext()))

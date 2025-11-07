@@ -20,11 +20,7 @@ import java.util.stream.Collectors;
 public class JpaLedgerEntryRepositoryImpl implements JpaLedgerEntryRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaLedgerEntryRepositoryImpl(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public void save(LedgerEntry ledgerEntry) {
@@ -46,11 +42,15 @@ public class JpaLedgerEntryRepositoryImpl implements JpaLedgerEntryRepository {
     @Override
     public LedgerEntry findByTrip(Trip trip) {
         MapperContext context = new MapperContext();
-        return entityManager.createQuery(
-                        "select l from JpaLedgerEntryEntity l where l.trip.tripId = :tripId", JpaLedgerEntryEntity.class)
-                .setParameter("tripId", trip.getTripID())
-                .getSingleResult()
-                .toDomain(context);
+        try {
+            return entityManager.createQuery(
+                            "select l from JpaLedgerEntryEntity l where l.trip.tripId = :tripId", JpaLedgerEntryEntity.class)
+                    .setParameter("tripId", trip.getTripID())
+                    .getSingleResult()
+                    .toDomain(context);
+        } catch (jakarta.persistence.NoResultException ex) {
+            return null;
+        }
     }
 
     @Override
@@ -59,6 +59,20 @@ public class JpaLedgerEntryRepositoryImpl implements JpaLedgerEntryRepository {
         return entityManager.createQuery(
                         "select l from JpaLedgerEntryEntity l where l.user.userId = :userId", JpaLedgerEntryEntity.class)
                 .setParameter("userId", user.getUserId())
+                .getResultStream()
+                .map(entity -> entity.toDomain(context))
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    public List<LedgerEntry> findAllByTripIds(List<UUID> tripIds) {
+        if (tripIds == null || tripIds.isEmpty()) {
+            return List.of();
+        }
+        MapperContext context = new MapperContext();
+        return entityManager.createQuery(
+                        "select l from JpaLedgerEntryEntity l where l.trip.tripId in :tripIds", JpaLedgerEntryEntity.class)
+                .setParameter("tripIds", tripIds)
                 .getResultStream()
                 .map(entity -> entity.toDomain(context))
                 .collect(Collectors.toList());

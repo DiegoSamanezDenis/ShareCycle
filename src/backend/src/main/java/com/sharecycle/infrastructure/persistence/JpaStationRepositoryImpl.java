@@ -19,11 +19,7 @@ import java.util.stream.Collectors;
 public class JpaStationRepositoryImpl implements JpaStationRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaStationRepositoryImpl(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public Station findById(UUID id) {

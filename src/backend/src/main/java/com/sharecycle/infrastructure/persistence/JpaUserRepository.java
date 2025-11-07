@@ -16,11 +16,7 @@ import java.util.UUID;
 public class JpaUserRepository implements UserRepository {
 
     @PersistenceContext
-    private final EntityManager entityManager;
-
-    public JpaUserRepository(EntityManager entityManager) {
-        this.entityManager = entityManager;
-    }
+    private EntityManager entityManager;
 
     @Override
     public boolean existsByEmail(String email) {

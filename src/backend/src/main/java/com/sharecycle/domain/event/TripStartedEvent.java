@@ -17,5 +17,9 @@ public record TripStartedEvent(
         Bike bike,
         Station startStation,
         Station endStation
-) {
+) implements DomainEvent {
+    @Override
+    public LocalDateTime occurredAt() {
+        return startTime;
+    }
 }

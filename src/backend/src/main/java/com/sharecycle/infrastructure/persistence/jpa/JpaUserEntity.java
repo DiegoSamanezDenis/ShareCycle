@@ -1,6 +1,7 @@
 package com.sharecycle.infrastructure.persistence.jpa;
 
 import com.sharecycle.domain.model.Operator;
+import com.sharecycle.domain.model.PricingPlan;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.User;
 import jakarta.persistence.Column;
@@ -52,6 +53,9 @@ public class JpaUserEntity {
     @Column(name = "updated_at", insertable = false, updatable = false)
     private LocalDateTime updatedAt;
 
+    @Column(name = "pricing_plan_type")
+    private String pricingPlanType;
+
     public JpaUserEntity() {
     }
 
@@ -66,6 +70,7 @@ public class JpaUserEntity {
         this.paymentMethodToken = user.getPaymentMethodToken();
         this.createdAt = user.getCreatedAt();
         this.updatedAt = user.getUpdatedAt();
+        this.pricingPlanType = user.getPricingPlanType() != null ? user.getPricingPlanType().name() : null;
     }
 
     public static JpaUserEntity fromDomain(User user) {
@@ -79,7 +84,15 @@ public class JpaUserEntity {
     }
 
     public User toDomain() {
-        return new User(userId, fullName, streetAddress, email, username, passwordHash, role, paymentMethodToken, createdAt, updatedAt);
+        User user = new User(userId, fullName, streetAddress, email, username, passwordHash, role, paymentMethodToken, createdAt, updatedAt);
+        if (pricingPlanType != null && !pricingPlanType.isBlank()) {
+            try {
+                user.setPricingPlanType(PricingPlan.PlanType.valueOf(pricingPlanType));
+            } catch (IllegalArgumentException ignored) {
+                user.setPricingPlanType(null);
+            }
+        }
+        return user;
     }
 
     public UUID getUserId() {
@@ -160,6 +173,14 @@ public class JpaUserEntity {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public String getPricingPlanType() {
+        return pricingPlanType;
+    }
+
+    public void setPricingPlanType(String pricingPlanType) {
+        this.pricingPlanType = pricingPlanType;
     }
 
     @Entity

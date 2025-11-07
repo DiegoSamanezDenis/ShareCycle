@@ -9,7 +9,6 @@ import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.HttpStatusCode;
 import org.springframework.stereotype.Service;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -39,12 +38,18 @@ public class GetTripDetailsUseCase {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Access denied");
         }
         LedgerEntry ledgerEntry = ledgerEntryRepository.findByTrip(trip);
-        Bill bill = ledgerEntry != null ? ledgerEntry.generateBill() : new Bill(trip);
+        Bill bill = null;
+        if (ledgerEntry != null) {
+            bill = ledgerEntry.getBill();
+        }
+        if (bill == null) {
+            bill = new Bill();
+        }
         String riderName = trip.getRider() != null ? trip.getRider().getFullName() : null;
         String startStationName = trip.getStartStation() != null ? trip.getStartStation().getName() : null;
         String endStationName = trip.getEndStation() != null ? trip.getEndStation().getName() : null;
         UUID ledgerID = ledgerEntry != null ? ledgerEntry.getLedgerId() : null;
-        double totalCost = ledgerEntry != null ? ledgerEntry.getTotalAmount() : bill.getTotal();
+        double totalCost = bill.getTotalCost();
         return new TripDetails(
             trip.getTripID(),
             trip.getRider() != null ? trip.getRider().getUserId() : null,
@@ -55,9 +60,10 @@ public class GetTripDetailsUseCase {
             trip.getEndTime(),
             trip.getDurationMinutes(),
             trip.getBike() != null ? trip.getBike().getType().name() : null,
+            bill.getBaseCost(),
+            bill.getTimeCost(),
+            bill.getEBikeSurcharge(),
             totalCost,
-            bill.getSubtotal(),
-            bill.getTaxAmount(),
             ledgerID,
             ledgerEntry != null ? ledgerEntry.getLedgerStatus() : null
 
@@ -74,9 +80,10 @@ public class GetTripDetailsUseCase {
         LocalDateTime endTime,
         int durationMinutes,
         String bikeType,
+        double baseCost,
+        double timeCost,
+        double eBikeSurcharge,
         double totalCost,
-        double subtotal,
-        double taxAmount,
         UUID ledgerId,
         LedgerEntry.LedgerStatus ledgerStatus
     ) {}
