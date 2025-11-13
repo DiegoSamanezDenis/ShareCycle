@@ -1,9 +1,6 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.event.PaymentFailedEvent;
-import com.sharecycle.domain.event.PaymentStartedEvent;
-import com.sharecycle.domain.event.PaymentSucceedEvent;
+import com.sharecycle.domain.event.*;
 import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.User;
@@ -59,8 +56,11 @@ public class PaymentUseCase {
         // Use flex credit before actually paying
         // TODO: Add a boolean check for if the user want to use their credit or not
         // Deduct return the overflow amount if too much money
+        double flexCreditInitial = rider.getFlexCredit();
         totalAmount = rider.deductFlexCredit(totalAmount);
+        double amountDeducted = flexCreditInitial - rider.getFlexCredit();
         userRepository.save(rider);
+        eventPublisher.publish(new FlexCreditDeductEvent(rider.getUserId(), amountDeducted));
 
         if (totalAmount < MIN_STRIPE_AMOUNT_CAD) {
             logger.info("Ledger {} total {} below Stripe minimum, marking paid without capture",
