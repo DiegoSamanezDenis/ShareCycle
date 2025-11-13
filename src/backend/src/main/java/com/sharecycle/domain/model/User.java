@@ -16,6 +16,7 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private PricingPlan.PlanType pricingPlanType;
+    private double flexCredit;
 
     public User() {
     }
@@ -29,7 +30,8 @@ public class User {
                 String role,
                 String paymentMethodToken,
                 LocalDateTime createdAt,
-                LocalDateTime updatedAt) {
+                LocalDateTime updatedAt,
+                double flexCredit) {
         this.userId = userId;
         this.fullName = fullName;
         this.streetAddress = streetAddress;
@@ -41,6 +43,7 @@ public class User {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.pricingPlanType = null;
+        this.flexCredit = flexCredit;
     }
 
     public UUID getUserId() {
@@ -129,6 +132,14 @@ public class User {
 
     public void setUpdatedAt(LocalDateTime updatedAt) {
         this.updatedAt = updatedAt;
+    }
+
+    public double getFlexCredit() {
+        return flexCredit;
+    }
+
+    public void setFlexCredit(double flexCredit) {
+        this.flexCredit = flexCredit;
     }
 
     public void touchOnCreate() {

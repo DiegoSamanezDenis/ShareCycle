@@ -19,7 +19,8 @@ public class Rider extends User {
                 "RIDER",
                 user.getPaymentMethodToken(),
                 user.getCreatedAt(),
-                user.getUpdatedAt());
+                user.getUpdatedAt(),
+                user.getFlexCredit());
         super.setPricingPlanType(user.getPricingPlanType());
     }
 
@@ -39,7 +40,8 @@ public class Rider extends User {
                 "RIDER",
                 paymentMethodToken,
                 null,
-                null);
+                null,
+                0);
         super.setPricingPlanType(pricingPlanType);
     }
 }
