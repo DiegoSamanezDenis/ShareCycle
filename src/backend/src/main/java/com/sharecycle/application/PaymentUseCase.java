@@ -56,6 +56,12 @@ public class PaymentUseCase {
             return entry;
         }
 
+        // Use flex credit before actually paying
+        // TODO: Add a boolean check for if the user want to use their credit or not
+        // Deduct return the overflow amount if too much money
+        totalAmount = rider.deductFlexCredit(totalAmount);
+        userRepository.save(rider);
+
         if (totalAmount < MIN_STRIPE_AMOUNT_CAD) {
             logger.info("Ledger {} total {} below Stripe minimum, marking paid without capture",
                     entry.getLedgerId(), totalAmount);
