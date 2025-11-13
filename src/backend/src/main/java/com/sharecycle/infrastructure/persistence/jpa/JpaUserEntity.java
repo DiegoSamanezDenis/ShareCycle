@@ -56,6 +56,9 @@ public class JpaUserEntity {
     @Column(name = "pricing_plan_type")
     private String pricingPlanType;
 
+    @Column(name = "flex_credit")
+    private double flexCredit;
+
     public JpaUserEntity() {
     }
 
@@ -84,7 +87,7 @@ public class JpaUserEntity {
     }
 
     public User toDomain() {
-        User user = new User(userId, fullName, streetAddress, email, username, passwordHash, role, paymentMethodToken, createdAt, updatedAt);
+        User user = new User(userId, fullName, streetAddress, email, username, passwordHash, role, paymentMethodToken, createdAt, updatedAt, flexCredit);
         if (pricingPlanType != null && !pricingPlanType.isBlank()) {
             try {
                 user.setPricingPlanType(PricingPlan.PlanType.valueOf(pricingPlanType));
@@ -181,6 +184,14 @@ public class JpaUserEntity {
 
     public void setPricingPlanType(String pricingPlanType) {
         this.pricingPlanType = pricingPlanType;
+    }
+
+    public double getFlexCredit() {
+        return flexCredit;
+    }
+
+    public void setFlexCredit(double flexCredit) {
+        this.flexCredit = flexCredit;
     }
 
     @Entity

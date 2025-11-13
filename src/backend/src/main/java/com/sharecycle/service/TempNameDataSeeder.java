@@ -41,6 +41,7 @@ public class TempNameDataSeeder {
         loadBikes();
         // Then load stations; docks will be persisted via cascade with station_id set
         loadStations();
+        logger.info("Seed data loaded");
     }
 
     private void loadBikes() {

@@ -16,6 +16,7 @@ public class User {
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private PricingPlan.PlanType pricingPlanType;
+    private double flexCredit;
 
     public User() {
     }
@@ -29,7 +30,8 @@ public class User {
                 String role,
                 String paymentMethodToken,
                 LocalDateTime createdAt,
-                LocalDateTime updatedAt) {
+                LocalDateTime updatedAt,
+                double flexCredit) {
         this.userId = userId;
         this.fullName = fullName;
         this.streetAddress = streetAddress;
@@ -41,6 +43,7 @@ public class User {
         this.createdAt = createdAt;
         this.updatedAt = updatedAt;
         this.pricingPlanType = null;
+        this.flexCredit = flexCredit;
     }
 
     public UUID getUserId() {
@@ -131,6 +134,14 @@ public class User {
         this.updatedAt = updatedAt;
     }
 
+    public double getFlexCredit() {
+        return flexCredit;
+    }
+
+    public void setFlexCredit(double flexCredit) {
+        this.flexCredit = flexCredit;
+    }
+
     public void touchOnCreate() {
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
@@ -139,4 +150,22 @@ public class User {
     public void touchOnUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void addFlexCredit(double amountToAdd) {
+        this.flexCredit += amountToAdd;
+    }
+
+    // Return remainder if too much amount
+    public double deductFlexCredit(double amountToDeduct) {
+        if (this.flexCredit >= amountToDeduct) {
+            this.flexCredit -= amountToDeduct;
+            return 0;
+        } else {
+            double overflow = amountToDeduct - this.flexCredit;
+            this.flexCredit = 0;
+            return overflow;
+        }
+    }
+
+
 }

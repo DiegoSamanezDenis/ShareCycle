@@ -7,6 +7,7 @@ import static org.mockito.Mockito.*;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
+import com.sharecycle.infrastructure.persistence.JpaUserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -41,7 +42,10 @@ class EndTripAndBillUseCaseValidationTest {
     @Mock
     private ReservationRepository reservationRepository;
 
+    @Mock
+    private JpaUserRepository userRepository;
     private EndTripAndBillUseCase useCase;
+
 
     @BeforeEach
     void setUp() {
@@ -51,7 +55,8 @@ class EndTripAndBillUseCaseValidationTest {
                 ledgerEntryRepository,
                 stationRepository,
                 bikeRepository,
-                reservationRepository
+                reservationRepository,
+                userRepository
         );
     }
 

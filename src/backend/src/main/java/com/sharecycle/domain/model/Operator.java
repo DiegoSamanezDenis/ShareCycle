@@ -18,7 +18,8 @@ public class Operator extends User {
                 "OPERATOR",
                 user.getPaymentMethodToken(),
                 user.getCreatedAt(),
-                user.getUpdatedAt());
+                user.getUpdatedAt(),
+                user.getFlexCredit());
     }
 
     public Operator(String fullName,
@@ -36,6 +37,7 @@ public class Operator extends User {
                 "OPERATOR",
                 paymentMethodToken,
                 null,
-                null);
+                null,
+                0);
     }
 }
