@@ -150,4 +150,22 @@ public class User {
     public void touchOnUpdate() {
         this.updatedAt = LocalDateTime.now();
     }
+
+    public void addFlexCredit(double amountToAdd) {
+        this.flexCredit += amountToAdd;
+    }
+
+    // Return remainder if too much amount
+    public double deductFlexCredit(double amountToDeduct) {
+        if (this.flexCredit >= amountToDeduct) {
+            this.flexCredit -= amountToDeduct;
+            return 0;
+        } else {
+            double overflow = amountToDeduct - this.flexCredit;
+            this.flexCredit = 0;
+            return overflow;
+        }
+    }
+
+
 }

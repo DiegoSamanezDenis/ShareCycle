@@ -4,6 +4,9 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.sharecycle.domain.event.*;
+import com.sharecycle.domain.model.*;
+import com.sharecycle.infrastructure.persistence.JpaUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -13,19 +16,6 @@ import com.sharecycle.domain.DefaultPricingPlans;
 import com.sharecycle.domain.MonthlySubscriberStrategy;
 import com.sharecycle.domain.PayAsYouGoStrategy;
 import com.sharecycle.domain.TripBuilder;
-import com.sharecycle.domain.event.BillIssuedEvent;
-import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.event.StationStatusChangedEvent;
-import com.sharecycle.domain.event.TripEndedEvent;
-import com.sharecycle.domain.model.Bike;
-import com.sharecycle.domain.model.Bill;
-import com.sharecycle.domain.model.Dock;
-import com.sharecycle.domain.model.LedgerEntry;
-import com.sharecycle.domain.model.PricingPlan;
-import com.sharecycle.domain.model.Reservation;
-import com.sharecycle.domain.model.Rider;
-import com.sharecycle.domain.model.Station;
-import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaDockRepository;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
@@ -48,6 +38,7 @@ public class EndTripAndBillUseCase {
     private final JpaDockRepository dockRepository;
     private final JpaBikeRepository bikeRepository;
     private final ReservationRepository reservationRepository;
+    private final JpaUserRepository userRepository;
     
     private final PayAsYouGoStrategy payAsYouGoStrategy;
     private final MonthlySubscriberStrategy monthlySubscriberStrategy;
@@ -59,7 +50,7 @@ public class EndTripAndBillUseCase {
                                  JpaStationRepository stationRepository,
                                  JpaDockRepository dockRepository,
                                  JpaBikeRepository bikeRepository,
-                                 ReservationRepository reservationRepository) {
+                                 ReservationRepository reservationRepository, JpaUserRepository userRepository) {
         this.eventPublisher = eventPublisher;
         this.tripRepository = tripRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
@@ -67,6 +58,7 @@ public class EndTripAndBillUseCase {
         this.dockRepository = dockRepository;
         this.bikeRepository = bikeRepository;
         this.reservationRepository = reservationRepository;
+        this.userRepository = userRepository;
         this.payAsYouGoStrategy = new PayAsYouGoStrategy();
         this.monthlySubscriberStrategy = new MonthlySubscriberStrategy();
     }
@@ -77,7 +69,7 @@ public class EndTripAndBillUseCase {
                                  JpaLedgerEntryRepository ledgerEntryRepository,
                                  JpaStationRepository stationRepository,
                                  JpaBikeRepository bikeRepository,
-                                 ReservationRepository reservationRepository) {
+                                 ReservationRepository reservationRepository, JpaUserRepository userRepository) {
         this(eventPublisher, tripRepository, ledgerEntryRepository, stationRepository,
                 new JpaDockRepository() {
                     @Override public void save(Dock dock) { }
@@ -85,7 +77,7 @@ public class EndTripAndBillUseCase {
                     @Override public List<Dock> findAll() { return List.of(); }
                     @Override public int clearBikeFromAllDocks(UUID bikeId) { return 0; }
                 },
-                bikeRepository, reservationRepository);
+                bikeRepository, reservationRepository, userRepository);
     }
 
     @Transactional(noRollbackFor = StationFullException.class)
@@ -186,6 +178,18 @@ public class EndTripAndBillUseCase {
                 planName
         ));
 
+        //Check and add flex credit
+        double endStationRequiredFreeDock = 0.75; //75% of the docks is empty after finish docking
+        double creditPercentage = 0.05; // Give you 5% credit back
+        if (endStation.getFreeDockCount() > endStation.getCapacity()*endStationRequiredFreeDock) {
+            logger.info("User dock in lightly occupied station, add credit");
+            User user = userRepository.findById(editedTrip.getRider().getUserId());
+            double amountToAdd = bill.getTotalCost()*creditPercentage;
+            user.addFlexCredit(amountToAdd);
+            userRepository.save(user);
+            eventPublisher.publish(new FlexCreditAddedEvent(editedTrip.getRider().getUserId(), amountToAdd));
+            logger.info("User received credit");
+        }
         return ledgerEntry;
     }
 
