@@ -184,11 +184,11 @@ public class EndTripAndBillUseCase {
         if (endStation.getFreeDockCount() > endStation.getCapacity()*endStationRequiredFreeDock) {
             logger.info("User dock in lightly occupied station, add credit");
             User user = userRepository.findById(editedTrip.getRider().getUserId());
-            double amountToAdd = bill.getTotalCost()*creditPercentage;
+            double amountToAdd = Math.floor(bill.getTotalCost()*creditPercentage*100) / 100; // Round to 2 decimal case
             user.addFlexCredit(amountToAdd);
             userRepository.save(user);
             eventPublisher.publish(new FlexCreditAddedEvent(editedTrip.getRider().getUserId(), amountToAdd));
-            logger.info("User received credit");
+            logger.info("User received "+amountToAdd+" credit");
         }
         return ledgerEntry;
     }

@@ -1,21 +1,6 @@
 package com.sharecycle.ui;
 
-import com.sharecycle.domain.event.DomainEvent;
-import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.event.DomainEventSubscriber;
-import com.sharecycle.domain.event.ReservationCreatedEvent;
-import com.sharecycle.domain.event.ReservationExpiredEvent;
-import com.sharecycle.domain.event.BikeStatusChangedEvent;
-import com.sharecycle.domain.event.PaymentFailedEvent;
-import com.sharecycle.domain.event.PaymentStartedEvent;
-import com.sharecycle.domain.event.PaymentSucceedEvent;
-import com.sharecycle.domain.event.StationCapacityChangedEvent;
-import com.sharecycle.domain.event.StationStatusChangedEvent;
-import com.sharecycle.domain.event.TripBilledEvent;
-import com.sharecycle.domain.event.TripEndedEvent;
-import com.sharecycle.domain.event.TripStartedEvent;
-import com.sharecycle.domain.event.BikeMovedEvent;
-import com.sharecycle.domain.event.BillIssuedEvent;
+import com.sharecycle.domain.event.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.MediaType;
@@ -149,6 +134,14 @@ public class EventController {
         if (e instanceof BikeMovedEvent event) {
             String bikeId = event.bikeId().toString().substring(0, 8);
             return "Bike " + bikeId + " has been moved from " + event.sourceStationId() + " to " + event.destinationStationId();
+        }
+
+        if (e instanceof FlexCreditAddedEvent event) {
+            return "Flex credit added. Amount add: " + event.amount();
+        }
+
+        if (e instanceof FlexCreditDeductedEvent event) {
+            return "Flex credit deducted. Amount deducted " +event.amount();
         }
 
         return e.getClass().getSimpleName();
