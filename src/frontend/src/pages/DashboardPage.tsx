@@ -390,6 +390,8 @@ export default function DashboardPage() {
   const [stationDetails, setStationDetails] = useState<StationDetails | null>(null);
   const [loadingStationDetails, setLoadingStationDetails] = useState(false);
   const [stationDetailsError, setStationDetailsError] = useState<string | null>(null);
+  const [credit, setCredit] = useState<number>(0); 
+  
 
   const loadStationDetails = useCallback(
     async (stationId: string) => {
@@ -648,6 +650,12 @@ export default function DashboardPage() {
         body: JSON.stringify({ stationId }),
       });
       if (response.status === "COMPLETED") {
+        const creditResponse = await apiRequest<{ amount: number }>(`/auth/credit?userId=${auth.userId}`, {
+          method: "GET",
+          token: auth.token,
+        });
+        console.log("Credit after trip completion:", creditResponse.amount);
+        setCredit(creditResponse.amount); // save credit to state
         setTripCompletion(response);
         setReturnBlock(null);
         setTripResult(null);
@@ -744,6 +752,7 @@ export default function DashboardPage() {
         <h1>ShareCycle Dashboard</h1>
         <p>
           Signed in as <strong>{auth.username}</strong> ({auth.role.toLowerCase()}).
+          Current Credit: <strong>${credit.toFixed(2)}</strong>
         </p>
         <button type="button" onClick={() => auth.logout()}>
           Logout
@@ -1088,6 +1097,9 @@ export default function DashboardPage() {
             </div>
             <div className={styles.feedbackTotal}>
               Total Charge: ${tripCompletion.totalCost.toFixed(2)}
+            </div>
+            <div className={styles.feedbackTotal}>
+              Available Flex Credit: ${credit.toFixed(2)}
             </div>
             <div className={styles.feedbackRow}>
               Payment: {formatPaymentStatus(tripCompletion.paymentStatus)}

@@ -72,7 +72,9 @@ export default function EventConsole({ token }: EventConsoleProps) {
                 "BillIssuedEvent",
                 "BikeMovedEvent",
                 "StationStatusChangedEvent",
-                "StationCapacityChangedEvent"
+                "StationCapacityChangedEvent",
+                "FlexCreditAddedEvent",
+                "FlexCreditDeductEvent"
             ];
             for (const n of names) {
                 es.addEventListener(n, (ev: MessageEvent) => push(ev.data));

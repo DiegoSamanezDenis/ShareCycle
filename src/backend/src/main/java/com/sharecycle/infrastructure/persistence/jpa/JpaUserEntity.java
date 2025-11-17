@@ -74,6 +74,7 @@ public class JpaUserEntity {
         this.createdAt = user.getCreatedAt();
         this.updatedAt = user.getUpdatedAt();
         this.pricingPlanType = user.getPricingPlanType() != null ? user.getPricingPlanType().name() : null;
+        this.flexCredit = user.getFlexCredit();
     }
 
     public static JpaUserEntity fromDomain(User user) {
@@ -250,6 +251,7 @@ public class JpaUserEntity {
         user.setPaymentMethodToken(paymentMethodToken);
         user.setCreatedAt(createdAt);
         user.setUpdatedAt(updatedAt);
+        user.setFlexCredit(flexCredit);
         context.users.put(userId, user);
         if (role.equals("RIDER")) {
             assert user instanceof Rider;
