@@ -144,6 +144,10 @@ public class EventController {
             return "Flex credit deducted. Amount deducted " +event.amount();
         }
 
+        if (e instanceof TierUpdatedEvent event) {
+            return String.format("Loyalty Tier updated to %s: %s", event.newTier(), event.reason());
+        }
+
         return e.getClass().getSimpleName();
     }
 }

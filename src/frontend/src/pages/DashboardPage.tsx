@@ -10,6 +10,7 @@ import styles from "./TripReceipt.module.css";
 import type { StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
+import LoyaltyBadge from "../components/LoyaltyBadge";
 
 type ReservationResponse = {
   reservationId: string;
@@ -912,6 +913,7 @@ export default function DashboardPage() {
       {auth.role === "RIDER" && (
         <section>
           <h2>My Ride</h2>
+          <LoyaltyBadge userId={auth.userId} token={auth.token} />
           <p>
             Pick a station from the map or the overview table to see available bikes. Actions
             are listed beside each dock in the station details panel.
