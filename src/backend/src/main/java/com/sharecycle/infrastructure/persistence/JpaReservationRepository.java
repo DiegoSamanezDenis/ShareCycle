@@ -10,6 +10,7 @@ import jakarta.transaction.Transactional;
 import org.springframework.stereotype.Repository;
 
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 import java.util.stream.Collectors;
@@ -96,5 +97,14 @@ public class JpaReservationRepository implements ReservationRepository {
                 .setParameter("now", now)
                 .getSingleResult();
         return count > 0;
+    }
+
+    @Override
+    public int countReservationsByRiderIdAfter(UUID riderId, Instant since) {
+        Long count = entityManager.createQuery(
+                        "select count(r) from JpaReservationEntity r where r.rider.userId = :riderId and r.reservedAt > :since",
+                        Long.class).setParameter("riderId", riderId).setParameter("since", since).getSingleResult();
+
+        return count.intValue();
     }
 }
