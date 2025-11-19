@@ -15,14 +15,27 @@ const TIER_COLORS = {
 
 export default function LoyaltyBadge({ userId, token }: { userId: string; token: string }) {
     const [status, setStatus] = useState<LoyaltyStatus | null>(null);
+    const [error, setError] = useState<string | null>(null);
 
     useEffect(() => {
         apiRequest<LoyaltyStatus>(`/loyalty/status?riderId=${userId}`, { token })
             .then(setStatus)
-            .catch(console.error);
+            .catch((err) => setError(err.message)); // Capture error
     }, [userId, token]);
 
-    if (!status) return null;
+    // --- DEBUG VIEW ---
+    if (error) {
+        return (
+            <div style={{ padding: 12, border: "1px solid red", color: "red", borderRadius: 8, marginTop: 16 }}>
+                <strong>Badge Error:</strong> {error}
+            </div>
+        );
+    }
+
+    if (!status) {
+        return <div style={{ marginTop: 16, color: "#666" }}>Loading membership...</div>;
+    }
+    // ------------------
 
     return (
         <div style={{

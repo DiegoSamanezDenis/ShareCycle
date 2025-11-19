@@ -23,13 +23,16 @@ export default function EventConsole({ token }: EventConsoleProps) {
         };
 
         async function loadInitial() {
-            if (!token) return; // <-- USES TOKEN
+            if (!token) return;
             try {
                 // 3. Use the headers in your fetch
                 const res = await fetch(`${appConfig.apiUrl}/events`, { headers });
                 if (!res.ok) return;
+
                 const list = await res.json();
                 if (!isMounted) return;
+
+                // Helper handles validation now
                 setEvents((prev) => mergeLatest(list, prev));
             } catch {
                 // ignore
@@ -53,12 +56,15 @@ export default function EventConsole({ token }: EventConsoleProps) {
 
             const push = (data: string) => {
                 setEvents((prev) => {
-                    const next = [data, ...prev];
+                    // Ensure prev is always an array
+                    const safePrev = Array.isArray(prev) ? prev : [];
+                    const next = [data, ...safePrev];
                     return next.slice(0, maxEvents);
                 });
             };
 
             es.onmessage = (ev) => push(ev.data);
+
             const names = [
                 "ReservationCreated",
                 "ReservationExpired",
@@ -74,8 +80,10 @@ export default function EventConsole({ token }: EventConsoleProps) {
                 "StationStatusChangedEvent",
                 "StationCapacityChangedEvent",
                 "FlexCreditAddedEvent",
-                "FlexCreditDeductEvent"
+                "FlexCreditDeductEvent",
+                "TierUpdatedEvent"
             ];
+
             for (const n of names) {
                 es.addEventListener(n, (ev: MessageEvent) => push(ev.data));
             }
@@ -183,12 +191,21 @@ export default function EventConsole({ token }: EventConsoleProps) {
             <div style={buttonBarStyle}>
                 <button
                     style={token ? buttonStyle : disabledButtonStyle}
-                    onClick={() => {
+                    onClick={async () => {
                         if (!token) return;
-                        // 8. Use headers in the Refresh button
-                        fetch(`${appConfig.apiUrl}/events`, { headers: refreshHeaders })
-                            .then((r) => r.json())
-                            .then((list) => setEvents(list.reverse ? list.slice().reverse() : list));
+                        try {
+                            // 8. Use headers in the Refresh button
+                            const r = await fetch(`${appConfig.apiUrl}/events`, { headers: refreshHeaders });
+                            if (!r.ok) return;
+                            const list = await r.json();
+
+                            // Safety Check: Ensure list is actually an array before setting state
+                            if (Array.isArray(list)) {
+                                setEvents(list.reverse() ? list.slice().reverse() : list);
+                            }
+                        } catch (e) {
+                            console.error("Failed to refresh events", e);
+                        }
                     }}
                     disabled={!token}
                 >
@@ -203,8 +220,10 @@ export default function EventConsole({ token }: EventConsoleProps) {
             </div>
 
             <div style={eventsWrapperStyle}>
-                {events.length === 0 && <div style={{ ...eventRowStyle, color: "#bae6fd" }}>No events yet</div>}
-                {events.map((e, idx) => (
+                {/* Add Array.isArray checks to prevent render crashes */}
+                {Array.isArray(events) && events.length === 0 && <div style={{ ...eventRowStyle, color: "#bae6fd" }}>No events yet</div>}
+
+                {Array.isArray(events) && events.map((e, idx) => (
                     <div key={idx} style={{ ...eventRowStyle, color: "#f8fafc" }}>
                         {e}
                     </div>
@@ -215,9 +234,13 @@ export default function EventConsole({ token }: EventConsoleProps) {
 }
 
 function mergeLatest(incoming: string[], prev: string[]) {
-    // server /events returns newest-first formatted strings (depends on backend). Ensure newest first.
-    const items = Array.isArray(incoming) ? incoming.slice(0, 300) : [];
+    // Safety Check: ensure inputs are arrays
+    const safeIncoming = Array.isArray(incoming) ? incoming : [];
+    const safePrev = Array.isArray(prev) ? prev : [];
+
+    // server /events returns newest-first formatted strings.
+    const items = safeIncoming.slice(0, 300);
     // Keep unique prefix (basic de-dup)
-    const set = new Set(items.concat(prev));
+    const set = new Set(items.concat(safePrev));
     return Array.from(set).slice(0, 300);
 }

@@ -12,6 +12,8 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
+import java.time.Instant;
+import java.time.ZoneOffset;
 
 @Service
 public class LoyaltyEvaluatorService {
@@ -50,17 +52,20 @@ public class LoyaltyEvaluatorService {
         }
 
         // SILVER criteria
+        Instant oneYearAgoInstant = oneYearAgo.toInstant(ZoneOffset.UTC);
+        int recentReservations = reservationRepository.countReservationsByRiderIdAfter(riderId, oneYearAgoInstant);
+        boolean silver_Reservations = recentReservations >= 5;
         boolean silver_Frequency = checkMonthlyFrequency(trips, threeMonthsAgo, 5);
 
         // GOLD criteria
         boolean gold_Frequency = checkWeeklyFrequency(trips, threeMonthsAgo, 5);
 
-        if (gold_Frequency && silver_Frequency) {
+        if (gold_Frequency && silver_Frequency && silver_Reservations) {
             return new EvaluationResult(LoyaltyTier.GOLD, "Gold Status Achieved! High trip frequency maintained.");
 
         }
 
-        if (silver_Frequency) {
+        if (silver_Frequency && silver_Reservations) {
             return new EvaluationResult(LoyaltyTier.SILVER, "Silver Status Achieved! Consistent monthly trip frequency.");
         }
 
@@ -70,7 +75,13 @@ public class LoyaltyEvaluatorService {
 
     private boolean checkWeeklyFrequency(List<Trip> trips, LocalDateTime since, int threshold) {
         long totalLast3Months = trips.stream().filter(t -> t.getEndTime() != null && t.getEndTime().isAfter(since)).count();
-        double averagePerWeek = totalLast3Months / 12.0;
+
+        long weeks = ChronoUnit.WEEKS.between(since, LocalDateTime.now());
+        if (weeks <= 0) {
+            weeks = 1;
+        }
+
+        double averagePerWeek = (double) totalLast3Months / weeks;
 
         return averagePerWeek > threshold;
     }
@@ -83,7 +94,11 @@ public class LoyaltyEvaluatorService {
             return false;
         }
 
-        return counts.values().stream().allMatch(count -> count >= threshold);
+        if (counts.size() < 3) {
+            return false;
+        }
+
+        return counts.values().stream().allMatch(count -> count > threshold);
     }
 
     public record EvaluationResult(LoyaltyTier tier, String reason) {}
