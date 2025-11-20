@@ -10,7 +10,7 @@ public class MonthlySubscriberStrategy implements PricingStrategyRepository {
     private static final double DEFAULT_MONTHLY_FEE = DefaultPricingPlans.monthlySubscriptionFee();
 
     @Override
-    public Bill calculate(Trip trip, PricingPlan plan) {
+    public Bill calculate(Trip trip, PricingPlan plan, double discountRate) {
         // Monthly subscribers are not charged per trip; the monthly fee is handled separately.
         return new Bill(0.0, 0.0, 0.0);
     }

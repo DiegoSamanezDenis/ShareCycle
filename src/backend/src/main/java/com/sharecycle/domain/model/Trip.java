@@ -14,6 +14,7 @@ public class Trip {
     private final Bike bike;
     private final Station startStation;
     private Station endStation;
+    private double appliedDiscountRate = 0.0;
 
     public Trip(UUID tripID,
                 LocalDateTime startTime,
@@ -62,6 +63,14 @@ public class Trip {
 
     public Station getEndStation() {
         return endStation;
+    }
+
+    public double getAppliedDiscountRate() {
+        return appliedDiscountRate;
+    }
+
+    public void setAppliedDiscountRate(double appliedDiscountRate) {
+        this.appliedDiscountRate = appliedDiscountRate;
     }
 
     public void endTrip(Station destination, LocalDateTime endedAt) {

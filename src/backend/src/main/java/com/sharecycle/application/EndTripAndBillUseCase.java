@@ -158,7 +158,7 @@ public class EndTripAndBillUseCase {
         String planName = planType.name();
         
         // Calculate bill using strategy
-        Bill bill = strategy.calculate(editedTrip, pricingPlan);
+        Bill bill = strategy.calculate(editedTrip, pricingPlan, editedTrip.getAppliedDiscountRate());
 
         // Create and persist ledger entry
         LedgerEntry ledgerEntry = new LedgerEntry(editedTrip.getRider(), editedTrip, bill, planName);
