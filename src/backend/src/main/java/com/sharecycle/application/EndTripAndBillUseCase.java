@@ -23,6 +23,8 @@ import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.PricingStrategyRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
+import com.sharecycle.domain.model.LoyaltyTier;
+import com.sharecycle.domain.repository.JpaLoyaltyRepository;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +41,7 @@ public class EndTripAndBillUseCase {
     private final JpaBikeRepository bikeRepository;
     private final ReservationRepository reservationRepository;
     private final JpaUserRepository userRepository;
+    private final JpaLoyaltyRepository loyaltyRepository;
     
     private final PayAsYouGoStrategy payAsYouGoStrategy;
     private final MonthlySubscriberStrategy monthlySubscriberStrategy;
@@ -50,7 +53,9 @@ public class EndTripAndBillUseCase {
                                  JpaStationRepository stationRepository,
                                  JpaDockRepository dockRepository,
                                  JpaBikeRepository bikeRepository,
-                                 ReservationRepository reservationRepository, JpaUserRepository userRepository) {
+                                 ReservationRepository reservationRepository, 
+                                 JpaUserRepository userRepository,
+                                 JpaLoyaltyRepository loyaltyRepository) {
         this.eventPublisher = eventPublisher;
         this.tripRepository = tripRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
@@ -59,6 +64,7 @@ public class EndTripAndBillUseCase {
         this.bikeRepository = bikeRepository;
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
+        this.loyaltyRepository = loyaltyRepository;
         this.payAsYouGoStrategy = new PayAsYouGoStrategy();
         this.monthlySubscriberStrategy = new MonthlySubscriberStrategy();
     }
@@ -69,7 +75,9 @@ public class EndTripAndBillUseCase {
                                  JpaLedgerEntryRepository ledgerEntryRepository,
                                  JpaStationRepository stationRepository,
                                  JpaBikeRepository bikeRepository,
-                                 ReservationRepository reservationRepository, JpaUserRepository userRepository) {
+                                 ReservationRepository reservationRepository, 
+                                 JpaUserRepository userRepository,
+                                 JpaLoyaltyRepository loyaltyRepository) {
         this(eventPublisher, tripRepository, ledgerEntryRepository, stationRepository,
                 new JpaDockRepository() {
                     @Override public void save(Dock dock) { }
@@ -77,7 +85,7 @@ public class EndTripAndBillUseCase {
                     @Override public List<Dock> findAll() { return List.of(); }
                     @Override public int clearBikeFromAllDocks(UUID bikeId) { return 0; }
                 },
-                bikeRepository, reservationRepository, userRepository);
+                bikeRepository, reservationRepository, userRepository, loyaltyRepository);
     }
 
     @Transactional(noRollbackFor = StationFullException.class)
@@ -150,6 +158,24 @@ public class EndTripAndBillUseCase {
         Trip editedTrip = tripBuilder.build();
         tripRepository.save(editedTrip);
         eventPublisher.publish(new TripEndedEvent(editedTrip.getTripID()));
+
+        double discountRate = 0.0;
+        try {
+            LoyaltyTier tier = loyaltyRepository != null && editedTrip.getRider() != null ?
+                    loyaltyRepository.findCurrentTier(editedTrip.getRider().getUserId()) : LoyaltyTier.ENTRY;
+                    
+            switch (tier) {
+                case GOLD : discountRate = 0.15;
+                case SILVER : discountRate = 0.10;
+                case BRONZE : discountRate = 0.05;
+                default : discountRate = 0.0;
+            }
+        } catch (Exception e) {
+            logger.warn("Failed to determine loyalty tier", e);
+            discountRate = 0.0;
+        }
+
+        editedTrip.setAppliedDiscountRate(discountRate);
 
         // SELECT PRICING STRATEGY based on rider plan
         PricingPlan.PlanType planType = resolvePlanType(editedTrip.getRider());
