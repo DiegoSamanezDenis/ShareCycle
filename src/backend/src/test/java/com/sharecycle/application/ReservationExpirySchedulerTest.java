@@ -9,19 +9,33 @@ import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.service.payment.PaymentGateway;
 import jakarta.transaction.Transactional;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
 
 import java.time.Instant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.mockito.Mockito;
+
 
 @SpringBootTest
 @ActiveProfiles("test")
 class ReservationExpirySchedulerTest {
+
+    @TestConfiguration
+    static class PaymentGatewayTestConfig {
+        @Bean
+        public PaymentGateway paymentGateway() {
+            return Mockito.mock(PaymentGateway.class);
+        }
+    }
 
     @Autowired
     private ReservationExpiryScheduler scheduler;
@@ -41,11 +55,12 @@ class ReservationExpirySchedulerTest {
     @Test
     @Transactional
     void expiresReservationAndPersistsBikeAvailable() {
-        // rider
-        Rider rider = new Rider("Rider Name", "123 Street", "rider2@example.com", "rider2", "hash", "tok_xyz", PricingPlan.PlanType.PAY_AS_YOU_GO);
+        Rider rider = new Rider(
+                "Rider Name", "123 Street", "rider2@example.com",
+                "rider2", "hash", "tok_xyz", PricingPlan.PlanType.PAY_AS_YOU_GO
+        );
         userRepository.save(rider);
 
-        // station + reserved bike with expired timestamp
         Station station = new Station();
         station.setName("Expiry Station");
         station.setLatitude(45.0);
@@ -53,12 +68,13 @@ class ReservationExpirySchedulerTest {
         station.setAddress("Address");
         station.markActive();
         station.addEmptyDocks(1);
+
         Bike bike = new Bike(Bike.BikeType.STANDARD);
         bike.setStatus(Bike.BikeStatus.RESERVED);
         station.getDocks().getFirst().setOccupiedBike(bike);
+
         stationRepository.save(station);
 
-        // create expired reservation manually
         Reservation reservation = new Reservation(
                 null,
                 rider,
@@ -71,15 +87,12 @@ class ReservationExpirySchedulerTest {
         );
         reservationRepository.save(reservation);
 
-        // run scheduler
         scheduler.expireReservations();
 
-        // verify reservation inactive and bike available in persistence
         Reservation loaded = reservationRepository.findById(reservation.getReservationId());
         assertThat(loaded.isMarkedActive()).isFalse();
+
         Bike persistedBike = bikeRepository.findById(bike.getId());
         assertThat(persistedBike.getStatus()).isEqualTo(Bike.BikeStatus.AVAILABLE);
     }
 }
-
-
