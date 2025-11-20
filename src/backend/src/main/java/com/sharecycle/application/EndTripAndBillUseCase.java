@@ -190,6 +190,10 @@ public class EndTripAndBillUseCase {
         LedgerEntry ledgerEntry = new LedgerEntry(editedTrip.getRider(), editedTrip, bill, planName);
         ledgerEntryRepository.save(ledgerEntry);
 
+        discountRate = editedTrip.getAppliedDiscountRate();
+        double preDiscountTotal = bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge();
+        double discountAmount = Math.max(0.0, preDiscountTotal - bill.getTotalCost());
+
         // Publish BillIssued for UI/history
         eventPublisher.publish(new BillIssuedEvent(
                 editedTrip.getTripID(),
@@ -201,7 +205,9 @@ public class EndTripAndBillUseCase {
                 bill.getTimeCost(),
                 bill.getEBikeSurcharge(),
                 bill.getTotalCost(),
-                planName
+                planName,
+                discountRate,
+                discountAmount
         ));
 
         //Check and add flex credit
