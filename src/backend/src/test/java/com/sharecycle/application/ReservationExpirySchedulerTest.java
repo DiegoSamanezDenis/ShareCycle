@@ -80,6 +80,50 @@ class ReservationExpirySchedulerTest {
         Bike persistedBike = bikeRepository.findById(bike.getId());
         assertThat(persistedBike.getStatus()).isEqualTo(Bike.BikeStatus.AVAILABLE);
     }
+
+
+    @Test
+    @Transactional
+    void nonExpiresReservationAndPersistsBikeReserved() {
+        // rider
+        Rider rider = new Rider("Rider Name", "123 Street", "rider2@example.com", "rider2", "hash", "tok_xyz", PricingPlan.PlanType.PAY_AS_YOU_GO);
+        userRepository.save(rider);
+
+        // station + reserved bike with ongoing timestamp
+        Station station = new Station();
+        station.setName("Expiry Station");
+        station.setLatitude(45.0);
+        station.setLongitude(-73.0);
+        station.setAddress("Address");
+        station.markActive();
+        station.addEmptyDocks(1);
+        Bike bike = new Bike(Bike.BikeType.STANDARD);
+        bike.setStatus(Bike.BikeStatus.RESERVED);
+        station.getDocks().getFirst().setOccupiedBike(bike);
+        stationRepository.save(station);
+
+        // create ongoing reservation manually
+        Reservation reservation = new Reservation(
+                null,
+                rider,
+                station,
+                bike,
+                Instant.now().minusSeconds(10),
+                Instant.now().plusSeconds(300),
+                5,
+                true
+        );
+        reservationRepository.save(reservation);
+
+        // run scheduler
+        scheduler.expireReservations();
+
+        // verify reservation still active and bike still reserved in persistence
+        Reservation loaded = reservationRepository.findById(reservation.getReservationId());
+        assertThat(loaded.isMarkedActive()).isTrue();
+        Bike persistedBike = bikeRepository.findById(bike.getId());
+        assertThat(persistedBike.getStatus()).isEqualTo(Bike.BikeStatus.RESERVED);
+    }
 }
 
 
