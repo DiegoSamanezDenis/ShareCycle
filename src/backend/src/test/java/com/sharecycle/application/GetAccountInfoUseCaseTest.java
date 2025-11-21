@@ -62,8 +62,8 @@ class GetAccountInfoUseCaseTest {
 
     @Test
     void testGetAccount_returnsCorrectInfo() {
-        // Execute the controller method
-        AccountInfoDto response = accountController.getAccountInfo(testUser);
+        // Execute the use case directly
+        AccountInfoDto response = getAccountInfoUseCase.execute(testUser);
 
         // Verify the response
         assertThat(response).isNotNull();
@@ -75,4 +75,5 @@ class GetAccountInfoUseCaseTest {
         assertThat(response.loyaltyTier()).isEqualTo(LoyaltyTier.ENTRY);
         assertThat(response.loyaltyReason()).isEqualTo("Initial Tier");
     }
+
 }
