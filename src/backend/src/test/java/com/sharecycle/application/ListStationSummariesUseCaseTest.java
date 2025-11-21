@@ -9,6 +9,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
+import org.springframework.test.context.ContextConfiguration;
 
 import java.util.List;
 
@@ -16,6 +17,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @SpringBootTest
 @ActiveProfiles("test")
+@ContextConfiguration(classes = {PaymentGatewayTestConfig.class}) // <- include test PaymentGateway bean
 class ListStationSummariesUseCaseTest {
 
     @Autowired
@@ -28,6 +30,8 @@ class ListStationSummariesUseCaseTest {
 
     @BeforeEach
     void setUp() {
+        // Clear the repository if you have a test method for that, otherwise ensure DB is clean
+
         station = new Station();
         station.setName("Summary Station");
         station.setLatitude(45.1234);
@@ -41,6 +45,7 @@ class ListStationSummariesUseCaseTest {
     @Test
     void stationSummaryIncludesCoordinatesAndFullness() {
         List<StationSummaryDto> summaries = useCase.execute();
+
         StationSummaryDto dto = summaries.stream()
                 .filter(s -> s.getStationId().equals(station.getId()))
                 .findFirst()
