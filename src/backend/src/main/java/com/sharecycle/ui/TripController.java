@@ -88,6 +88,13 @@ public class TripController {
             Bill bill = ledgerEntry.getBill();
             LedgerEntry.LedgerStatus ledgerStatus = ledgerEntry.getLedgerStatus();
             String paymentStatus = derivePaymentStatus(ledgerStatus, bill != null ? bill.getTotalCost() : 0.0);
+            double discountRate = 0.0;
+            double discountAmount = 0.0;
+            if (ledgerEntry.getTrip() != null) {
+                discountRate = ledgerEntry.getTrip().getAppliedDiscountRate();
+            }
+            double preDiscount = bill != null ? bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() : 0.0;
+            discountAmount = bill != null ? Math.max(0.0, preDiscount - bill.getTotalCost()) : 0.0;
             return TripCompletionResponse.completed(
                     updatedTrip.getTripID(),
                     updatedTrip.getEndStation() != null ? updatedTrip.getEndStation().getId() : null,
@@ -99,7 +106,9 @@ public class TripController {
                     bill != null ? bill.getEBikeSurcharge() : 0.0,
                     bill != null ? bill.getTotalCost() : 0.0,
                     ledgerStatus,
-                    paymentStatus
+                    paymentStatus,
+                    discountRate,
+                    discountAmount
             );
         }
 
@@ -270,7 +279,9 @@ public class TripController {
             String paymentStatus,
             String message,
             Credit credit,
-            List<StationSuggestion> suggestions
+            List<StationSuggestion> suggestions,
+            Double discountRate,
+            Double discountAmount
     ) {
         public static TripCompletionResponse completed(UUID tripId,
                                                        UUID endStationId,
@@ -282,7 +293,9 @@ public class TripController {
                                                        Double eBikeSurcharge,
                                                        Double totalCost,
                                                        LedgerEntry.LedgerStatus ledgerStatus,
-                                                       String paymentStatus) {
+                                                       String paymentStatus,
+                                                       Double discountRate,
+                                                       Double discountAmount) {
             return new TripCompletionResponse(
                     "COMPLETED",
                     tripId,
@@ -298,7 +311,9 @@ public class TripController {
                     paymentStatus,
                     "Trip completed successfully.",
                     null,
-                    List.of()
+                    List.of(),
+                    discountRate,
+                    discountAmount
             );
         }
 
@@ -322,7 +337,10 @@ public class TripController {
                     null,
                     message,
                     credit,
-                    suggestions
+                    suggestions,
+                    null,
+                    null
+                                                
             );
         }
 

@@ -11,7 +11,7 @@ public class PayAsYouGoStrategy implements PricingStrategyRepository {
     private static final double DEFAULT_EBIKE_SURCHARGE_PER_MINUTE = 0.60; // $0.01 per second
 
     @Override
-    public Bill calculate(Trip trip, PricingPlan plan) {
+    public Bill calculate(Trip trip, PricingPlan plan, double discountRate) {
         int minutes = trip.getDurationMinutes();
         double perMinuteRate = plan != null ? plan.getPerMinuteRate() : DEFAULT_PER_MINUTE_RATE;
         double baseCost = plan != null ? plan.getBaseCost() : DEFAULT_BASE_COST;
@@ -25,7 +25,12 @@ public class PayAsYouGoStrategy implements PricingStrategyRepository {
             eBikeSurcharge = minutes * eBikeSurchargeRate;
         }
 
-        return new Bill(baseCost, timeCost, eBikeSurcharge);
+        double totalBeforeDiscount = baseCost + timeCost + eBikeSurcharge;
+        double effectiveDiscount = Math.max(0.0, Math.min(1.0, discountRate));
+        double discountTotal = totalBeforeDiscount * (1.0 - effectiveDiscount);
+        discountTotal = Math.round(discountTotal * 100.0) / 100.0;
+
+        return new Bill(null, null, baseCost, timeCost, eBikeSurcharge, discountTotal);
     }
 
     public String displayInfo() {

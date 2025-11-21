@@ -58,6 +58,8 @@ type TripCompletionSuccess = {
   ledgerStatus: LedgerStatus | null;
   paymentStatus: PaymentStatus;
   message: string;
+  discountRate?: number;
+  discountAmount?: number;
 };
 
 type TripCompletionBlocked = {
@@ -981,6 +983,14 @@ export default function DashboardPage() {
                       ${tripCompletion.baseCost.toFixed(2)}
                     </span>
                   </div>
+                  {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
+                    <div className={styles.billItem}>
+                      <span className={styles.billItemLabel}>Loyalty Discount: </span>
+                      <span className={styles.billItemValue}>
+                        {Math.round(tripCompletion.discountRate * 100)}% (-${(tripCompletion.discountAmount ?? 0).toFixed(2)})
+                      </span>
+                    </div>
+                  )}
                   <div className={styles.billItem}>
                     <span className={styles.billItemLabel}>Time Cost:</span>
                     <span className={styles.billItemValue}>
@@ -996,6 +1006,9 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+                {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
+                  <p>Loyalty discount applied</p>
+                )}
                 <div className={styles.totalRow}>
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
