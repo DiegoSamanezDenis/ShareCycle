@@ -102,9 +102,11 @@ public class TripUseCaseTest {
         int startBikeDockedNumber = managedStartStation.getBikesDocked();
         Bike bikeForTrip = managedStartStation.getFirstDockWithBike().getOccupiedBike();
 
+        // Assertion before trip start
+        LocalDateTime tripStart = LocalDateTime.now().minusMinutes(10);
         Trip trip = startTripUseCase.execute(
                 UUID.randomUUID(),
-                LocalDateTime.now(),
+                tripStart,
                 0,
                 rider,
                 bikeForTrip,
