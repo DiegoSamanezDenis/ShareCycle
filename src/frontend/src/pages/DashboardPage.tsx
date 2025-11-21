@@ -1154,7 +1154,8 @@ export default function DashboardPage() {
             </div>
             <div className={styles.feedbackRow}>
               Base: ${tripCompletion.baseCost.toFixed(2)} + Time: $
-              {tripCompletion.timeCost.toFixed(2)}
+              {tripCompletion.timeCost.toFixed(2)} - Discount: $
+              {(tripCompletion.discountAmount ?? 0).toFixed(2)}
               {tripCompletion.eBikeSurcharge > 0 && (
                 <span> + E-Bike: ${tripCompletion.eBikeSurcharge.toFixed(2)}</span>
               )}

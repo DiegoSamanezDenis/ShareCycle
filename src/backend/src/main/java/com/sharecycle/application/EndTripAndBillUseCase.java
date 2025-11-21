@@ -166,10 +166,14 @@ public class EndTripAndBillUseCase {
                     
             switch (tier) {
                 case GOLD : discountRate = 0.15;
+                break;
                 case SILVER : discountRate = 0.10;
-                case BRONZE : discountRate = 0.05;
+                break;
+                case BRONZE : discountRate =0.05;
+                break;
                 default : discountRate = 0.0;
             }
+        
         } catch (Exception e) {
             logger.warn("Failed to determine loyalty tier", e);
             discountRate = 0.0;
