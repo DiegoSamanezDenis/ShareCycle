@@ -131,9 +131,10 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
       setHistoryError(null);
       try {
         const entries = await fetchTripHistory(filtersToApply, token);
-        setHistory(entries);
+        const safeEntries = Array.isArray(entries) ? entries : [];
+        setHistory(safeEntries);
         // If the selected trip is no longer present, clear details.
-        if (selectedTripId && !entries.some((entry) => entry.tripId === selectedTripId)) {
+        if (selectedTripId && !safeEntries.some((entry) => entry.tripId === selectedTripId)) {
           setSelectedTripId(null);
           setTripDetails(null);
         }

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
+import type { FormEvent, JSX } from "react";
 import { Map, Marker as PigeonMarker } from "pigeon-maps";
 
 import { apiRequest } from "../api/client";
@@ -8,7 +8,7 @@ import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
 import RideHistory from "../components/RideHistory";
 import styles from "./TripReceipt.module.css";
-import type { StationDetails, StationSummary } from "../types/station";
+import type { DockSummary, StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
 import LoyaltyBadge from "../components/LoyaltyBadge";
@@ -208,6 +208,20 @@ function formatStationStatus(status?: string | null): string {
 function formatDockStatus(status?: string | null): string {
   if (!status) return "Unknown";
   return DOCK_STATUS_LABEL[status] ?? status;
+}
+
+function renderBikeTypeLabelFromDock(type?: DockSummary["bikeType"] | null): string {
+  if (type === "E_BIKE") {
+    return "E-Bike";
+  }
+  if (type === "STANDARD") {
+    return "Standard";
+  }
+  return "Unknown";
+}
+
+function stationHasEBikes(summary?: Pick<StationSummary, "eBikesDocked"> | null): boolean {
+  return Boolean(summary && summary.eBikesDocked > 0);
 }
 
 function formatPaymentStatus(status?: PaymentStatus | null): string {
@@ -493,12 +507,37 @@ export default function DashboardPage() {
     [],
   );
 
-  const statusLegend = useMemo<ReadonlyArray<[keyof typeof statusColors, string]>>(
+  const statusLegend = useMemo<
+    ReadonlyArray<{ label: string; key?: keyof typeof statusColors; sample?: JSX.Element }>
+  >(
     () => [
-      ["EMPTY", "empty"],
-      ["OCCUPIED", "occupied"],
-      ["FULL", "full"],
-      ["OUT_OF_SERVICE", "out of service"],
+      { key: "EMPTY", label: "empty" },
+      { key: "OCCUPIED", label: "occupied" },
+      { key: "FULL", label: "full" },
+      { key: "OUT_OF_SERVICE", label: "out of service" },
+      {
+        label: "has e-bike",
+        sample: (
+          <span
+            style={{
+              width: 18,
+              height: 18,
+              borderRadius: "50%",
+              background: "#22c55e",
+              position: "relative",
+              display: "inline-flex",
+              alignItems: "center",
+              justifyContent: "center",
+              color: "#fff",
+              fontWeight: 700,
+              fontSize: 12,
+            }}
+            aria-label="E-bike indicator"
+          >
+            E
+          </span>
+        ),
+      },
     ],
     [],
   );
@@ -816,20 +855,23 @@ export default function DashboardPage() {
               flexWrap: "wrap",
             }}
           >
-            {statusLegend.map(([category, label]) => (
+            {statusLegend.map((entry, index) => (
               <span
-                key={category}
+                key={`${entry.label}-${index}`}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                <span
-                  style={{
-                    width: 18,
-                    height: 18,
-                    borderRadius: 3,
-                    background: statusColors[category],
-                  }}
-                />
-                {label}
+                {entry.sample ??
+                  (entry.key ? (
+                    <span
+                      style={{
+                        width: 18,
+                        height: 18,
+                        borderRadius: 3,
+                        background: statusColors[entry.key],
+                      }}
+                    />
+                  ) : null)}
+                {entry.label}
               </span>
             ))}
           </div>
@@ -848,6 +890,7 @@ export default function DashboardPage() {
             const status = (summary.status as keyof typeof statusColors) ?? "EMPTY";
             const markerColor = statusColors[status] ?? "#6b7280";
             const statusLabel = (summary.status ?? "").toLowerCase();
+            const showEBikeBadge = stationHasEBikes(summary);
             return (
               <PigeonMarker
                 key={summary.stationId}
@@ -875,16 +918,39 @@ export default function DashboardPage() {
                 >
                   <span
                     aria-label={`Station status ${statusLabel}`}
-                    title={`${summary.name ?? "Station"} - ${statusLabel}`}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      background: markerColor,
-                      border: "3px solid #fff",
-                      boxShadow: "0 0 0 3px rgba(0,0,0,0.35)",
-                    }}
-                  />
+                    title={`${summary.name ?? "Station"} - ${statusLabel}${
+                      showEBikeBadge ? " (contains e-bikes)" : ""
+                    }`}
+                    style={{ position: "relative", display: "inline-flex" }}
+                  >
+                    <span
+                      style={{
+                        width: 40,
+                        height: 40,
+                        borderRadius: "50%",
+                        background: markerColor,
+                        border: "3px solid #fff",
+                        boxShadow: "0 0 0 3px rgba(0,0,0,0.35)",
+                        display: "inline-block",
+                      }}
+                    />
+                    {showEBikeBadge && (
+                      <span
+                        style={{
+                          position: "absolute",
+                          inset: 0,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          fontWeight: 800,
+                          color: "#fff",
+                          textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+                        }}
+                      >
+                        E
+                      </span>
+                    )}
+                  </span>
                   <span
                     style={{
                       background: "rgba(255,255,255,0.9)",
@@ -1253,6 +1319,10 @@ export default function DashboardPage() {
                     Bikes available: {summary.bikesAvailable} | Docked: {summary.bikesDocked} |
                     Free docks: {summary.freeDocks} | Capacity: {summary.capacity}
                   </p>
+                  <p style={{ fontSize: 13, color: "#4b5563" }}>
+                    E-bikes available: {summary.eBikesAvailable} | E-bikes docked:{" "}
+                    {summary.eBikesDocked}
+                  </p>
                   {loadingStationDetails && <p>Loading station details...</p>}
                   {stationDetailsError && <p role="alert">{stationDetailsError}</p>}
 
@@ -1270,6 +1340,8 @@ export default function DashboardPage() {
                         const isBikeDocked =
                           (dock.status === "OCCUPIED" || dock.status === "RESERVED") &&
                           Boolean(bikeId);
+                        const isEBikeDocked = dock.bikeType === "E_BIKE";
+                        const bikeTypeLabel = renderBikeTypeLabelFromDock(dock.bikeType);
                         const isReservedBike =
                           Boolean(activeReservationBikeId && bikeId === activeReservationBikeId);
                         const reserveDisabled =
@@ -1301,10 +1373,41 @@ export default function DashboardPage() {
                               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                             }}
                           >
-                            <strong>{formatDockStatus(dock.status)}</strong>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <strong>{formatDockStatus(dock.status)}</strong>
+                              {isBikeDocked && isEBikeDocked && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: "50%",
+                                    background: "#1d4ed8",
+                                    color: "#fff",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                  }}
+                                  title="E-bike docked"
+                                >
+                                  E
+                                </span>
+                              )}
+                            </div>
                             <div style={{ fontSize: 12 }}>
                               Dock {dock.dockId.slice(0, 8)}
-                              {bikeId && <div>Bike {bikeId.slice(0, 8)}</div>}
+                              {bikeId && (
+                                <div>
+                                  Bike {bikeId.slice(0, 8)} • {bikeTypeLabel}
+                                </div>
+                              )}
                             </div>
 
                             {isRider && isBikeDocked && (

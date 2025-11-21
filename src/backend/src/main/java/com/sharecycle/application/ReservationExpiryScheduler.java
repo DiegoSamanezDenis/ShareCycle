@@ -4,7 +4,6 @@ import com.sharecycle.domain.event.ReservationExpiredEvent;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Reservation;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
@@ -31,7 +30,7 @@ public class ReservationExpiryScheduler {
 
         for (Reservation reservation : expiredReservations) {
             reservation.expire();
-            reservation.getBike().setStatus(Bike.BikeStatus.AVAILABLE);
+            reservation.getBike().markAvailable();
             reservation.getBike().setReservationExpiry(null);
             // Persist the bike status flip to ensure DB reflects availability
             bikeRepository.save(reservation.getBike());

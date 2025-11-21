@@ -44,7 +44,7 @@ public class ReserveBikeUseCase {
         if (station.isOutOfService()) {
             throw new IllegalStateException("Station is not active.");
         }
-        if (!(bike.getStatus().equals(Bike.BikeStatus.AVAILABLE))) {
+        if (!bike.isAvailable()) {
             throw new IllegalStateException("Bike is not available.");
         }
         if (bike.getCurrentStation() == null || !station.getId().equals(bike.getCurrentStation().getId())) {
@@ -54,8 +54,7 @@ public class ReserveBikeUseCase {
             throw new IllegalStateException("Bike is not docked at the requested station.");
         }
 
-        // Transition bike state using State Pattern
-		bike.setStatus(Bike.BikeStatus.RESERVED);
+        bike.reserve();
 
         int extraMinutes = 0;
         try {

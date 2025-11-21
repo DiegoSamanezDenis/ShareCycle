@@ -77,17 +77,17 @@ public class StartTripUseCase {
                 throw new IllegalStateException("Rider must use the reserved bike.");
             }
         } else {
-            if (managedBike.getStatus() == Bike.BikeStatus.RESERVED
+            if (managedBike.isReserved()
                     || reservationRepository.hasActiveReservationForBike(managedBike.getId())) {
                 throw new IllegalStateException("Bike is reserved by another rider.");
             }
-            if (managedBike.getStatus() != Bike.BikeStatus.AVAILABLE) {
+            if (!managedBike.isAvailable()) {
                 throw new IllegalStateException("Bike is not available.");
             }
         }
 
         managedStartStation.undockBike(managedBike);
-        managedBike.setStatus(Bike.BikeStatus.ON_TRIP);
+        managedBike.checkout();
         managedBike.setCurrentStation(null);
         managedBike.setReservationExpiry(null);
         // Persist station and bike state before inserting trip row to keep UI and DB in sync

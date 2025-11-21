@@ -361,7 +361,8 @@ public class BmsFacade {
                 .map(dock -> new StationDetailsDto.DockDto(
                         dock.getId(),
                         dock.getStatus(),
-                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getId() : null
+                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getId() : null,
+                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getType() : null
                 ))
                 .toList();
         boolean isOperator = false;
