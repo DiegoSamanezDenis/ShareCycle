@@ -7,7 +7,7 @@ type LoyaltyStatus = {
 };
 
 const TIER_COLORS = {
-    ENTRY: "#6b7280",
+    ENTRY: "#e517c3ff",
     BRONZE: "#cd7f32",
     SILVER: "#94a3b8",
     GOLD: "#eab308"

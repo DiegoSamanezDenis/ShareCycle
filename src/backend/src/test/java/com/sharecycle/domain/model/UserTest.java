@@ -14,11 +14,11 @@ class UserTest {
 
     @BeforeEach
     void setup() {
-        user = new User(UUID.randomUUID(), "John Doe", "123 Street", "john@example.com", "john_doe",
-                "hash123", "USER", "token123", LocalDateTime.now(), LocalDateTime.now());
-    }
+        user = new User(UUID.randomUUID(), "Bhaskar Das", "123 Street", "bhaskar@example.com", "john_doe",
+                "hash123", "USER", "token123", LocalDateTime.now(), LocalDateTime.now(), 0.0);
 
-    @Test
+    }
+        @Test
     void testGettersSetters() {
         user.setFullName("Alice");
         assertEquals("Alice", user.getFullName());

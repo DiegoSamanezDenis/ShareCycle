@@ -11,6 +11,7 @@ import type { StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
 import LoyaltyBadge from "../components/LoyaltyBadge";
+import { Link } from "react-router-dom";
 
 type ReservationResponse = {
   reservationId: string;
@@ -758,6 +759,9 @@ export default function DashboardPage() {
         <button type="button" onClick={() => auth.logout()}>
           Logout
         </button>
+        <Link to="/account">
+    <button type="button">My Account</button>
+  </Link>
       </header>
 
       <section>
