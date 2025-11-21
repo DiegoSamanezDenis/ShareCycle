@@ -1,20 +1,25 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.event.TripStartedEvent;
+import java.time.LocalDateTime;
+import java.util.UUID;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.sharecycle.domain.TripBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
+import com.sharecycle.domain.event.TripStartedEvent;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.domain.model.*;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 @Service
 public class StartTripUseCase {
     private final JpaBikeRepository bikeRepository;

@@ -1,9 +1,9 @@
 package com.sharecycle.domain;
 
-import com.sharecycle.domain.model.PricingPlan;
-
 import java.util.List;
 import java.util.UUID;
+
+import com.sharecycle.domain.model.PricingPlan;
 
 public final class DefaultPricingPlans {
 

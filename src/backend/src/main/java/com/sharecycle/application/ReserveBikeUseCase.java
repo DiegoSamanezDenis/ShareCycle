@@ -1,14 +1,19 @@
 package com.sharecycle.application;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.sharecycle.domain.ReservationBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.ReservationCreatedEvent;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
-import com.sharecycle.domain.model.*;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReserveBikeUseCase {
@@ -29,11 +34,11 @@ public class ReserveBikeUseCase {
     }
 
     @Transactional
-    public Reservation execute(Rider rider, Station station, Bike bike, int expiresAfterMinutes) {
-        if (reservationRepository.existsByRiderId(rider.getUserId())) {
+    public Reservation execute(User user, Station station, Bike bike, int expiresAfterMinutes) {
+        if (reservationRepository.existsByRiderId(user.getUserId())) {
             throw new IllegalStateException("Rider already has an active reservation.");
         }
-        if (tripRepository.riderHasActiveTrip(rider.getUserId())) {
+        if (tripRepository.riderHasActiveTrip(user.getUserId())) {
             throw new IllegalStateException("Rider already has an active trip.");
         }
         if (station.isOutOfService()) {
@@ -52,8 +57,11 @@ public class ReserveBikeUseCase {
         // Transition bike state using State Pattern
 		bike.setStatus(Bike.BikeStatus.RESERVED);
 
+        // Create Rider representation for Reservation (domain model requires Rider)
+        Rider riderForReservation = (user instanceof Rider r) ? r : new Rider(user);
+        
         // Build and persist reservation
-        Reservation reservation = new ReservationBuilder().rider(rider)
+        Reservation reservation = new ReservationBuilder().rider(riderForReservation)
                 .station(station)
                 .bike(bike)
                 .expiresAfterMinutes(expiresAfterMinutes)
@@ -64,7 +72,7 @@ public class ReserveBikeUseCase {
         reservationRepository.save(reservation);
 
         // Publish domain event
-        eventPublisher.publish(new ReservationCreatedEvent(reservation.getReservationId(), rider.getUserId()));
+        eventPublisher.publish(new ReservationCreatedEvent(reservation.getReservationId(), user.getUserId()));
 
         return reservation;
     }

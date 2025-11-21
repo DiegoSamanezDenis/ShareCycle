@@ -1,16 +1,17 @@
 package com.sharecycle.application;
 
+import java.util.Optional;
+import java.util.UUID;
+
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+
 import com.sharecycle.application.exception.InvalidCredentialsException;
 import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.UserRepository;
 import com.sharecycle.service.PasswordHasher;
 import com.sharecycle.service.SessionStore;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
-import java.util.Optional;
-import java.util.UUID;
 
 @Service
 public class LoginUseCase {
@@ -54,6 +55,13 @@ public class LoginUseCase {
         }
 
         String token = sessionStore.createSession(user.getUserId());
+        
+        // Initialize operator mode for operators
+        if ("OPERATOR".equals(user.getRole())) {
+            sessionStore.setOperatorMode(token, "OPERATOR");
+            logger.info("Initialized operator session for user {} in OPERATOR mode", user.getUserId());
+        }
+        
         return new LoginResponse(user.getUserId(), user.getUsername(), user.getRole(), token);
     }
 

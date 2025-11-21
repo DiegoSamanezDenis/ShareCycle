@@ -29,7 +29,7 @@ services:
       DB_USER: sharecycle
       DB_PASSWORD: devpw
     ports:
-      - "8080:8080"
+      - "8081:8081"
     depends_on:
       db:
         condition: service_healthy

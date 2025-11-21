@@ -4,18 +4,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import com.sharecycle.domain.event.*;
-import com.sharecycle.domain.model.*;
-import com.sharecycle.infrastructure.persistence.JpaUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.sharecycle.domain.DefaultPricingPlans;
 import com.sharecycle.domain.MonthlySubscriberStrategy;
 import com.sharecycle.domain.PayAsYouGoStrategy;
 import com.sharecycle.domain.TripBuilder;
+import com.sharecycle.domain.event.BillIssuedEvent;
+import com.sharecycle.domain.event.DomainEventPublisher;
+import com.sharecycle.domain.event.FlexCreditAddedEvent;
+import com.sharecycle.domain.event.StationStatusChangedEvent;
+import com.sharecycle.domain.event.TripEndedEvent;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Bill;
+import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.PricingPlan;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaDockRepository;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
@@ -23,8 +36,7 @@ import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.PricingStrategyRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
-
-import org.springframework.transaction.annotation.Transactional;
+import com.sharecycle.infrastructure.persistence.JpaUserRepository;
 
 @Service
 public class EndTripAndBillUseCase {

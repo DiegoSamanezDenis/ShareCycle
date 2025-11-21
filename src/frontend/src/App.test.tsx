@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
 import { appConfig } from "./config/env";
 import { routes } from "./routes";
-import { AuthProvider } from "./auth/AuthContext";
 
 function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
   render(
@@ -34,6 +34,6 @@ describe("App routing", () => {
 
 describe("App configuration", () => {
   it("exposes an API base URL", () => {
-    expect(appConfig.apiUrl).toBe("http://localhost:8080/api");
+    expect(appConfig.apiUrl).toBe("http://localhost:8081/api");
   });
 });

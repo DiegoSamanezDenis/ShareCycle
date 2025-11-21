@@ -1,16 +1,17 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent } from "react";
 import { Map, Marker as PigeonMarker } from "pigeon-maps";
+import type { FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiRequest } from "../api/client";
+import { payLedger } from "../api/payments";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
+import LoyaltyBadge from "../components/LoyaltyBadge";
 import RideHistory from "../components/RideHistory";
-import styles from "./TripReceipt.module.css";
+import { RoleToggle } from "../components/RoleToggle";
 import type { StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
-import { payLedger } from "../api/payments";
-import LoyaltyBadge from "../components/LoyaltyBadge";
+import styles from "./TripReceipt.module.css";
 
 type ReservationResponse = {
   reservationId: string;
@@ -910,7 +911,14 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {auth.role === "RIDER" && (
+      {auth.role === "OPERATOR" && (
+        <section>
+          <h2>Account</h2>
+          <RoleToggle />
+        </section>
+      )}
+
+      {auth.effectiveRole === "RIDER" && (
         <section>
           <h2>My Ride</h2>
           <LoyaltyBadge userId={auth.userId} token={auth.token} />
@@ -1026,7 +1034,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {auth.role === "OPERATOR" && (
+      {auth.effectiveRole === "OPERATOR" && (
         <section>
           <h2>Operator Controls</h2>
           <form onSubmit={handleMoveBike}>
@@ -1166,8 +1174,8 @@ export default function DashboardPage() {
                   : null;
               const docks = detailed?.docks ?? [];
               const stationIdForActions = detailed?.stationId ?? summary.stationId;
-              const isRider = auth.role === "RIDER";
-              const isOperator = auth.role === "OPERATOR";
+              const isRider = auth.effectiveRole === "RIDER";
+              const isOperator = auth.effectiveRole === "OPERATOR";
               const reservationActive =
                 !rideActionInFlight &&
                 Boolean(reservationResult?.active) &&
@@ -1431,7 +1439,7 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {auth.role === "OPERATOR" ? (
+      {auth.effectiveRole === "OPERATOR" ? (
         <section>
           <h2>Ride history</h2>
           <p>Billing history is available to riders only.</p>
