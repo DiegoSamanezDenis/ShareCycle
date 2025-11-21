@@ -1,5 +1,6 @@
 package com.sharecycle.application;
 
+import com.sharecycle.domain.event.BikeStatusChangedEvent;
 import com.sharecycle.domain.event.TripStartedEvent;
 import com.sharecycle.domain.TripBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
@@ -92,7 +93,6 @@ public class StartTripUseCase {
         managedBike.setReservationExpiry(null);
         // Persist station and bike state before inserting trip row to keep UI and DB in sync
         stationRepository.save(managedStartStation);
-        bikeRepository.save(managedBike);
 
         TripBuilder tripBuilder = new TripBuilder();
         if (tripID != null) {
@@ -109,6 +109,8 @@ public class StartTripUseCase {
             reservationRepository.save(activeReservation);
             managedBike.setReservationExpiry(null);
         }
+
+        bikeRepository.save(managedBike);
 
         eventPublisher.publish(new TripStartedEvent(trip.getTripID(), trip.getStartTime(), trip.getEndTime(), trip.getDurationMinutes(),
                 managedRider, managedBike, managedStartStation, null));
