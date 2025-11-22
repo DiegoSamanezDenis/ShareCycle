@@ -16,7 +16,7 @@ public class Rider extends User {
                 user.getEmail(),
                 user.getUsername(),
                 user.getPasswordHash(),
-                "RIDER",
+                user.getRole(), // Preserve original role (OPERATOR or RIDER)
                 user.getPaymentMethodToken(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),

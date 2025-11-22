@@ -45,17 +45,19 @@ public class StartTripUseCase {
     public Trip execute(UUID tripID,
                         LocalDateTime startTime,
                         int durationMinutes,
-                        Rider rider,
+                        User user,
                         Bike bike,
                         Station startStation) {
 
-        User user = userRepository.findById(rider.getUserId());
-        if (!(user instanceof Rider managedRider)) {
-            throw new IllegalStateException("Only riders can start trips.");
-        }
-        if (tripRepository.riderHasActiveTrip(managedRider.getUserId())) {
+        // Validate that the user can start trips (already validated by BmsFacade)
+        // Verify no active trip exists
+        if (tripRepository.riderHasActiveTrip(user.getUserId())) {
             throw new IllegalStateException("Rider already has an active trip.");
         }
+        
+        // For TripBuilder and domain objects, create a Rider instance
+        // This is ONLY for the domain model, not for persistence
+        Rider riderForDomain = new Rider(user);
 
         Bike managedBike = bikeRepository.findById(bike.getId());
         if (managedBike == null) {
@@ -76,7 +78,7 @@ public class StartTripUseCase {
         if (managedStartStation.findDockWithBike(managedBike.getId()).isEmpty()) {
             throw new IllegalStateException("Bike is not docked at the specified station.");
         }
-        Reservation activeReservation = reservationRepository.findByRiderId(managedRider.getUserId());
+        Reservation activeReservation = reservationRepository.findByRiderId(user.getUserId());
         if (activeReservation != null) {
             if (!activeReservation.getBike().getId().equals(managedBike.getId())) {
                 throw new IllegalStateException("Rider must use the reserved bike.");
@@ -104,7 +106,7 @@ public class StartTripUseCase {
             tripBuilder.setTripId(tripID);
         }
         LocalDateTime effectiveStart = startTime != null ? startTime : LocalDateTime.now();
-        tripBuilder.start(managedRider, managedStartStation, managedBike, effectiveStart);
+        tripBuilder.start(riderForDomain, managedStartStation, managedBike, effectiveStart);
         Trip trip = tripBuilder.build();
 
         // Now persist the trip (unique constraints on bike/user should be free because previous trip ended)
@@ -116,7 +118,7 @@ public class StartTripUseCase {
         }
 
         eventPublisher.publish(new TripStartedEvent(trip.getTripID(), trip.getStartTime(), trip.getEndTime(), trip.getDurationMinutes(),
-                managedRider, managedBike, managedStartStation, null));
+                riderForDomain, managedBike, managedStartStation, null));
 
         return trip;
     }
