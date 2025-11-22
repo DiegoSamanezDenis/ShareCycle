@@ -12,6 +12,7 @@ import type { StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
 import LoyaltyBadge from "../components/LoyaltyBadge";
+import TierNotificationToast from "../components/TierNotificationToast";
 import { Link } from "react-router-dom";
 
 type ReservationResponse = {
@@ -781,6 +782,7 @@ export default function DashboardPage() {
 
   return (
     <main>
+      <TierNotificationToast token={auth.token} />
       <header>
         <h1>ShareCycle Dashboard</h1>
         <p>

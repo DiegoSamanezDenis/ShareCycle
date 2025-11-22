@@ -2,15 +2,10 @@ package com.sharecycle.service;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sharecycle.application.RegisterOperatorUseCase;
 import com.sharecycle.application.RegisterRiderUseCase;
-import com.sharecycle.domain.model.Bike;
-import com.sharecycle.domain.model.Station;
-import com.sharecycle.domain.model.Trip;
-import com.sharecycle.domain.model.User;
-import com.sharecycle.domain.repository.JpaBikeRepository;
-import com.sharecycle.domain.repository.JpaStationRepository;
-import com.sharecycle.domain.repository.TripRepository;
-import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.domain.model.*;
+import com.sharecycle.domain.repository.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -21,7 +16,9 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
 import java.io.InputStream;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 import java.util.UUID;
 
@@ -37,6 +34,8 @@ public class TempNameDataSeeder {
     // User & Trip Repos
     private final UserRepository userRepository;
     private final TripRepository tripRepository;
+    private final ReservationRepository reservationRepository;
+    private final RegisterOperatorUseCase registerOperatorUseCase;
     private final RegisterRiderUseCase registerRiderUseCase;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -45,12 +44,15 @@ public class TempNameDataSeeder {
                               JpaStationRepository stationRepository,
                               UserRepository userRepository,
                               TripRepository tripRepository,
-                              RegisterRiderUseCase registerRiderUseCase) {
+                              RegisterOperatorUseCase registerOperatorUseCase,
+                              RegisterRiderUseCase registerRiderUseCase, ReservationRepository reservationRepository) {
         this.bikeRepository = bikeRepository;
         this.stationRepository = stationRepository;
         this.userRepository = userRepository;
         this.tripRepository = tripRepository;
+        this.registerOperatorUseCase = registerOperatorUseCase;
         this.registerRiderUseCase = registerRiderUseCase;
+        this.reservationRepository = reservationRepository;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -58,10 +60,16 @@ public class TempNameDataSeeder {
     public void initData() {
         logger.info("Loading seed data...");
 
+        // 1. Load Infrastructure FIRST
         loadBikes();
         loadStations();
 
-        createBronzeRider();
+        // 2. Create Users & History
+        createOperator();
+        createBronzeRider();     // The existing 12-trip user
+        createPreBronzeRider();
+        createPreSilverRider();
+        createPreGoldRider();
     }
 
     private void loadBikes() {
@@ -92,6 +100,19 @@ public class TempNameDataSeeder {
         }
     }
 
+    private void createOperator() {
+        if (!userRepository.existsByUsername("smoothoperator")) {
+            registerOperatorUseCase.register(
+                    "Smooth Operator",
+                    "100 Demo Street, Montreal, QC",
+                    "smooth@sharecycle.com",
+                    "SmoothOperator",
+                    "wowpass",
+                    null
+            );
+        }
+    }
+
     private void createBronzeRider() {
         String username = "bronze_rider";
         if (userRepository.existsByUsername(username)) return;
@@ -106,8 +127,81 @@ public class TempNameDataSeeder {
                 "PAY_AS_YOU_GO"
         );
 
-        // Guaranteed to work because loadBikes() ran first
+        // Seed 12 trips (Already Bronze)
         seedTrips(result.userId(), 12, LocalDateTime.now().minusWeeks(2));
+    }
+
+    // --- NEW METHOD ---
+    private void createPreBronzeRider() {
+        String username = "entry_rider";
+        if (userRepository.existsByUsername(username)) return;
+
+        RegisterRiderUseCase.RegistrationResult result = registerRiderUseCase.register(
+                "Entry To Bronze",
+                "123 Entry Blvd",
+                "entry@sharecycle.com",
+                username,
+                "password",
+                "pm_card_visa",
+                "PAY_AS_YOU_GO"
+        );
+
+        // Seed 9 trips (1 short of Bronze)
+        seedTrips(result.userId(), 9, LocalDateTime.now().minusWeeks(2));
+    }
+
+    private void createPreSilverRider() {
+        String username = "silver_rider";
+        if (userRepository.existsByUsername(username)) return;
+
+        RegisterRiderUseCase.RegistrationResult result = registerRiderUseCase.register(
+                "Silver Hopeful", "456 Silver St", "silver@sharecycle.com",
+                username, "password", "pm_card_visa", "PAY_AS_YOU_GO"
+        );
+
+        UUID userId = result.userId();
+
+        // 1. Seed Consistency
+        // Month -2: 6 Trips (PASS)
+        seedTrips(userId, 6, LocalDateTime.now().minusMonths(2));
+
+        // Month -1: 6 Trips (PASS)
+        seedTrips(userId, 6, LocalDateTime.now().minusMonths(1));
+
+        // Current Month: 4 Trips (FAIL - Needs 1 more to reach 5)
+        seedTrips(userId, 4, LocalDateTime.now().minusHours(24));
+
+        // 2. Seed Reservations (Target: At least 5)
+        // Create 4 Reservations (FAIL - Needs 1 more to reach 5)
+        seedReservations(userId, 4);
+
+    }
+
+    private void createPreGoldRider() {
+        String username = "gold_hopeful";
+        if (userRepository.existsByUsername(username)) return;
+
+        RegisterRiderUseCase.RegistrationResult result = registerRiderUseCase.register(
+                "Gold Hopeful", "789 Gold Rd", "gold@sharecycle.com",
+                username, "password", "tok_gold", "PAY_AS_YOU_GO"
+        );
+        UUID userId = result.userId();
+
+        // 1. Seed Reservations
+        seedReservations(userId, 10);
+
+        // 2. Seed History: 12 weeks of solid 6 trips/week
+        LocalDateTime threeMonthsAgo = LocalDateTime.now().minusMonths(3);
+
+        for (int i = 0; i < 12; i++) {
+            LocalDateTime weekDate = threeMonthsAgo.plusWeeks(i);
+            seedTrips(userId, 6, weekDate);
+        }
+
+        // 3. Seed CURRENT Week: 5 trips TODAY
+        seedTrips(userId, 4, LocalDateTime.now().minusHours(4));
+
+        logger.info(">>> SEEDED PRE-GOLD: 12 weeks of history + 5 trips TODAY.");
     }
 
     private void seedTrips(UUID userId, int count, LocalDateTime startDate) {
@@ -136,5 +230,28 @@ public class TempNameDataSeeder {
             tripRepository.save(trip);
         }
         logger.info(">>> SEEDED {} TRIPS FOR USER: {}", count, userId);
+    }
+
+    private void seedReservations(UUID userId, int count) {
+        User user = userRepository.findById(userId);
+        Bike bike = bikeRepository.findAll().stream().findFirst().orElse(null);
+        Station station = stationRepository.findAll().stream().findFirst().orElse(null);
+
+        if (user == null || bike == null || station == null) return;
+
+        for (int i = 0; i < count; i++) {
+            Reservation r = new Reservation(
+                    UUID.randomUUID(),
+                    (com.sharecycle.domain.model.Rider) user,
+                    station,
+                    bike,
+                    Instant.now().minusSeconds(86400 * (i + 1)), // Days ago
+                    Instant.now().minusSeconds(86400 * i), // Expired
+                    15,
+                    false // Inactive/Expired history
+            );
+            reservationRepository.save(r);
+        }
+        logger.info(">>> SEEDED {} RESERVATIONS FOR USER: {}", count, userId);
     }
 }
