@@ -19,7 +19,7 @@ cd src/frontend && npm install
 cd src
 docker compose up -d --build
 # Health check
-curl http://localhost:8081/health
+curl http://localhost:8080/health
 ```
 
 3) Run the frontend
@@ -57,9 +57,9 @@ npm install
 ```
 
 ## Environment
-- Copy `.env.example` to `.env` (or `.env.local`) and set `VITE_API_URL` to your backend, e.g. `http://localhost:8081/api`.
-- The app reads `import.meta.env.VITE_API_URL` and falls back to `http://localhost:8081/api` (see `src/frontend/src/config/env.ts`).
-- If your backend does not serve under `/api`, use `http://localhost:8081`.
+- Copy `.env.example` to `.env` (or `.env.local`) and set `VITE_API_URL` to your backend, e.g. `http://localhost:8080/api`.
+- The app reads `import.meta.env.VITE_API_URL` and falls back to `http://localhost:8080/api` (see `src/frontend/src/config/env.ts`).
+- If your backend does not serve under `/api`, use `http://localhost:8080`.
 
 ## Scripts
 - `npm run dev` — start Vite dev server at http://localhost:5173
@@ -72,7 +72,7 @@ npm install
 - `npm run preview` — serve the production bundle locally
 
 ### Frontend API usage
-- Base URL: `VITE_API_URL` (defaults to `http://localhost:8081/api`)
+- Base URL: `VITE_API_URL` (defaults to `http://localhost:8080/api`)
 - Auth header: backend expects an `Authorization` header with an opaque token returned by login
 - Example
 ```
@@ -156,7 +156,7 @@ Option A — One command (DB + API via Docker Compose)
 cd src
 docker compose up -d --build
 ```
-- Health check: `curl http://localhost:8081/health` → `ok`
+- Health check: `curl http://localhost:8080/health` → `ok`
 - Stop: `docker compose down` (add `-v` to wipe DB volume)
 
 Option B — Backend only (no Docker; H2 profile)
@@ -165,7 +165,7 @@ cd src/backend
 ./mvnw spring-boot:run -Dspring-boot.run.profiles=local
 # Windows: mvnw.cmd ...
 ```
-- Health check: `curl http://localhost:8081/health`
+- Health check: `curl http://localhost:8080/health`
 
 Option C — DB in Docker, backend on host JVM
 ```
@@ -201,7 +201,7 @@ Notes on controller tests:
 ## Troubleshooting
 - Docker on Windows: start Docker Desktop; ensure Linux containers; retry compose.
 - Flyway “Unsupported Database: MySQL 8.0”: ensure `flyway-mysql` is present (in `pom.xml`).
-- Port in use (3306/8081): change mappings in `src/docker-compose.yml` or stop the conflicting process.
+- Port in use (3306/8080): change mappings in `src/docker-compose.yml` or stop the conflicting process.
 - Long‑running logs: servers keep running; stop with Ctrl+C or use IDE Run/Debug.
 - CORS during dev: if calling backend from http://localhost:5173, add a simple CORS config or proxy via Vite.
 
@@ -256,7 +256,7 @@ npm run dev
 # App at http://localhost:5173
 ```
 
-Set `VITE_API_URL` if needed (defaults to `http://localhost:8081/api`).
+Set `VITE_API_URL` if needed (defaults to `http://localhost:8080/api`).
 
 ### Features
 - Auth: Register, Login, Logout (token stored in localStorage)
@@ -283,7 +283,7 @@ Option A — Docker (recommended)
 cd src
 docker compose up -d --build
 # Health check
-curl http://localhost:8081/health
+curl http://localhost:8080/health
 # In another terminal
 cd ../frontend
 npm install
@@ -406,7 +406,7 @@ Frontend (Vite + React)
 ---
 
 # Collaboration Tips (FE <> BE)
-- Agree on base URL via `.env` (`VITE_API_URL`), default is `http://localhost:8081/api`.
+- Agree on base URL via `.env` (`VITE_API_URL`), default is `http://localhost:8080/api`.
 - The “Endpoint contracts” section above enumerates payloads and responses; extend it when adding endpoints.
 - Use the domain events (logged in API) to trace reservation/trip/station flows during manual testing.
 

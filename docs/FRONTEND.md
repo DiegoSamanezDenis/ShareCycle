@@ -47,7 +47,7 @@ src/frontend/
 ```
 
 ### Configuration
-- API base URL lives in `src/frontend/src/config/env.ts` and resolves to `import.meta.env.VITE_API_URL ?? "http://localhost:8081/api"`.
+- API base URL lives in `src/frontend/src/config/env.ts` and resolves to `import.meta.env.VITE_API_URL ?? "http://localhost:8080/api"`.
 - Auth tokens persist under `localStorage` key `sharecycle.auth` (JSON with `token`, `role`, `userId`, `username`).
 
 ### Authentication & Routing
