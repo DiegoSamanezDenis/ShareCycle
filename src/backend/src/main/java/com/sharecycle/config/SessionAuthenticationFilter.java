@@ -1,12 +1,9 @@
 package com.sharecycle.config;
 
-import com.sharecycle.domain.model.User;
-import com.sharecycle.domain.repository.UserRepository;
-import com.sharecycle.service.SessionStore;
-import jakarta.servlet.FilterChain;
-import jakarta.servlet.ServletException;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.HttpServletResponse;
+import java.io.IOException;
+import java.util.List;
+import java.util.UUID;
+
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -14,9 +11,14 @@ import org.springframework.security.web.authentication.WebAuthenticationDetailsS
 import org.springframework.stereotype.Component;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-import java.io.IOException;
-import java.util.List;
-import java.util.UUID;
+import com.sharecycle.domain.model.User;
+import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.service.SessionStore;
+
+import jakarta.servlet.FilterChain;
+import jakarta.servlet.ServletException;
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 
 /**
  * Minimal session-token based authentication filter that looks for the Authorization header,
@@ -48,7 +50,9 @@ public class SessionAuthenticationFilter extends OncePerRequestFilter {
             if (userId != null) {
                 User user = userRepository.findById(userId);
                 if (user != null) {
-                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole()));
+                    // Get effective role considering operator mode
+                    String effectiveRole = sessionStore.getEffectiveRole(token, user.getRole());
+                    var authorities = List.of(new SimpleGrantedAuthority("ROLE_" + effectiveRole));
                     var authentication = new UsernamePasswordAuthenticationToken(user, token, authorities);
                     authentication.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authentication);

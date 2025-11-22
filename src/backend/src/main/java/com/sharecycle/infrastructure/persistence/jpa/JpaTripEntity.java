@@ -1,7 +1,11 @@
 package com.sharecycle.infrastructure.persistence.jpa;
 
+import java.time.LocalDateTime;
+import java.util.UUID;
+
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Trip;
+
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -10,9 +14,6 @@ import jakarta.persistence.Id;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.Table;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "trips")
@@ -33,7 +34,7 @@ public class JpaTripEntity {
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "user_id", nullable = true)
-    private JpaUserEntity.JpaRiderEntity rider;
+    private JpaUserEntity rider;
 
     @ManyToOne(fetch = FetchType.LAZY, cascade = CascadeType.MERGE)
     @JoinColumn(name = "bike_id", nullable = true)
@@ -55,7 +56,15 @@ public class JpaTripEntity {
         this.startTime = trip.getStartTime();
         this.endTime = trip.getEndTime();
         this.durationMinutes = trip.getDurationMinutes();
-        this.rider = (JpaUserEntity.JpaRiderEntity) JpaUserEntity.fromDomain(trip.getRider());
+        
+        // Fetch the existing user entity from the database instead of creating a new one
+        // This avoids Hibernate session conflicts when operators in RIDER mode start trips
+        if (context.entityManager != null) {
+            this.rider = context.entityManager.getReference(JpaUserEntity.class, trip.getRider().getUserId());
+        } else {
+            this.rider = JpaUserEntity.fromDomain(trip.getRider());
+        }
+        
         this.bike = JpaBikeEntity.fromDomain(trip.getBike(), context);
         this.startStation = JpaStationEntity.fromDomain(trip.getStartStation(), context);
         if (trip.getEndStation() != null) {
@@ -79,7 +88,17 @@ public class JpaTripEntity {
         if (existing != null) {
             return existing;
         }
-        Rider riderDomain = rider.toDomain();
+        
+        // Convert the user entity to domain, then wrap in Rider for Trip
+        com.sharecycle.domain.model.User userDomain = rider.toDomain();
+        Rider riderDomain;
+        if (userDomain instanceof Rider r) {
+            riderDomain = r;
+        } else {
+            // For operators who started trips in RIDER mode, wrap User as Rider
+            riderDomain = new Rider(userDomain);
+        }
+        
         Trip trip = new Trip(
                 tripId,
                 startTime,

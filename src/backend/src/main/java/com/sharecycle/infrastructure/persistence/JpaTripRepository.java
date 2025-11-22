@@ -1,18 +1,20 @@
 package com.sharecycle.infrastructure.persistence;
 
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Repository;
+
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.infrastructure.persistence.jpa.JpaTripEntity;
 import com.sharecycle.infrastructure.persistence.jpa.MapperContext;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
 import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 
 @Repository
 @Transactional
@@ -23,7 +25,7 @@ public class JpaTripRepository implements TripRepository {
 
     @Override
     public void save(Trip trip) {
-        MapperContext context = new MapperContext();
+        MapperContext context = new MapperContext(entityManager);
         JpaTripEntity entity = JpaTripEntity.fromDomain(trip, context);
         // Upsert by trip_id
         entityManager.merge(entity);
