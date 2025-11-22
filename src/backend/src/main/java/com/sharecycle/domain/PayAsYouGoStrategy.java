@@ -12,7 +12,7 @@ public class PayAsYouGoStrategy implements PricingStrategyRepository {
     private static final double OPERATOR_DISCOUNT_RATE = 0.20; // 20% discount for operators
 
     @Override
-    public Bill calculate(Trip trip, PricingPlan plan) {
+    public Bill calculate(Trip trip, PricingPlan plan, double discountRate) {
         int minutes = trip.getDurationMinutes();
         double perMinuteRate = plan != null ? plan.getPerMinuteRate() : DEFAULT_PER_MINUTE_RATE;
         double baseCost = plan != null ? plan.getBaseCost() : DEFAULT_BASE_COST;

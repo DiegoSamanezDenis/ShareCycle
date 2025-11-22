@@ -25,6 +25,7 @@ import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
+import com.sharecycle.domain.repository.JpaLoyaltyRepository;
 
 @ExtendWith(MockitoExtension.class)
 class EndTripAndBillUseCaseValidationTest {
@@ -41,6 +42,8 @@ class EndTripAndBillUseCaseValidationTest {
     private JpaBikeRepository bikeRepository;
     @Mock
     private ReservationRepository reservationRepository;
+    @Mock
+    private JpaLoyaltyRepository loyaltyRepository;
 
     @Mock
     private JpaUserRepository userRepository;
@@ -56,7 +59,8 @@ class EndTripAndBillUseCaseValidationTest {
                 stationRepository,
                 bikeRepository,
                 reservationRepository,
-                userRepository
+                userRepository,
+                loyaltyRepository
         );
     }
 

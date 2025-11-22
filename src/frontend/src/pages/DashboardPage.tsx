@@ -3,7 +3,7 @@ import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { apiRequest } from "../api/client";
-import { payLedger } from "../api/payments";
+import { resetSystem } from "../api/system";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
 import LoyaltyBadge from "../components/LoyaltyBadge";
@@ -12,6 +12,10 @@ import { RoleToggle } from "../components/RoleToggle";
 import type { StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
 import styles from "./TripReceipt.module.css";
+import { payLedger } from "../api/payments";
+import LoyaltyBadge from "../components/LoyaltyBadge";
+import TierNotificationToast from "../components/TierNotificationToast";
+import { Link } from "react-router-dom";
 
 type ReservationResponse = {
   reservationId: string;
@@ -59,6 +63,8 @@ type TripCompletionSuccess = {
   ledgerStatus: LedgerStatus | null;
   paymentStatus: PaymentStatus;
   message: string;
+  discountRate?: number;
+  discountAmount?: number;
 };
 
 type TripCompletionBlocked = {
@@ -388,6 +394,7 @@ export default function DashboardPage() {
   const [returnBlock, setReturnBlock] = useState<TripCompletionBlocked | null>(null);
   const [activeTripId, setActiveTripId] = useState<string | null>(storedActiveTrip?.tripId ?? null);
   const [pendingRideAction, setPendingRideAction] = useState<RideAction>(null);
+  const [resettingSystem, setResettingSystem] = useState(false);
   const [moveBikeForm, setMoveBikeForm] = useState(defaultMoveBikeForm);
   const [stationDetails, setStationDetails] = useState<StationDetails | null>(null);
   const [loadingStationDetails, setLoadingStationDetails] = useState(false);
@@ -450,6 +457,33 @@ export default function DashboardPage() {
       setReservationResult(null);
     }
   }, [auth.role, auth.token, auth.userId]);
+
+  const handleResetSystem = useCallback(async () => {
+    if (!auth.token) {
+      setFeedback("Authentication required to reset system.");
+      return;
+    }
+    setResettingSystem(true);
+    setFeedback(null);
+    try {
+      const summary = await resetSystem(auth.token);
+      setReservationResult(null);
+      setTripResult(null);
+      setTripCompletion(null);
+      setReturnBlock(null);
+      setActiveTripId(null);
+      setStationDetails(null);
+      setSelectedStationId(null);
+      await loadStations();
+      setFeedback(
+        `System reset to initial dataset (${summary.stations} stations, ${summary.bikes} bikes).`,
+      );
+    } catch (err) {
+      setFeedback(err instanceof Error ? err.message : "Unable to reset system.");
+    } finally {
+      setResettingSystem(false);
+    }
+  }, [auth.token, loadStations]);
 
   const statusColors = useMemo(
     () =>
@@ -750,6 +784,7 @@ export default function DashboardPage() {
 
   return (
     <main>
+      <TierNotificationToast token={auth.token} />
       <header>
         <h1>ShareCycle Dashboard</h1>
         <p>
@@ -759,6 +794,9 @@ export default function DashboardPage() {
         <button type="button" onClick={() => auth.logout()}>
           Logout
         </button>
+        <Link to="/account">
+    <button type="button">My Account</button>
+  </Link>
       </header>
 
       <section>
@@ -989,6 +1027,14 @@ export default function DashboardPage() {
                       ${tripCompletion.baseCost.toFixed(2)}
                     </span>
                   </div>
+                  {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
+                    <div className={styles.billItem}>
+                      <span className={styles.billItemLabel}>Loyalty Discount: </span>
+                      <span className={styles.billItemValue}>
+                        {Math.round(tripCompletion.discountRate * 100)}% (-${(tripCompletion.discountAmount ?? 0).toFixed(2)})
+                      </span>
+                    </div>
+                  )}
                   <div className={styles.billItem}>
                     <span className={styles.billItemLabel}>Time Cost:</span>
                     <span className={styles.billItemValue}>
@@ -1004,6 +1050,9 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+                {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
+                  <p>Loyalty discount applied</p>
+                )}
                 <div className={styles.totalRow}>
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
@@ -1037,6 +1086,22 @@ export default function DashboardPage() {
       {auth.effectiveRole === "OPERATOR" && (
         <section>
           <h2>Operator Controls</h2>
+          <div
+            style={{
+              display: "flex",
+              gap: 12,
+              alignItems: "center",
+              flexWrap: "wrap",
+              marginBottom: 12,
+            }}
+          >
+            <button type="button" onClick={handleResetSystem} disabled={resettingSystem}>
+              {resettingSystem ? "Resetting..." : "Reset system"}
+            </button>
+            <span style={{ fontSize: 12, color: "#374151" }}>
+              Restore demo stations, docks, bikes to their initial state.
+            </span>
+          </div>
           <form onSubmit={handleMoveBike}>
             <h3>Move a bike</h3>
             <label>
@@ -1100,7 +1165,8 @@ export default function DashboardPage() {
             </div>
             <div className={styles.feedbackRow}>
               Base: ${tripCompletion.baseCost.toFixed(2)} + Time: $
-              {tripCompletion.timeCost.toFixed(2)}
+              {tripCompletion.timeCost.toFixed(2)} - Discount: $
+              {(tripCompletion.discountAmount ?? 0).toFixed(2)}
               {tripCompletion.eBikeSurcharge > 0 && (
                 <span> + E-Bike: ${tripCompletion.eBikeSurcharge.toFixed(2)}</span>
               )}

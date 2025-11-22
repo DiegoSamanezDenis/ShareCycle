@@ -8,6 +8,8 @@ import NotFoundPage from "./pages/NotFoundPage";
 import PricingPage from "./pages/PricingPage";
 import RegisterPage from "./pages/RegisterPage";
 import TripSummaryPage from "./pages/TripSummaryPage";
+import AccountPage from "./pages/AccountPage";
+
 
 // using RequireAuth from ./auth/RequireAuth
 
@@ -36,4 +38,14 @@ export const routes: RouteObject[] = [
 
 
   { path: "*", element: <NotFoundPage /> },
+
+  {
+    path: "/account",
+    element: (
+      <RequireAuth>
+        <AccountPage />
+      </RequireAuth>
+    ),
+  },
+
 ];

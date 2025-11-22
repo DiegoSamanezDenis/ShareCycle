@@ -13,7 +13,9 @@ public record BillIssuedEvent(
         double timeCost,
         double eBikeSurcharge,
         double totalCost,
-        String pricingPlan
+        String pricingPlan,
+        double discountRate,
+        double discountAmount
 ) implements DomainEvent {
     @Override
     public LocalDateTime occurredAt() {
