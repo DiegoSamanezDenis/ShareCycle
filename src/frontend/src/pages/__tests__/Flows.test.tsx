@@ -1,8 +1,10 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen, fireEvent, within } from "@testing-library/react";
+import { render, screen, fireEvent, within, waitFor } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
 import { AuthProvider } from "../../auth/AuthContext";
 import { routes } from "../../routes";
+
+const E_BIKE_ID = "11111111-1111-1111-1111-111111111111";
 
 vi.mock("../../api/client", () => {
   return {
@@ -15,6 +17,8 @@ vi.mock("../../api/client", () => {
             status: "OCCUPIED",
             bikesAvailable: 2,
             bikesDocked: 3,
+            eBikesDocked: 1,
+            eBikesAvailable: 1,
             capacity: 5,
             freeDocks: 2,
             latitude: 45.5,
@@ -30,14 +34,16 @@ vi.mock("../../api/client", () => {
           status: "OCCUPIED",
           bikesAvailable: 2,
           bikesDocked: 3,
+          eBikesDocked: 1,
+          eBikesAvailable: 1,
           capacity: 5,
           freeDocks: 2,
           latitude: 45.5,
           longitude: -73.6,
           fullnessCategory: "HEALTHY",
           docks: [
-            { dockId: "d1", status: "OCCUPIED", bikeId: "b1" },
-            { dockId: "d2", status: "EMPTY", bikeId: null },
+            { dockId: "d1", status: "OCCUPIED", bikeId: E_BIKE_ID, bikeType: "E_BIKE" },
+            { dockId: "d2", status: "EMPTY", bikeId: null, bikeType: null },
           ],
         };
       }
@@ -67,7 +73,7 @@ vi.mock("../../api/client", () => {
         return {
           reservationId: "r1",
           stationId: "s1",
-          bikeId: "b1",
+          bikeId: E_BIKE_ID,
           reservedAt: new Date().toISOString(),
           expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
           active: true,
@@ -97,7 +103,7 @@ vi.mock("../../api/client", () => {
         return {
           tripId: "t1",
           stationId: "s1",
-          bikeId: "b1",
+          bikeId: E_BIKE_ID,
           riderId: "u1",
           startedAt: new Date().toISOString(),
         };
@@ -146,6 +152,8 @@ vi.mock("../../api/client", () => {
           status: "OUT_OF_SERVICE",
           bikesAvailable: 0,
           bikesDocked: 3,
+          eBikesDocked: 1,
+          eBikesAvailable: 0,
           capacity: 5,
           freeDocks: 2,
           latitude: 45.5,
@@ -160,6 +168,8 @@ vi.mock("../../api/client", () => {
           status: "OCCUPIED",
           bikesAvailable: 2,
           bikesDocked: 3,
+          eBikesDocked: 1,
+          eBikesAvailable: 1,
           capacity: 6,
           freeDocks: 3,
           latitude: 45.5,
@@ -175,6 +185,8 @@ vi.mock("../../api/client", () => {
             status: "OCCUPIED",
             bikesAvailable: 1,
             bikesDocked: 2,
+            eBikesDocked: 1,
+            eBikesAvailable: 1,
             capacity: 5,
             freeDocks: 3,
             latitude: 45.5,
@@ -182,6 +194,9 @@ vi.mock("../../api/client", () => {
             fullnessCategory: "LOW",
           },
         ];
+      }
+      if (path.startsWith("/auth/credit")) {
+        return { amount: 0 };
       }
       return undefined;
     }),
@@ -221,7 +236,8 @@ describe("Rider flows", () => {
     // Wait for station overview
     await screen.findByRole("heading", { name: /Station Overview/i });
 
-    fireEvent.click(screen.getByRole("button", { name: /View/i }));
+    const viewButtons = await screen.findAllByRole("button", { name: /View/i });
+    fireEvent.click(viewButtons[0]);
 
     const reserveButton = await screen.findByRole("button", {
       name: /^Reserve$/i,
@@ -241,8 +257,34 @@ describe("Rider flows", () => {
       name: /End trip here/i,
     });
     fireEvent.click(endButton);
-    expect(await screen.findByText(/Trip completed\./i)).toBeInTheDocument();
-    expect(screen.getByText(/total \$1\.75/i)).toBeInTheDocument();
+    expect(await screen.findByText(/^Trip Completed$/i)).toBeInTheDocument();
+    expect(screen.getByText(/Total Charge: \$1\.75/i)).toBeInTheDocument();
+  });
+
+  it("surfaces e-bike indicators on map markers and dock cards", async () => {
+    renderDashboardWithAuth(["/dashboard"], {
+      token: "t",
+      role: "RIDER",
+      userId: "u1",
+      username: "r1",
+    });
+
+    await screen.findByRole("heading", { name: /Station Overview/i });
+    await waitFor(() => {
+      expect(
+        screen.getByTitle(/contains e-bikes/i),
+      ).toBeInTheDocument();
+    });
+
+    const viewButtons = await screen.findAllByRole("button", { name: /View/i });
+    fireEvent.click(viewButtons[0]);
+
+    await waitFor(() => {
+      expect(
+        screen.getByText(new RegExp(`Bike ${E_BIKE_ID.slice(0, 8)} • E-Bike`, "i")),
+      ).toBeInTheDocument();
+    });
+    expect(screen.getByTitle(/E-bike docked/i)).toBeInTheDocument();
   });
 });
 
@@ -260,47 +302,23 @@ describe("Operator controls", () => {
     });
     await screen.findByRole("heading", { name: /Operator Controls/i });
 
-    // Toggle station status
-    const statusHeading = screen.getByRole("heading", {
-      name: /Toggle station status/i,
-    });
-    const statusForm = statusHeading.closest("form") as HTMLFormElement;
-    const st = within(statusForm);
-    fireEvent.change(st.getByLabelText(/Station ID/i), {
-      target: { value: "s1" },
-    });
-    fireEvent.click(st.getByRole("checkbox", { name: /Out of service/i }));
-    fireEvent.click(st.getByRole("button", { name: /Update status/i }));
-    expect(
-      await screen.findByText(/Station status updated\./i),
-    ).toBeInTheDocument();
+    const viewButtons = await screen.findAllByRole("button", { name: /View/i });
+    fireEvent.click(viewButtons[0]);
 
-    // Adjust capacity
-    const capHeading = screen.getByRole("heading", {
-      name: /Adjust capacity/i,
-    });
-    const capForm = capHeading.closest("form") as HTMLFormElement;
-    const c = within(capForm);
-    fireEvent.change(c.getByLabelText(/^Station ID$/i), {
-      target: { value: "s1" },
-    });
-    fireEvent.change(c.getByLabelText(/Delta/i), { target: { value: "1" } });
-    fireEvent.click(c.getByRole("button", { name: /Apply change/i }));
-    expect(
-      await screen.findByText(/Station capacity updated\./i),
-    ).toBeInTheDocument();
+    const toggleButton = await screen.findByRole("button", { name: /Toggle Status/i });
+    fireEvent.click(toggleButton);
+    expect(await screen.findByText(/Station status updated\./i)).toBeInTheDocument();
 
-    // Move bike
+    const addDockButton = await screen.findByRole("button", { name: /\+1 Dock/i });
+    fireEvent.click(addDockButton);
+    expect(await screen.findByText(/Station capacity updated\./i)).toBeInTheDocument();
+
     const moveHeading = screen.getByRole("heading", { name: /Move a bike/i });
     const moveForm = moveHeading.closest("form") as HTMLFormElement;
     const m = within(moveForm);
-    fireEvent.change(m.getByLabelText(/Bike ID/i), { target: { value: "b2" } });
-    fireEvent.change(m.getByLabelText(/Destination Station ID/i), {
-      target: { value: "s1" },
-    });
+    fireEvent.change(m.getByLabelText(/Bike ID/i), { target: { value: E_BIKE_ID } });
+    fireEvent.change(m.getByLabelText(/Destination ID/i), { target: { value: "s1" } });
     fireEvent.click(m.getByRole("button", { name: /Move bike/i }));
-    expect(
-      await screen.findByText(/Bike moved successfully\./i),
-    ).toBeInTheDocument();
+    expect(await screen.findByText(/Bike moved successfully\./i)).toBeInTheDocument();
   });
 });

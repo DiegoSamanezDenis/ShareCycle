@@ -37,8 +37,9 @@ class ListStationSummariesUseCaseTest {
         station.setLatitude(45.1234);
         station.setLongitude(-73.5678);
         station.markActive();
-        station.addEmptyDocks(2);
+        station.addEmptyDocks(3);
         station.getDocks().get(0).setOccupiedBike(new Bike(Bike.BikeType.STANDARD));
+        station.getDocks().get(1).setOccupiedBike(new Bike(Bike.BikeType.E_BIKE));
         stationRepository.save(station);
     }
 
@@ -53,8 +54,10 @@ class ListStationSummariesUseCaseTest {
 
         assertThat(dto.getLatitude()).isEqualTo(45.1234);
         assertThat(dto.getLongitude()).isEqualTo(-73.5678);
-        assertThat(dto.getBikesAvailable()).isEqualTo(1);
+        assertThat(dto.getBikesAvailable()).isEqualTo(2);
         assertThat(dto.getFullnessCategory()).isEqualTo("HEALTHY");
         assertThat(dto.getFreeDocks()).isEqualTo(1);
+        assertThat(dto.getEBikesDocked()).isEqualTo(1);
+        assertThat(dto.getEBikesAvailable()).isEqualTo(1);
     }
 }

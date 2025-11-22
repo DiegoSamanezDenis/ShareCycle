@@ -6,6 +6,9 @@ import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
+import com.sharecycle.domain.model.station.StationState;
+import com.sharecycle.domain.model.station.StationStateFactory;
+
 public class Station {
     public enum StationStatus {
         EMPTY, OCCUPIED, FULL, OUT_OF_SERVICE
@@ -13,13 +16,14 @@ public class Station {
 
     private UUID id;
     private String name;
-    private StationStatus status;
+    private StationStatus status = StationStatus.EMPTY;
     private double latitude;
     private double longitude;
     private int bikesDocked;
     private int capacity;
     private String address;
     private final List<Dock> docks = new ArrayList<>();
+    private StationState state = StationStateFactory.fromStatus(StationStatus.EMPTY);
 
     public Station() {
         this(UUID.randomUUID(), "", StationStatus.EMPTY, 0.0, 0.0, "", 0, 0);
@@ -35,12 +39,12 @@ public class Station {
                    int bikesDocked) {
         this.id = id == null ? UUID.randomUUID() : id;
         this.name = name;
-        this.status = status;
         this.latitude = latitude;
         this.longitude = longitude;
         this.address = address;
         this.capacity = capacity;
         this.bikesDocked = bikesDocked;
+        applyState(StationStateFactory.fromStatus(status));
     }
 
     public UUID getId() {
@@ -64,7 +68,7 @@ public class Station {
     }
 
     public void setStatus(StationStatus status) {
-        this.status = status;
+        applyState(StationStateFactory.fromStatus(status));
     }
 
     public double getLatitude() {
@@ -146,11 +150,11 @@ public class Station {
     }
 
     public void markOutOfService() {
-        this.status = StationStatus.OUT_OF_SERVICE;
+        applyState(state.markOutOfService(this));
     }
 
     public void markActive() {
-        this.status = StationStatus.EMPTY;
+        applyState(state.markActive(this));
         syncStatusFromCounts();
     }
 
@@ -161,7 +165,29 @@ public class Station {
     public int getAvailableBikeCount() {
         int available = 0;
         for (Dock dock : docks) {
-            if (dock.getOccupiedBike() != null && dock.getOccupiedBike().getStatus() == Bike.BikeStatus.AVAILABLE) {
+            if (dock.getOccupiedBike() != null && dock.getOccupiedBike().isAvailable()) {
+                available++;
+            }
+        }
+        return available;
+    }
+
+    public int getEBikesDocked() {
+        int eBikes = 0;
+        for (Dock dock : docks) {
+            Bike bike = dock.getOccupiedBike();
+            if (bike != null && bike.getType() == Bike.BikeType.E_BIKE) {
+                eBikes++;
+            }
+        }
+        return eBikes;
+    }
+
+    public int getEBikesAvailable() {
+        int available = 0;
+        for (Dock dock : docks) {
+            Bike bike = dock.getOccupiedBike();
+            if (bike != null && bike.isAvailable() && bike.getType() == Bike.BikeType.E_BIKE) {
                 available++;
             }
         }
@@ -255,19 +281,22 @@ public class Station {
     }
 
     private void syncStatusFromCounts() {
-        if (!StationStatus.OUT_OF_SERVICE.equals(this.status)) {
-            if (bikesDocked == 0) {
-                this.status = StationStatus.EMPTY;
-            } else if (bikesDocked >= capacity) {
-                this.status = StationStatus.FULL;
-            } else {
-                this.status = StationStatus.OCCUPIED;
-            }
+        if (state == null) {
+            applyState(StationStateFactory.fromStatus(status));
         }
+        applyState(state.onCountsUpdated(this));
     }
 
     private void recalculateCapacity() {
         this.capacity = docks.size();
         updateBikesDocked();
+    }
+
+    private void applyState(StationState newState) {
+        if (newState == null) {
+            return;
+        }
+        this.state = newState;
+        this.status = newState.getStatus();
     }
 }

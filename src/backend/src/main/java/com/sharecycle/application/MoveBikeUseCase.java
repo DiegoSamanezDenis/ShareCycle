@@ -3,7 +3,6 @@ package com.sharecycle.application;
 import com.sharecycle.domain.event.BikeMovedEvent;
 import com.sharecycle.domain.event.BikeStatusChangedEvent;
 import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.event.StationStatusChangedEvent;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
@@ -61,7 +60,7 @@ public class MoveBikeUseCase {
 
         sourceStation.undockBike(bike);
         destinationStation.dockBike(bike);
-        bike.setStatus(Bike.BikeStatus.AVAILABLE);
+        bike.markAvailable();
 
         eventPublisher.publish(new BikeStatusChangedEvent(
                 bike.getId(),
@@ -123,7 +122,7 @@ public class MoveBikeUseCase {
     }
 
     private void ensureBikeIsMovable(Bike bike) {
-        if (!Bike.BikeStatus.AVAILABLE.equals(bike.getStatus())) {
+        if (!bike.isAvailable()) {
             throw new IllegalStateException("Bike is not available to move.");
         }
     }

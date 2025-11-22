@@ -65,6 +65,8 @@ public class StationController {
                 station.getStatus(),
                 station.getAvailableBikeCount(),
                 station.getBikesDocked(),
+                station.getEBikesDocked(),
+                station.getEBikesAvailable(),
                 station.getCapacity(),
                 station.getFreeDockCount(),
                 station.getLatitude(),

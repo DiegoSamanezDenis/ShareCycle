@@ -1,5 +1,6 @@
 package com.sharecycle.model.dto;
 
+import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Dock;
 import com.sharecycle.domain.model.Station;
 
@@ -23,6 +24,7 @@ public record StationDetailsDto(
     public record DockDto(
             UUID dockId,
             Dock.DockStatus status,
-            UUID bikeId
+            UUID bikeId,
+            Bike.BikeType bikeType
     ) { }
 }

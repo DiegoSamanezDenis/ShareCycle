@@ -10,6 +10,8 @@ public class StationSummaryDto {
     private final Station.StationStatus status;
     private final int bikesAvailable;
     private final int bikesDocked;
+    private final int eBikesDocked;
+    private final int eBikesAvailable;
     private final int capacity;
     private final int freeDocks;
     private final double latitude;
@@ -21,6 +23,8 @@ public class StationSummaryDto {
                              Station.StationStatus status,
                              int bikesAvailable,
                              int bikesDocked,
+                             int eBikesDocked,
+                             int eBikesAvailable,
                              int capacity,
                              int freeDocks,
                              double latitude,
@@ -31,6 +35,8 @@ public class StationSummaryDto {
         this.status = status;
         this.bikesAvailable = bikesAvailable;
         this.bikesDocked = bikesDocked;
+        this.eBikesDocked = eBikesDocked;
+        this.eBikesAvailable = eBikesAvailable;
         this.capacity = capacity;
         this.freeDocks = freeDocks;
         this.latitude = latitude;
@@ -60,6 +66,14 @@ public class StationSummaryDto {
 
     public int getCapacity() {
         return capacity;
+    }
+
+    public int getEBikesDocked() {
+        return eBikesDocked;
+    }
+
+    public int getEBikesAvailable() {
+        return eBikesAvailable;
     }
 
     public int getFreeDocks() {

@@ -33,3 +33,7 @@ build/
 ### VS Code ###
 .vscode/
 src/backend/src/main/resources/.env.payment
+node_modules/
+**/node_modules/
+.vite/
+**/.vite/

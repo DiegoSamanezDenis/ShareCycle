@@ -68,6 +68,22 @@ public class Bike {
         applyState(BikeStateFactory.fromStatus(status));
     }
 
+    public boolean isAvailable() {
+        return BikeStatus.AVAILABLE.equals(status);
+    }
+
+    public boolean isReserved() {
+        return BikeStatus.RESERVED.equals(status);
+    }
+
+    public boolean isOnTrip() {
+        return BikeStatus.ON_TRIP.equals(status);
+    }
+
+    public boolean isUnderMaintenance() {
+        return BikeStatus.MAINTENANCE.equals(status);
+    }
+
     public Instant getReservationExpiry() {
         return reservationExpiry;
     }
