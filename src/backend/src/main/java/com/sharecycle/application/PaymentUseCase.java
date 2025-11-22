@@ -49,6 +49,14 @@ public class PaymentUseCase {
         }
 
         if (totalAmount <= 0) {
+            // If this ledger represents a credit (negative total), apply it to the user's flex balance
+            if (bill != null && bill.getTotalCost() < 0) {
+                double creditAmount = Math.abs(bill.getTotalCost());
+                rider.addFlexCredit(creditAmount);
+                userRepository.save(rider);
+                eventPublisher.publish(new FlexCreditAddedEvent(rider.getUserId(), creditAmount));
+                logger.info("Applied flex credit {} to user {}", creditAmount, rider.getUserId());
+            }
             markLedgerPaid(entry, rider, "No payment required");
             return entry;
         }
