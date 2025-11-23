@@ -1,13 +1,19 @@
 import { apiRequest } from "./client";
-import type { TripHistoryEntry, TripDetails, BikeType } from "../types/trip";
+import type { TripHistoryPage, TripDetails, BikeType } from "../types/trip";
 
 export type TripHistoryFilters = {
   startTime?: string;
   endTime?: string;
   bikeType?: BikeType | null;
+  tripId?: string | null;
 };
 
-function buildHistoryQuery(filters: TripHistoryFilters): string {
+type PaginationOptions = {
+  page?: number;
+  pageSize?: number;
+};
+
+function buildHistoryQuery(filters: TripHistoryFilters, options?: PaginationOptions): string {
   const params = new URLSearchParams();
   if (filters.startTime) {
     params.set("startTime", filters.startTime);
@@ -18,6 +24,15 @@ function buildHistoryQuery(filters: TripHistoryFilters): string {
   if (filters.bikeType) {
     params.set("bikeType", filters.bikeType);
   }
+  if (filters.tripId) {
+    params.set("tripId", filters.tripId);
+  }
+  if (typeof options?.page === "number") {
+    params.set("page", String(Math.max(0, options.page)));
+  }
+  if (typeof options?.pageSize === "number") {
+    params.set("pageSize", String(Math.max(1, options.pageSize)));
+  }
   const query = params.toString();
   return query ? `?${query}` : "";
 }
@@ -25,9 +40,14 @@ function buildHistoryQuery(filters: TripHistoryFilters): string {
 export async function fetchTripHistory(
   filters: TripHistoryFilters,
   token?: string | null,
-): Promise<TripHistoryEntry[]> {
-  const query = buildHistoryQuery(filters);
-  return apiRequest<TripHistoryEntry[]>(`/trips${query}`, {
+  options?: PaginationOptions,
+): Promise<TripHistoryPage> {
+  const normalizedFilters: TripHistoryFilters = {
+    ...filters,
+    tripId: filters.tripId?.trim() ? filters.tripId.trim() : undefined,
+  };
+  const query = buildHistoryQuery(normalizedFilters, options);
+  return apiRequest<TripHistoryPage>(`/trips${query}`, {
     token: token ?? undefined,
   });
 }

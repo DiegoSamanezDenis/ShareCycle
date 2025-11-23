@@ -125,9 +125,9 @@ public class EndTripAndBillUseCase {
         validate(managedTrip, managedEndStation);
 
         // Reconcile bike status if needed to ensure trip can end cleanly
-        if (tripBike.getStatus() != Bike.BikeStatus.ON_TRIP) {
-            logger.warn("Bike status {} inconsistent with active trip; reconciling to ON_TRIP", tripBike.getStatus());
-            tripBike.setStatus(Bike.BikeStatus.ON_TRIP);
+        if (!tripBike.isOnTrip()) {
+            logger.warn("Bike status {} inconsistent with active trip; reconciling via checkout", tripBike.getStatus());
+            tripBike.checkout();
         }
 
         LocalDateTime endTime = LocalDateTime.now();
@@ -154,7 +154,6 @@ public class EndTripAndBillUseCase {
 
         // Update the bike's status now that it is docked
         tripBike.completeTrip();
-        tripBike.setStatus(Bike.BikeStatus.AVAILABLE);
         tripBike.setReservationExpiry(null);
         tripBike.setCurrentStation(managedEndStation);
         bikeRepository.save(tripBike);

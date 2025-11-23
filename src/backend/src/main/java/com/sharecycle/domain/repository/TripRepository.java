@@ -23,6 +23,10 @@ public interface TripRepository {
     List<Trip> findAllByUserId(UUID userId);
 
     List<Trip> findAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType);
+    List<Trip> findAllWithFilterPaged(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType, int page, int pageSize);
+    long countAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType);
 
     List<Trip> findAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType);
+    List<Trip> findAllByUserIdWithFilterPaged(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType, int page, int pageSize);
+    long countAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType);
 }

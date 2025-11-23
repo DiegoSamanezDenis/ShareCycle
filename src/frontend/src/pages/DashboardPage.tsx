@@ -1,6 +1,6 @@
-import { Map, Marker as PigeonMarker } from "pigeon-maps";
-import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import type { FormEvent } from "react";
+import { Map, Marker as PigeonMarker } from "pigeon-maps";
 
 import { Link } from "react-router-dom";
 import { apiRequest } from "../api/client";
@@ -10,11 +10,13 @@ import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
 import LoyaltyBadge from "../components/LoyaltyBadge";
 import RideHistory from "../components/RideHistory";
-import { RoleToggle } from "../components/RoleToggle";
-import TierNotificationToast from "../components/TierNotificationToast";
-import type { StationDetails, StationSummary } from "../types/station";
-import type { LedgerStatus } from "../types/trip";
 import styles from "./TripReceipt.module.css";
+import type { DockSummary, StationDetails, StationSummary } from "../types/station";
+import { RoleToggle } from "../components/RoleToggle";
+import type { LedgerStatus } from "../types/trip";
+import TierNotificationToast from "../components/TierNotificationToast";
+import AppShell from "../components/layout/AppShell";
+import PageSection from "../components/layout/PageSection";
 
 type ReservationResponse = {
   reservationId: string;
@@ -210,6 +212,20 @@ function formatStationStatus(status?: string | null): string {
 function formatDockStatus(status?: string | null): string {
   if (!status) return "Unknown";
   return DOCK_STATUS_LABEL[status] ?? status;
+}
+
+function renderBikeTypeLabelFromDock(type?: DockSummary["bikeType"] | null): string {
+  if (type === "E_BIKE") {
+    return "E-Bike";
+  }
+  if (type === "STANDARD") {
+    return "Standard";
+  }
+  return "Unknown";
+}
+
+function stationHasEBikes(summary?: Pick<StationSummary, "eBikesDocked"> | null): boolean {
+  return Boolean(summary && summary.eBikesDocked > 0);
 }
 
 function formatPaymentStatus(status?: PaymentStatus | null): string {
@@ -495,18 +511,54 @@ export default function DashboardPage() {
     [],
   );
 
-  const statusLegend = useMemo<ReadonlyArray<[keyof typeof statusColors, string]>>(
+  const statusLegend = useMemo<
+    ReadonlyArray<{ label: string; key: keyof typeof statusColors }>
+  >(
     () => [
-      ["EMPTY", "empty"],
-      ["OCCUPIED", "occupied"],
-      ["FULL", "full"],
-      ["OUT_OF_SERVICE", "out of service"],
+      { key: "EMPTY", label: "empty" },
+      { key: "OCCUPIED", label: "occupied" },
+      { key: "FULL", label: "full" },
+      { key: "OUT_OF_SERVICE", label: "out of service" },
     ],
     [],
   );
 
   const rideActionInFlight = pendingRideAction !== null;
   const markerSize = 72;
+
+  const roleForDisplay = (auth.effectiveRole ?? auth.role ?? "rider").toLowerCase();
+  const heroSubheading = `Signed in as ${auth.username} (${roleForDisplay} mode). Flex credit: $${credit.toFixed(2)}.`;
+
+  const heroActions = (
+    <>
+      {auth.effectiveRole === "RIDER" && (
+        <Link
+          to="/trip-summary"
+          style={{
+            borderRadius: 999,
+            padding: "0.6rem 1.3rem",
+            border: "1px solid var(--border)",
+            fontWeight: 600,
+            color: "var(--text)",
+          }}
+        >
+          Trip summary
+        </Link>
+      )}
+      <Link
+        to="/account"
+        style={{
+          borderRadius: 999,
+          padding: "0.6rem 1.3rem",
+          background: "var(--brand)",
+          color: "#fff",
+          fontWeight: 600,
+        }}
+      >
+        Account
+      </Link>
+    </>
+  );
 
   useEffect(() => {
     if (!selectedStationId) {
@@ -557,12 +609,16 @@ export default function DashboardPage() {
 
   if (!auth.token || !auth.role || !auth.userId) {
     return (
-      <main>
-        <h1>Dashboard</h1>
-        <p>You need to sign in to access ShareCycle operations.</p>
-      </main>
-    );
-  }
+      <AppShell
+        heading="ShareCycle dashboard"
+        subheading="Sign in to access rider tools, operator controls, and live station activity."
+      >
+        <PageSection>
+          <p>You need to sign in to access ShareCycle operations.</p>
+        </PageSection>
+    </AppShell>
+  );
+}
 
   const reserveBike = async (stationId: string, bikeId: string | null, dockId?: string) => {
     if (!stationId || !bikeId || pendingRideAction) {
@@ -782,31 +838,24 @@ export default function DashboardPage() {
   };
 
   return (
-    <main>
+    <AppShell
+      heading="ShareCycle dashboard"
+      subheading={heroSubheading}
+      actions={heroActions}
+    >
       <TierNotificationToast token={auth.token} />
-      <header>
-        <h1>ShareCycle Dashboard</h1>
-        <p>
-          Signed in as <strong>{auth.username}</strong> ({auth.role.toLowerCase()}).
-          Current Credit: <strong>${credit.toFixed(2)}</strong>
-        </p>
-        <button type="button" onClick={() => auth.logout()}>
-          Logout
-        </button>
-        <Link to="/account">
-    <button type="button">My Account</button>
-  </Link>
-      </header>
 
-      <section>
-        <h2>City Map</h2>
+      <PageSection
+        title="Live network"
+        description="Select a station from the map or table to view docks and take actions."
+      >
         <div
           style={{
             display: "flex",
             gap: 16,
             alignItems: "center",
             flexWrap: "wrap",
-            margin: "8px 0",
+            margin: "8px 0 20px",
             fontSize: 16,
           }}
         >
@@ -819,9 +868,9 @@ export default function DashboardPage() {
               flexWrap: "wrap",
             }}
           >
-            {statusLegend.map(([category, label]) => (
+            {statusLegend.map((entry, index) => (
               <span
-                key={category}
+                key={`${entry.label}-${index}`}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
                 <span
@@ -829,176 +878,268 @@ export default function DashboardPage() {
                     width: 18,
                     height: 18,
                     borderRadius: 3,
-                    background: statusColors[category],
+                    background: statusColors[entry.key],
+                    border: "1px solid rgba(15,23,42,0.2)",
                   }}
+                  aria-label={`${entry.label} station`}
                 />
-                {label}
+                {entry.label}
               </span>
             ))}
           </div>
+          <span
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              fontSize: 12,
+              color: "#4b5563",
+            }}
+          >
+            <span
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "#1f2937",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 10,
+              }}
+              aria-label="E-bike overlay indicator"
+              title="“E” overlays on any non-empty station marker when e-bikes are docked"
+            >
+              E
+            </span>
+            indicates e-bikes docked
+          </span>
         </div>
-        <Map
-          defaultCenter={[45.508, -73.587]}
-          defaultZoom={13}
-          height={600}
-          provider={(x: number, y: number, z: number) =>
-            `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
-          }
+        <div
+          style={{
+            borderRadius: 20,
+            overflow: "hidden",
+            border: "1px solid var(--border)",
+          }}
         >
-          {stations.map((summary) => {
-            const lat = Number.isFinite(summary.latitude) ? summary.latitude : 45.508;
-            const lng = Number.isFinite(summary.longitude) ? summary.longitude : -73.587;
-            const status = (summary.status as keyof typeof statusColors) ?? "EMPTY";
-            const markerColor = statusColors[status] ?? "#6b7280";
-            const statusLabel = (summary.status ?? "").toLowerCase();
-            return (
-              <PigeonMarker
-                key={summary.stationId}
-                width={markerSize}
-                anchor={[lat, lng]}
-                onClick={() => setSelectedStationId(summary.stationId)}
-              >
-                <div
-                  role="button"
-                  tabIndex={0}
+          <Map
+            defaultCenter={[45.508, -73.587]}
+            defaultZoom={13}
+            height={600}
+            provider={(x: number, y: number, z: number) =>
+              `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
+            }
+          >
+            {stations.map((summary) => {
+              const lat = Number.isFinite(summary.latitude) ? summary.latitude : 45.508;
+              const lng = Number.isFinite(summary.longitude) ? summary.longitude : -73.587;
+              const status = (summary.status as keyof typeof statusColors) ?? "EMPTY";
+              const markerColor = statusColors[status] ?? "#6b7280";
+              const statusLabel = (summary.status ?? "").toLowerCase();
+              const showEBikeBadge = stationHasEBikes(summary);
+              return (
+                <PigeonMarker
+                  key={summary.stationId}
+                  width={markerSize}
+                  anchor={[lat, lng]}
                   onClick={() => setSelectedStationId(summary.stationId)}
-                  onKeyDown={(event) => {
-                    if (event.key === "Enter" || event.key === " ") {
-                      event.preventDefault();
-                      setSelectedStationId(summary.stationId);
-                    }
-                  }}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: 12,
-                    cursor: "pointer",
-                    pointerEvents: "auto",
-                  }}
                 >
-                  <span
-                    aria-label={`Station status ${statusLabel}`}
-                    title={`${summary.name ?? "Station"} - ${statusLabel}`}
-                    style={{
-                      width: 40,
-                      height: 40,
-                      borderRadius: "50%",
-                      background: markerColor,
-                      border: "3px solid #fff",
-                      boxShadow: "0 0 0 3px rgba(0,0,0,0.35)",
+                  <div
+                    role="button"
+                    tabIndex={0}
+                    onClick={() => setSelectedStationId(summary.stationId)}
+                    onKeyDown={(event) => {
+                      if (event.key === "Enter" || event.key === " ") {
+                        event.preventDefault();
+                        setSelectedStationId(summary.stationId);
+                      }
                     }}
-                  />
-                  <span
                     style={{
-                      background: "rgba(255,255,255,0.9)",
-                      padding: "6px 10px",
-                      borderRadius: 8,
-                      fontSize: 16,
-                      fontWeight: 700,
-                      color: "#222",
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 12,
+                      cursor: "pointer",
+                      pointerEvents: "auto",
                     }}
                   >
-                    {summary.name ?? "Station"}
-                  </span>
-                </div>
-              </PigeonMarker>
-            );
-          })}
-        </Map>
-      </section>
+                    <span
+                      aria-label={`Station status ${statusLabel}`}
+                      title={`${summary.name ?? "Station"} - ${statusLabel}${
+                        showEBikeBadge ? " (contains e-bikes)" : ""
+                      }`}
+                      style={{ position: "relative", display: "inline-flex" }}
+                    >
+                      <span
+                        style={{
+                          width: 40,
+                          height: 40,
+                          borderRadius: "50%",
+                          background: markerColor,
+                          border: "3px solid #fff",
+                          boxShadow: "0 0 0 3px rgba(0,0,0,0.35)",
+                          display: "inline-block",
+                        }}
+                      />
+                      {showEBikeBadge && (
+                        <span
+                          style={{
+                            position: "absolute",
+                            inset: 0,
+                            display: "flex",
+                            alignItems: "center",
+                            justifyContent: "center",
+                            fontWeight: 800,
+                            color: "#fff",
+                            textShadow: "0 1px 2px rgba(0,0,0,0.6)",
+                          }}
+                        >
+                          E
+                        </span>
+                      )}
+                    </span>
+                    <span
+                      style={{
+                        background: "rgba(255,255,255,0.9)",
+                        padding: "6px 10px",
+                        borderRadius: 8,
+                        fontSize: 16,
+                        fontWeight: 700,
+                        color: "#222",
+                      }}
+                    >
+                      {summary.name ?? "Station"}
+                    </span>
+                  </div>
+                </PigeonMarker>
+              );
+            })}
+          </Map>
+        </div>
+      </PageSection>
 
-      <section>
-        <h2>Station Overview</h2>
+      <PageSection
+        title="Station overview"
+        description="Scan every station's capacity at a glance. Select a row to open dock controls."
+      >
         {loadingStations && <p>Loading stations...</p>}
         {stationsError && <p role="alert">{stationsError}</p>}
         {!loadingStations && !stationsError && (
-          <table>
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Bikes available</th>
-                <th>Bikes docked</th>
-                <th>Free docks</th>
-                <th>Capacity</th>
-                <th>Details</th>
-              </tr>
-            </thead>
-            <tbody>
-              {stations.map((summary) => (
-                <tr key={summary.stationId}>
-                  <td>{summary.name ?? "Unnamed station"}</td>
-                  <td>{formatStationStatus(summary.status)}</td>
-                  <td>{summary.bikesAvailable}</td>
-                  <td>{summary.bikesDocked}</td>
-                  <td>{summary.freeDocks}</td>
-                  <td>{summary.capacity}</td>
-                  <td>
-                    <button
-                      type="button"
-                      onClick={() => setSelectedStationId(summary.stationId)}
-                    >
-                      View
-                    </button>
-                  </td>
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ minWidth: 720 }}>
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Status</th>
+                  <th>Bikes available</th>
+                  <th>Bikes docked</th>
+                  <th>Free docks</th>
+                  <th>Capacity</th>
+                  <th>Details</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody>
+                {stations.map((summary) => (
+                  <tr key={summary.stationId}>
+                    <td>{summary.name ?? "Unnamed station"}</td>
+                    <td>{formatStationStatus(summary.status)}</td>
+                    <td>{summary.bikesAvailable}</td>
+                    <td>{summary.bikesDocked}</td>
+                    <td>{summary.freeDocks}</td>
+                    <td>{summary.capacity}</td>
+                    <td>
+                      <button
+                        type="button"
+                        onClick={() => setSelectedStationId(summary.stationId)}
+                      >
+                        View
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         )}
-      </section>
+      </PageSection>
 
       {auth.role === "OPERATOR" && (
-        <section>
-          <h2>Account</h2>
+        <PageSection
+          title="Role switcher"
+          description="Operators can temporarily mimic rider mode to test the experience."
+        >
           <RoleToggle />
-        </section>
+        </PageSection>
       )}
 
       {auth.effectiveRole === "RIDER" && (
-        <section>
-          <h2>My Ride</h2>
-          <LoyaltyBadge userId={auth.userId} token={auth.token} />
-          <p>
-            Pick a station from the map or the overview table to see available bikes. Actions
-            are listed beside each dock in the station details panel.
-          </p>
-          <div style={{ marginTop: 12 }}>
-            <h3>Reservation</h3>
-            {reservationResult ? (
-              <p>
-                Bike{" "}
-                <strong>{reservationResult.bikeId.slice(0, 8).toUpperCase()}</strong> at station{" "}
-                <strong>{reservationResult.stationId.slice(0, 8).toUpperCase()}</strong>{" "}
-                {reservationCountdown === "expired"
-                  ? "reservation expired."
-                  : reservationCountdown
-                  ? `expires in ${reservationCountdown}.`
-                  : "reservation active."}
-              </p>
-            ) : (
-              <p>No active reservations.</p>
-            )}
-            <p style={{ fontSize: 12, marginTop: 4 }}>
-              Reservations hold a bike for {DEFAULT_RESERVATION_MINUTES} minutes.
-            </p>
+        <PageSection
+          title="My ride"
+          description="Pick a station from the map or the table to see available bikes. Dock actions live in the station details panel."
+        >
+          <div style={{ marginBottom: 12 }}>
+            <LoyaltyBadge userId={auth.userId} token={auth.token} />
           </div>
-          <div style={{ marginTop: 12 }}>
-            <h3>Trip</h3>
-            {activeTripId && tripResult ? (
-              <p>
-                Trip <strong>{tripResult.tripId.slice(0, 8).toUpperCase()}</strong> started at
-                station{" "}
-                <strong>{tripResult.stationId.slice(0, 8).toUpperCase()}</strong>. Select a
-                destination station and use "End trip here" in the details panel.
+          <div
+            style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+              gap: "1rem",
+            }}
+          >
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 16,
+                padding: "1rem",
+                background: "var(--surface-muted)",
+              }}
+            >
+              <h3 style={{ marginBottom: 8 }}>Reservation</h3>
+              {reservationResult ? (
+                <p style={{ marginBottom: 4 }}>
+                  Bike{" "}
+                  <strong>{reservationResult.bikeId.slice(0, 8).toUpperCase()}</strong> at
+                  station{" "}
+                  <strong>{reservationResult.stationId.slice(0, 8).toUpperCase()}</strong>{" "}
+                  {reservationCountdown === "expired"
+                    ? "reservation expired."
+                    : reservationCountdown
+                    ? `expires in ${reservationCountdown}.`
+                    : "reservation active."}
+                </p>
+              ) : (
+                <p style={{ marginBottom: 4 }}>No active reservations.</p>
+              )}
+              <p style={{ fontSize: 12, margin: 0 }}>
+                Reservations hold a bike for {DEFAULT_RESERVATION_MINUTES} minutes.
               </p>
-            ) : (
-              <p>No active trip.</p>
-            )}
+            </div>
+            <div
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 16,
+                padding: "1rem",
+                background: "var(--surface-muted)",
+              }}
+            >
+              <h3 style={{ marginBottom: 8 }}>Trip</h3>
+              {activeTripId && tripResult ? (
+                <p style={{ margin: 0 }}>
+                  Trip <strong>{tripResult.tripId.slice(0, 8).toUpperCase()}</strong> started at
+                  station{" "}
+                  <strong>{tripResult.stationId.slice(0, 8).toUpperCase()}</strong>. Select a
+                  destination station and use “End trip here” in the details panel.
+                </p>
+              ) : (
+                <p style={{ margin: 0 }}>No active trip.</p>
+              )}
+            </div>
           </div>
           {tripCompletion && (
-            <div style={{ marginTop: 12 }}>
-              <h3>Last Trip Receipt</h3>
+            <div style={{ marginTop: 16 }}>
+              <h3>Last trip receipt</h3>
               <div className={styles.receiptCard}>
                 <div className={styles.receiptRow}>
                   <span className={styles.receiptLabel}>Trip ID:</span>
@@ -1079,12 +1220,14 @@ export default function DashboardPage() {
           {rideActionInFlight && (
             <p style={{ marginTop: 8, fontSize: 12 }}>Processing your ride request...</p>
           )}
-        </section>
+        </PageSection>
       )}
 
       {auth.effectiveRole === "OPERATOR" && (
-        <section>
-          <h2>Operator Controls</h2>
+        <PageSection
+          title="Operator controls"
+          description="Reset the sandbox environment or move bikes between stations for demos."
+        >
           <div
             style={{
               display: "flex",
@@ -1098,10 +1241,13 @@ export default function DashboardPage() {
               {resettingSystem ? "Resetting..." : "Reset system"}
             </button>
             <span style={{ fontSize: 12, color: "#374151" }}>
-              Restore demo stations, docks, bikes to their initial state.
+              Restore demo stations, docks, and bikes to their initial state.
             </span>
           </div>
-          <form onSubmit={handleMoveBike}>
+          <form
+            onSubmit={handleMoveBike}
+            style={{ display: "grid", gap: "0.75rem", maxWidth: 420 }}
+          >
             <h3>Move a bike</h3>
             <label>
               Bike ID
@@ -1131,11 +1277,10 @@ export default function DashboardPage() {
             </label>
             <button type="submit">Move bike</button>
           </form>
-        </section>
+        </PageSection>
       )}
 
-      <section>
-        <h2>Activity feedback</h2>
+      <PageSection title="Activity feedback">
         {feedback && <p>{feedback}</p>}
         {reservationResult && (
           <p>
@@ -1221,10 +1366,9 @@ export default function DashboardPage() {
             )}
           </div>
         )}
-      </section>
+      </PageSection>
 
-      <section>
-        <h2>Station details</h2>
+      <PageSection title="Station details" description="Select a station to inspect docks and trigger rider/operator actions.">
         {!selectedStationId && <p>Select a station from the table to view details.</p>}
         {selectedStationId && (
           <div>
@@ -1264,6 +1408,10 @@ export default function DashboardPage() {
                     Bikes available: {summary.bikesAvailable} | Docked: {summary.bikesDocked} |
                     Free docks: {summary.freeDocks} | Capacity: {summary.capacity}
                   </p>
+                  <p style={{ fontSize: 13, color: "#4b5563" }}>
+                    E-bikes available: {summary.eBikesAvailable} | E-bikes docked:{" "}
+                    {summary.eBikesDocked}
+                  </p>
                   {loadingStationDetails && <p>Loading station details...</p>}
                   {stationDetailsError && <p role="alert">{stationDetailsError}</p>}
 
@@ -1281,6 +1429,8 @@ export default function DashboardPage() {
                         const isBikeDocked =
                           (dock.status === "OCCUPIED" || dock.status === "RESERVED") &&
                           Boolean(bikeId);
+                        const isEBikeDocked = dock.bikeType === "E_BIKE";
+                        const bikeTypeLabel = renderBikeTypeLabelFromDock(dock.bikeType);
                         const isReservedBike =
                           Boolean(activeReservationBikeId && bikeId === activeReservationBikeId);
                         const reserveDisabled =
@@ -1312,10 +1462,41 @@ export default function DashboardPage() {
                               boxShadow: "0 1px 2px rgba(15, 23, 42, 0.12)",
                             }}
                           >
-                            <strong>{formatDockStatus(dock.status)}</strong>
+                            <div
+                              style={{
+                                display: "flex",
+                                justifyContent: "space-between",
+                                alignItems: "center",
+                              }}
+                            >
+                              <strong>{formatDockStatus(dock.status)}</strong>
+                              {isBikeDocked && isEBikeDocked && (
+                                <span
+                                  style={{
+                                    display: "inline-flex",
+                                    width: 20,
+                                    height: 20,
+                                    borderRadius: "50%",
+                                    background: "#1d4ed8",
+                                    color: "#fff",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                    fontSize: 12,
+                                    fontWeight: 700,
+                                  }}
+                                  title="E-bike docked"
+                                >
+                                  E
+                                </span>
+                              )}
+                            </div>
                             <div style={{ fontSize: 12 }}>
                               Dock {dock.dockId.slice(0, 8)}
-                              {bikeId && <div>Bike {bikeId.slice(0, 8)}</div>}
+                              {bikeId && (
+                                <div>
+                                  Bike {bikeId.slice(0, 8)} • {bikeTypeLabel}
+                                </div>
+                              )}
                             </div>
 
                             {isRider && isBikeDocked && (
@@ -1502,21 +1683,21 @@ export default function DashboardPage() {
             })()}
           </div>
         )}
-      </section>
+      </PageSection>
 
-      {auth.effectiveRole === "OPERATOR" ? (
-        <section>
-          <h2>Ride history</h2>
-          <p>Billing history is available to riders only.</p>
-        </section>
-      ) : (
-        <RideHistory token={auth.token} isOperator={false} />
-      )}
+      <PageSection
+        title="Ride history"
+        description="Filter, search, and inspect past trips."
+      >
+        <RideHistory token={auth.token} isOperator={auth.effectiveRole === "OPERATOR"} />
+      </PageSection>
 
-      <section>
-        <h2>Event console</h2>
+      <PageSection
+        title="Event console"
+        description="Live feed of backend events streamed from the service."
+      >
         <EventConsole token={auth.token} />
-      </section>
-    </main>
+      </PageSection>
+    </AppShell>
   );
 }

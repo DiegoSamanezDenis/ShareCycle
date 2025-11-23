@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { fetchTripDetails, fetchTripHistory } from "../api/trips";
-import type { BikeType, TripDetails, TripHistoryEntry } from "../types/trip";
+import type { TripHistoryFilters } from "../api/trips";
+import type { BikeType, TripDetails, TripHistoryEntry, TripHistoryPage } from "../types/trip";
 
 type RideHistoryProps = {
   token: string | null;
@@ -20,6 +21,8 @@ const initialFilters: FiltersState = {
   endTime: "",
   bikeType: "ALL",
 };
+
+const PAGE_SIZE = 8;
 
 function normalizeDateTime(value: string): string | undefined {
   if (!value) {
@@ -103,8 +106,10 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
     endTime?: string;
     bikeType?: BikeType | null;
   }>({});
-  const [history, setHistory] = useState<TripHistoryEntry[]>([]);
+  const [historyPage, setHistoryPage] = useState<TripHistoryPage | null>(null);
+  const [currentPage, setCurrentPage] = useState(0);
   const [tripSearch, setTripSearch] = useState("");
+  const [debouncedTripSearch, setDebouncedTripSearch] = useState("");
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [historyError, setHistoryError] = useState<string | null>(null);
   const [selectedTripId, setSelectedTripId] = useState<string | null>(null);
@@ -121,32 +126,45 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
   }, [appliedFilters]);
 
   const loadHistory = useCallback(
-    async (filtersToApply: typeof appliedFilters) => {
+    async (filtersToApply: typeof appliedFilters, pageToLoad: number, tripIdFilter: string) => {
       if (!token) {
-        setHistory([]);
+        setHistoryPage(null);
         setHistoryError("You must be signed in to view ride history.");
+        setLoadingHistory(false);
         return;
       }
       setLoadingHistory(true);
       setHistoryError(null);
       try {
-        const entries = await fetchTripHistory(filtersToApply, token);
-        setHistory(entries);
-        // If the selected trip is no longer present, clear details.
-        if (selectedTripId && !entries.some((entry) => entry.tripId === selectedTripId)) {
-          setSelectedTripId(null);
-          setTripDetails(null);
+        const requestFilters: TripHistoryFilters = {
+          startTime: filtersToApply.startTime,
+          endTime: filtersToApply.endTime,
+          bikeType: filtersToApply.bikeType,
+          tripId: tripIdFilter,
+        };
+        const page = await fetchTripHistory(requestFilters, token, {
+          page: pageToLoad,
+          pageSize: PAGE_SIZE,
+        });
+        if (page.totalPages > 0 && page.page >= page.totalPages) {
+          setCurrentPage(page.totalPages - 1);
+          return;
         }
+        if (page.totalPages === 0 && page.page !== 0) {
+          setCurrentPage(0);
+          return;
+        }
+        setHistoryPage(page);
       } catch (err) {
         const message =
           err instanceof Error ? err.message : "Unable to load trip history. Please try again.";
         setHistoryError(message);
-        setHistory([]);
+        setHistoryPage(null);
       } finally {
         setLoadingHistory(false);
       }
     },
-    [token, selectedTripId],
+    [token],
   );
 
   const loadDetails = useCallback(
@@ -173,29 +191,41 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
   );
 
   useEffect(() => {
-    if (token) {
-      void loadHistory(appliedFilters);
-    } else {
-      setHistory([]);
-      setHistoryError("You must be signed in to view ride history.");
-    }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token]);
+    const handle = window.setTimeout(() => {
+      const normalized = tripSearch.trim();
+      setDebouncedTripSearch((prev) => (prev === normalized ? prev : normalized));
+    }, 300);
+    return () => window.clearTimeout(handle);
+  }, [tripSearch]);
 
-  const handleApplyFilters = async () => {
+  useEffect(() => {
+    setCurrentPage(0);
+  }, [debouncedTripSearch]);
+
+  useEffect(() => {
+    if (!token) {
+      setHistoryPage(null);
+      setHistoryError("You must be signed in to view ride history.");
+      setLoadingHistory(false);
+      return;
+    }
+    void loadHistory(appliedFilters, currentPage, debouncedTripSearch);
+  }, [token, appliedFilters, currentPage, debouncedTripSearch, loadHistory]);
+
+  const handleApplyFilters = () => {
     const nextFilters = {
       startTime: normalizeDateTime(filters.startTime),
       endTime: normalizeDateTime(filters.endTime),
       bikeType: filters.bikeType === "ALL" ? null : filters.bikeType,
     };
     setAppliedFilters(nextFilters);
-    await loadHistory(nextFilters);
+    setCurrentPage(0);
   };
 
-  const handleResetFilters = async () => {
+  const handleResetFilters = () => {
     setFilters(initialFilters);
     setAppliedFilters({});
-    await loadHistory({});
+    setCurrentPage(0);
   };
 
   const handleSelectTrip = async (tripId: string) => {
@@ -203,23 +233,16 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
     await loadDetails(tripId);
   };
 
-  const historyToDisplay = useMemo(() => {
-    const needle = tripSearch.trim().toLowerCase();
-    if (!needle) {
-      return history;
-    }
-    return history.filter((entry) => entry.tripId.toLowerCase().includes(needle));
-  }, [history, tripSearch]);
-
+  const historyEntries = historyPage?.entries ?? [];
+  const totalItems = historyPage?.totalItems ?? 0;
+  const totalPages = historyPage?.totalPages ?? 0;
   const selectedHistoryEntry = useMemo(() => {
     if (!selectedTripId) return null;
-    return history.find((entry) => entry.tripId === selectedTripId) ?? null;
-  }, [history, selectedTripId]);
+    return historyEntries.find((entry) => entry.tripId === selectedTripId) ?? null;
+  }, [historyEntries, selectedTripId]);
 
   return (
-    <section>
-      <h2>Ride History</h2>
-
+    <div>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -270,7 +293,7 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
         <button
           type="button"
           onClick={() => void handleResetFilters()}
-          disabled={loadingHistory && history.length === 0}
+          disabled={loadingHistory && totalItems === 0}
         >
           Reset
         </button>
@@ -307,94 +330,136 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
       {loadingHistory && <p>Loading ride history...</p>}
       {historyError && <p role="alert">{historyError}</p>}
 
-      {!loadingHistory && !historyError && (
+      {!loadingHistory && !historyError && historyPage && (
         <>
-          {historyToDisplay.length === 0 ? (
+          {totalItems === 0 ? (
             <p>
-              {history.length === 0
-                ? "No rides matched the selected filters."
-                : "No trips match the current trip ID search."}
+              {debouncedTripSearch
+                ? "No trips match the current trip ID search."
+                : "No rides matched the selected filters."}
             </p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={{ minWidth: 760 }}>
-                <thead>
-                  <tr>
-                    <th>Trip</th>
-                    {isOperator && <th>Rider</th>}
-                    <th>Start</th>
-                    <th>End</th>
-                    <th>Started</th>
-                    <th>Ended</th>
-                    <th>Duration</th>
-                    <th>Bike</th>
-                    <th>Bike ID</th>
-                    <th>Total</th>
-                    <th>Ledger</th>
-                    <th>Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {historyToDisplay.map((entry) => {
-                    const isSelected = entry.tripId === selectedTripId;
-                    const riderLabel =
-                      entry.riderName ??
-                      (entry.riderId ? entry.riderId.slice(0, 8).toUpperCase() : "Unknown");
-                    return (
-                      <tr
-                        key={entry.tripId}
-                        style={
-                          isSelected
-                            ? {
-                                background: "#1f2937",
-                                color: "#f9fafb",
+            <>
+              <div style={{ overflowX: "auto" }}>
+                <table style={{ minWidth: 760 }}>
+                  <thead>
+                    <tr>
+                      <th>Trip</th>
+                      {isOperator && <th>Rider</th>}
+                      <th>Start</th>
+                      <th>End</th>
+                      <th>Started</th>
+                      <th>Ended</th>
+                      <th>Duration</th>
+                      <th>Bike</th>
+                      <th>Bike ID</th>
+                      <th>Total</th>
+                      <th>Ledger</th>
+                      <th>Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historyEntries.map((entry) => {
+                      const isSelected = entry.tripId === selectedTripId;
+                      const riderLabel =
+                        entry.riderName ??
+                        (entry.riderId ? entry.riderId.slice(0, 8).toUpperCase() : "Unknown");
+                      return (
+                        <tr
+                          key={entry.tripId}
+                          style={
+                            isSelected
+                              ? {
+                                  background: "#1f2937",
+                                  color: "#f9fafb",
+                                }
+                              : undefined
+                          }
+                        >
+                          <td>
+                            <code>{entry.tripId.slice(0, 8).toUpperCase()}</code>
+                          </td>
+                          {isOperator && <td>{riderLabel}</td>}
+                          <td>{entry.startStationName ?? "Unknown"}</td>
+                          <td>{entry.endStationName ?? "—"}</td>
+                          <td>{formatDateTime(entry.startTime)}</td>
+                          <td>{formatDateTime(entry.endTime)}</td>
+                          <td>{formatDuration(entry.durationMinutes)}</td>
+                          <td>{renderBikeTypeLabel(entry.bikeType)}</td>
+                          <td>
+                            {entry.bikeId ? (
+                              <code>{entry.bikeId.slice(0, 8).toUpperCase()}</code>
+                            ) : (
+                              "—"
+                            )}
+                          </td>
+                          <td>{formatCurrency(entry.totalCost)}</td>
+                          <td>{renderLedgerStatus(entry.ledgerStatus)}</td>
+                          <td>
+                            <button
+                              type="button"
+                              onClick={() => void handleSelectTrip(entry.tripId)}
+                              disabled={loadingDetails && selectedTripId === entry.tripId}
+                              style={
+                                isSelected
+                                  ? {
+                                      background: "#f9fafb",
+                                      color: "#111827",
+                                      border: "1px solid #cbd5f5",
+                                    }
+                                  : undefined
                               }
-                            : undefined
-                        }
-                      >
-                        <td>
-                          <code>{entry.tripId.slice(0, 8).toUpperCase()}</code>
-                        </td>
-                        {isOperator && <td>{riderLabel}</td>}
-                        <td>{entry.startStationName ?? "Unknown"}</td>
-                        <td>{entry.endStationName ?? "—"}</td>
-                        <td>{formatDateTime(entry.startTime)}</td>
-                        <td>{formatDateTime(entry.endTime)}</td>
-                        <td>{formatDuration(entry.durationMinutes)}</td>
-                        <td>{renderBikeTypeLabel(entry.bikeType)}</td>
-                        <td>
-                          {entry.bikeId ? (
-                            <code>{entry.bikeId.slice(0, 8).toUpperCase()}</code>
-                          ) : (
-                            "—"
-                          )}
-                        </td>
-                        <td>{formatCurrency(entry.totalCost)}</td>
-                        <td>{renderLedgerStatus(entry.ledgerStatus)}</td>
-                        <td>
-                          <button
-                            type="button"
-                            onClick={() => void handleSelectTrip(entry.tripId)}
-                            disabled={loadingDetails && selectedTripId === entry.tripId}
-                            style={
-                              isSelected
-                                ? {
-                                    background: "#f9fafb",
-                                    color: "#111827",
-                                    border: "1px solid #cbd5f5",
-                                  }
-                                : undefined
-                            }
-                          >
-                            {selectedTripId === entry.tripId ? "Refresh" : "View"}
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
+                            >
+                              {selectedTripId === entry.tripId ? "Refresh" : "View"}
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              {totalItems > PAGE_SIZE && (
+                <div
+                  style={{
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    marginTop: 12,
+                    flexWrap: "wrap",
+                    gap: 12,
+                  }}
+                >
+                  <span>
+                    Showing{" "}
+                    {`${historyPage.page * historyPage.pageSize + 1}-${Math.min(
+                      historyPage.page * historyPage.pageSize + historyEntries.length,
+                      totalItems,
+                    )}`}{" "}
+                    of {totalItems} trip{totalItems === 1 ? "" : "s"}
+                  </span>
+                  <div style={{ display: "flex", gap: 8 }}>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => Math.max(0, prev - 1))}
+                      disabled={loadingHistory || !historyPage.hasPrevious}
+                    >
+                      Prev
+                    </button>
+                    <span>
+                      Page {historyPage.page + 1} of {totalPages || 1}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() => setCurrentPage((prev) => prev + 1)}
+                      disabled={loadingHistory || !historyPage.hasNext}
+                    >
+                      Next
+                    </button>
+                  </div>
+                </div>
+              )}
+            </>
           )}
 
           {selectedTripId && (
@@ -510,6 +575,6 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }

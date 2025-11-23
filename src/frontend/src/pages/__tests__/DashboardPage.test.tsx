@@ -106,10 +106,13 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
       suggestions: [],
     };
   }
-  if (path === "/trips" && (!opts || !opts.method || opts.method === "GET")) {
+  if (path.startsWith("/trips") && (!opts || !opts.method || opts.method === "GET")) {
+    const url = new URL(path, "http://localhost");
+    const page = Number.parseInt(url.searchParams.get("page") ?? "0", 10);
+    const pageSize = Number.parseInt(url.searchParams.get("pageSize") ?? "8", 10);
     const start = new Date();
     const end = new Date(start.getTime() + 15 * 60000);
-    return [
+    const allEntries = [
       {
         tripId: "history-1",
         riderId: "u1",
@@ -125,6 +128,18 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
         ledgerStatus: "PAID",
       },
     ];
+    const pagedEntries = allEntries.slice(page * pageSize, page * pageSize + pageSize);
+    const totalItems = allEntries.length;
+    const totalPages = totalItems === 0 ? 0 : 1;
+    return {
+      entries: pagedEntries,
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasNext: false,
+      hasPrevious: page > 0,
+    };
   }
   if (path.startsWith("/trips/") && (!opts || !opts.method || opts.method === "GET")) {
     const endTime = new Date();
@@ -280,6 +295,77 @@ describe("DashboardPage", () => {
     expect(historyRegion.getByText("Station #1")).toBeInTheDocument();
     expect(historyRegion.getByText("Station #2")).toBeInTheDocument();
     expect(historyRegion.getByText("$3.75")).toBeInTheDocument();
+  });
+
+  it("paginates ride history when more than one page of trips exists", async () => {
+    mockedApi.mockImplementation((path: string, opts?: RequestInit) => {
+      if (path.startsWith("/trips") && (!opts || !opts.method || opts.method === "GET")) {
+        const url = new URL(path, "http://localhost");
+        const page = Number.parseInt(url.searchParams.get("page") ?? "0", 10);
+        const pageSize = Number.parseInt(url.searchParams.get("pageSize") ?? "8", 10);
+        const totalItems = 10;
+        const allEntries = Array.from({ length: totalItems }, (_, idx) => {
+          const start = new Date();
+          const end = new Date(start.getTime() + 10 * 60000);
+          return {
+            tripId: `pagetrip-${idx}`,
+            riderId: `r${idx}`,
+            riderName: `Rider ${idx}`,
+            startStationName: `Station ${idx + 1}`,
+            endStationName: `Station ${idx + 1}`,
+            startTime: start.toISOString(),
+            endTime: end.toISOString(),
+            durationMinutes: 10,
+            bikeType: "STANDARD",
+            totalCost: 2.5,
+            ledgerId: `ledger-${idx}`,
+            ledgerStatus: "PAID",
+          };
+        });
+        const totalPages = Math.ceil(totalItems / pageSize);
+        const entries = allEntries.slice(page * pageSize, page * pageSize + pageSize);
+        return {
+          entries,
+          page,
+          pageSize,
+          totalItems,
+          totalPages,
+          hasNext: page < totalPages - 1,
+          hasPrevious: page > 0,
+        };
+      }
+      return defaultApiImplementation(path, opts);
+    });
+
+    renderWithAuth(<DashboardPage />);
+
+    const historyHeading = await screen.findByRole("heading", { name: /Ride History/i });
+    const historySection = historyHeading.closest("section") as HTMLElement;
+    expect(
+      within(historySection).getByText((content) => content.includes("Page 1 of 2")),
+    ).toBeInTheDocument();
+    const nextButton = within(historySection).getByRole("button", { name: /^Next$/i });
+    expect(nextButton).toBeEnabled();
+    fireEvent.click(nextButton);
+    await waitFor(() =>
+      expect(within(historySection).getByText(/Station 10/i)).toBeInTheDocument(),
+    );
+    const prevButton = within(historySection).getByRole("button", { name: /^Prev$/i });
+    expect(prevButton).toBeEnabled();
+  });
+
+  it("renders ride history for operators as well", async () => {
+    renderWithAuth(<DashboardPage />, {
+      role: "OPERATOR",
+      userId: "op1",
+      username: "operator",
+    });
+
+    const historyHeading = await screen.findByRole("heading", { name: /Ride History/i });
+    const historyTable = historyHeading.parentElement?.querySelector("table") as HTMLTableElement;
+    expect(historyTable).toBeTruthy();
+    const headerCells = within(historyTable as HTMLTableElement).getAllByRole("columnheader");
+    expect(headerCells.some((cell) => cell.textContent === "Rider")).toBe(true);
   });
 
   it("allows operators to reset the system", async () => {
