@@ -1,7 +1,10 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, JSX } from "react";
 import { Map, Marker as PigeonMarker } from "pigeon-maps";
+
+import { Link } from "react-router-dom";
 import { apiRequest } from "../api/client";
+import { payLedger } from "../api/payments";
 import { resetSystem } from "../api/system";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
@@ -11,9 +14,7 @@ import styles from "./TripReceipt.module.css";
 import type { DockSummary, StationDetails, StationSummary } from "../types/station";
 import { RoleToggle } from "../components/RoleToggle";
 import type { LedgerStatus } from "../types/trip";
-import { payLedger } from "../api/payments";
 import TierNotificationToast from "../components/TierNotificationToast";
-import { Link } from "react-router-dom";
 
 type ReservationResponse = {
   reservationId: string;

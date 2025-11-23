@@ -7,18 +7,15 @@ import com.sharecycle.domain.ReservationBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.event.ReservationCreatedEvent;
 import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.LoyaltyTier;
 import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaLoyaltyRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
-import com.sharecycle.domain.model.*;
-import com.sharecycle.domain.model.LoyaltyTier;
-import com.sharecycle.domain.repository.JpaLoyaltyRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class ReserveBikeUseCase {
@@ -69,7 +66,7 @@ public class ReserveBikeUseCase {
         
         int extraMinutes = 0;
         try {
-            LoyaltyTier tier = loyaltyRepository != null ? loyaltyRepository.findCurrentTier(rider.getUserId()) : LoyaltyTier.ENTRY;
+            LoyaltyTier tier = loyaltyRepository != null ? loyaltyRepository.findCurrentTier(riderForReservation.getUserId()) : LoyaltyTier.ENTRY;
             if (tier == LoyaltyTier.SILVER) extraMinutes =2;
             if (tier == LoyaltyTier.GOLD) extraMinutes = 5;
         } catch (Exception e) {
