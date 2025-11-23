@@ -33,6 +33,13 @@ public class PayAsYouGoStrategy implements PricingStrategyRepository {
             eBikeSurcharge = eBikeSurcharge * (1 - OPERATOR_DISCOUNT_RATE);
         }
 
+        // Apply loyalty/discount perks last so they stack with operator discounts
+        double normalizedDiscountRate = Math.min(1.0, Math.max(0.0, discountRate));
+        double loyaltyMultiplier = 1.0 - normalizedDiscountRate;
+        baseCost = baseCost * loyaltyMultiplier;
+        timeCost = timeCost * loyaltyMultiplier;
+        eBikeSurcharge = eBikeSurcharge * loyaltyMultiplier;
+
         return new Bill(baseCost, timeCost, eBikeSurcharge);
     }
 
