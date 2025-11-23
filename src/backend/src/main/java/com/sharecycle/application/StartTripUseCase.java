@@ -8,6 +8,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import com.sharecycle.domain.TripBuilder;
 import com.sharecycle.domain.event.DomainEventPublisher;
+import com.sharecycle.domain.event.RebalanceAlertEvent;
 import com.sharecycle.domain.event.TripStartedEvent;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Reservation;
@@ -100,6 +101,18 @@ public class StartTripUseCase {
         // Persist station and bike state before inserting trip row to keep UI and DB in sync
         stationRepository.save(managedStartStation);
         bikeRepository.save(managedBike);
+
+        // Check if station became empty after undocking and trigger rebalance alert
+        if (managedStartStation.getAvailableBikeCount() == 0 && !managedStartStation.isOutOfService()) {
+            eventPublisher.publish(new RebalanceAlertEvent(
+                managedStartStation.getId(),
+                managedStartStation.getName(),
+                managedStartStation.getAddress(),
+                managedStartStation.getLatitude(),
+                managedStartStation.getLongitude(),
+                managedStartStation.getCapacity()
+            ));
+        }
 
         TripBuilder tripBuilder = new TripBuilder();
         if (tripID != null) {

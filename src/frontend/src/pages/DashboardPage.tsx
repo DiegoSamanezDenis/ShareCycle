@@ -2,20 +2,19 @@ import { Map, Marker as PigeonMarker } from "pigeon-maps";
 import type { FormEvent } from "react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { Link } from "react-router-dom";
 import { apiRequest } from "../api/client";
+import { payLedger } from "../api/payments";
 import { resetSystem } from "../api/system";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
 import LoyaltyBadge from "../components/LoyaltyBadge";
 import RideHistory from "../components/RideHistory";
 import { RoleToggle } from "../components/RoleToggle";
+import TierNotificationToast from "../components/TierNotificationToast";
 import type { StationDetails, StationSummary } from "../types/station";
 import type { LedgerStatus } from "../types/trip";
 import styles from "./TripReceipt.module.css";
-import { payLedger } from "../api/payments";
-import LoyaltyBadge from "../components/LoyaltyBadge";
-import TierNotificationToast from "../components/TierNotificationToast";
-import { Link } from "react-router-dom";
 
 type ReservationResponse = {
   reservationId: string;
