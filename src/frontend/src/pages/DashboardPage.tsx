@@ -1,17 +1,18 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import type { FormEvent, JSX } from "react";
 import { Map, Marker as PigeonMarker } from "pigeon-maps";
-
 import { apiRequest } from "../api/client";
 import { resetSystem } from "../api/system";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
+import LoyaltyBadge from "../components/LoyaltyBadge";
 import RideHistory from "../components/RideHistory";
 import styles from "./TripReceipt.module.css";
 import type { DockSummary, StationDetails, StationSummary } from "../types/station";
+import { RoleToggle } from "../components/RoleToggle";
 import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
-import LoyaltyBadge from "../components/LoyaltyBadge";
+import TierNotificationToast from "../components/TierNotificationToast";
 import { Link } from "react-router-dom";
 
 type ReservationResponse = {
@@ -820,6 +821,7 @@ export default function DashboardPage() {
 
   return (
     <main>
+      <TierNotificationToast token={auth.token} />
       <header>
         <h1>ShareCycle Dashboard</h1>
         <p>
@@ -1011,7 +1013,14 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {auth.role === "RIDER" && (
+      {auth.role === "OPERATOR" && (
+        <section>
+          <h2>Account</h2>
+          <RoleToggle />
+        </section>
+      )}
+
+      {auth.effectiveRole === "RIDER" && (
         <section>
           <h2>My Ride</h2>
           <LoyaltyBadge userId={auth.userId} token={auth.token} />
@@ -1138,7 +1147,7 @@ export default function DashboardPage() {
         </section>
       )}
 
-      {auth.role === "OPERATOR" && (
+      {auth.effectiveRole === "OPERATOR" && (
         <section>
           <h2>Operator Controls</h2>
           <div
@@ -1220,7 +1229,8 @@ export default function DashboardPage() {
             </div>
             <div className={styles.feedbackRow}>
               Base: ${tripCompletion.baseCost.toFixed(2)} + Time: $
-              {tripCompletion.timeCost.toFixed(2)}
+              {tripCompletion.timeCost.toFixed(2)} - Discount: $
+              {(tripCompletion.discountAmount ?? 0).toFixed(2)}
               {tripCompletion.eBikeSurcharge > 0 && (
                 <span> + E-Bike: ${tripCompletion.eBikeSurcharge.toFixed(2)}</span>
               )}
@@ -1294,8 +1304,8 @@ export default function DashboardPage() {
                   : null;
               const docks = detailed?.docks ?? [];
               const stationIdForActions = detailed?.stationId ?? summary.stationId;
-              const isRider = auth.role === "RIDER";
-              const isOperator = auth.role === "OPERATOR";
+              const isRider = auth.effectiveRole === "RIDER";
+              const isOperator = auth.effectiveRole === "OPERATOR";
               const reservationActive =
                 !rideActionInFlight &&
                 Boolean(reservationResult?.active) &&
@@ -1596,7 +1606,7 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {auth.role === "OPERATOR" ? (
+      {auth.effectiveRole === "OPERATOR" ? (
         <section>
           <h2>Ride history</h2>
           <p>Billing history is available to riders only.</p>

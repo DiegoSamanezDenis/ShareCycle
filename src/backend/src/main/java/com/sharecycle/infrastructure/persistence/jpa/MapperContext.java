@@ -1,10 +1,19 @@
 package com.sharecycle.infrastructure.persistence.jpa;
 
-import com.sharecycle.domain.model.*;
-
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
+
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.model.User;
+
+import jakarta.persistence.EntityManager;
 
 public class MapperContext {
     final Map<UUID, Station> stations = new HashMap<>();
@@ -22,6 +31,14 @@ public class MapperContext {
     final Map<UUID, JpaTripEntity> tripEntities = new HashMap<>();
     final Map<UUID, JpaLedgerEntryEntity> ledgerEntities = new HashMap<>();
     final Map<UUID, JpaUserEntity> userEntities = new HashMap<>();
+    
+    final EntityManager entityManager;
+    
     public MapperContext() {
+        this.entityManager = null;
+    }
+    
+    public MapperContext(EntityManager entityManager) {
+        this.entityManager = entityManager;
     }
 }

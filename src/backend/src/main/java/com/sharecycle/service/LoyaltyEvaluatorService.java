@@ -74,16 +74,24 @@ public class LoyaltyEvaluatorService {
     }
 
     private boolean checkWeeklyFrequency(List<Trip> trips, LocalDateTime since, int threshold) {
-        long totalLast3Months = trips.stream().filter(t -> t.getEndTime() != null && t.getEndTime().isAfter(since)).count();
+        // 1. Group trips by "Week Number" relative to the start date
+        Map<Long, Long> tripsPerWeek = trips.stream()
+                .filter(t -> t.getEndTime() != null && t.getEndTime().isAfter(since))
+                .collect(Collectors.groupingBy(
+                        t -> ChronoUnit.WEEKS.between(since, t.getEndTime()),
+                        Collectors.counting()
+                ));
 
-        long weeks = ChronoUnit.WEEKS.between(since, LocalDateTime.now());
-        if (weeks <= 0) {
-            weeks = 1;
+        // 2. Check how many weeks have passed
+        long weeksSinceStart = ChronoUnit.WEEKS.between(since, LocalDateTime.now());
+
+        // 3. REQUIREMENT: "Every week".
+        if (tripsPerWeek.size() < weeksSinceStart) {
+            return false;
         }
 
-        double averagePerWeek = (double) totalLast3Months / weeks;
-
-        return averagePerWeek > threshold;
+        // 4. Check if EVERY active week has > threshold
+        return tripsPerWeek.values().stream().allMatch(count -> count >= threshold);
     }
 
     private boolean checkMonthlyFrequency(List<Trip> trips, LocalDateTime since, int threshold) {
@@ -98,7 +106,7 @@ public class LoyaltyEvaluatorService {
             return false;
         }
 
-        return counts.values().stream().allMatch(count -> count > threshold);
+        return counts.values().stream().allMatch(count -> count >= threshold);
     }
 
     public record EvaluationResult(LoyaltyTier tier, String reason) {}

@@ -1,12 +1,12 @@
 /* eslint-disable react-refresh/only-export-components */
-import {
-  createContext,
-  useCallback,
-  useContext,
-  useMemo,
-  useState,
-} from "react";
 import type { ReactNode } from "react";
+import {
+    createContext,
+    useCallback,
+    useContext,
+    useMemo,
+    useState,
+} from "react";
 import { apiRequest } from "../api/client";
 
 type AuthRole = "RIDER" | "OPERATOR";
@@ -16,6 +16,7 @@ type AuthState = {
   role: AuthRole | null;
   userId: string | null;
   username: string | null;
+  currentMode: AuthRole | null; // For operators: their active mode
 };
 
 type LoginPayload = {
@@ -23,11 +24,14 @@ type LoginPayload = {
   role: AuthRole;
   userId: string;
   username: string;
+  currentMode?: AuthRole;
 };
 
 type AuthContextValue = AuthState & {
   login: (payload: LoginPayload) => void;
   logout: () => Promise<void>;
+  toggleRole: () => Promise<void>;
+  effectiveRole: AuthRole | null; // The role to use for UI (considers currentMode)
 };
 
 const STORAGE_KEY = "sharecycle.auth";
@@ -40,6 +44,7 @@ const emptyState: AuthState = {
   role: null,
   userId: null,
   username: null,
+  currentMode: null,
 };
 
 function loadInitialState(): AuthState {
@@ -52,6 +57,7 @@ function loadInitialState(): AuthState {
         role: parsed.role ?? null,
         userId: parsed.userId ?? null,
         username: parsed.username ?? null,
+        currentMode: parsed.currentMode ?? parsed.role ?? null,
       };
     }
   } catch {
@@ -69,6 +75,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       role: payload.role,
       userId: payload.userId,
       username: payload.username,
+      currentMode: payload.currentMode ?? payload.role,
     };
     setState(nextState);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
@@ -90,13 +97,53 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem(ACTIVE_TRIP_STORAGE_KEY);
   }, [state.token]);
 
+  const toggleRole = useCallback(async () => {
+    if (!state.token || state.role !== "OPERATOR") {
+      return;
+    }
+    try {
+      const response = await apiRequest<{
+        userId: string;
+        username: string;
+        baseRole: string;
+        currentMode: AuthRole;
+        token: string;
+      }>("/auth/toggle-role", {
+        method: "POST",
+        token: state.token,
+      });
+      console.log("Toggle role response:", response);
+      console.log("Current state before update:", state);
+      const nextState: AuthState = {
+        ...state,
+        currentMode: response.currentMode,
+      };
+      console.log("Next state after update:", nextState);
+      setState(nextState);
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(nextState));
+    } catch (error) {
+      console.error("Failed to toggle role:", error);
+      throw error;
+    }
+  }, [state]);
+
+  const effectiveRole = useMemo<AuthRole | null>(() => {
+    // For operators, use currentMode; for others, use role
+    if (state.role === "OPERATOR" && state.currentMode) {
+      return state.currentMode;
+    }
+    return state.role;
+  }, [state.role, state.currentMode]);
+
   const value = useMemo<AuthContextValue>(
     () => ({
       ...state,
       login,
       logout,
+      toggleRole,
+      effectiveRole,
     }),
-    [state, login, logout],
+    [state, login, logout, toggleRole, effectiveRole],
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

@@ -1,0 +1,106 @@
+.roleToggleContainer {
+  margin-bottom: 24px;
+}
+
+.roleToggleCard {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  border-radius: 12px;
+  padding: 20px;
+  color: white;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.title {
+  margin: 0 0 16px 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.roleStatus {
+  margin-bottom: 16px;
+}
+
+.roleIndicator {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.baseRole {
+  font-size: 14px;
+  opacity: 0.9;
+}
+
+.currentMode {
+  font-size: 20px;
+  font-weight: bold;
+  padding: 8px 16px;
+  border-radius: 8px;
+  display: inline-block;
+  width: fit-content;
+}
+
+.operatorMode {
+  background-color: rgba(255, 255, 255, 0.2);
+  border: 2px solid rgba(255, 255, 255, 0.5);
+}
+
+.riderMode {
+  background-color: rgba(16, 185, 129, 0.3);
+  border: 2px solid #10b981;
+}
+
+.toggleButton {
+  width: 100%;
+  padding: 12px 20px;
+  font-size: 16px;
+  font-weight: 600;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.toggleButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.toRider {
+  background-color: #10b981;
+  color: white;
+}
+
+.toRider:hover:not(:disabled) {
+  background-color: #059669;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(16, 185, 129, 0.3);
+}
+
+.toOperator {
+  background-color: white;
+  color: #667eea;
+}
+
+.toOperator:hover:not(:disabled) {
+  background-color: #f3f4f6;
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.icon {
+  font-size: 20px;
+}
+
+.description {
+  margin: 0;
+  font-size: 13px;
+  opacity: 0.9;
+  text-align: center;
+  line-height: 1.4;
+}
