@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -75,12 +76,13 @@ public class ListTripsUseCase {
             }
         }
 
+        List<Trip> orderedTrips = sortTripsLatestFirst(trips);
         List<TripHistoryEntry> entries;
-        if (trips.isEmpty()) {
+        if (orderedTrips.isEmpty()) {
             entries = List.of();
         } else {
             Map<UUID, LedgerEntry> ledgerEntriesByTripId = ledgerEntryRepository.findAllByTripIds(
-                            trips.stream()
+                            orderedTrips.stream()
                                     .map(Trip::getTripID)
                                     .toList())
                     .stream()
@@ -88,7 +90,7 @@ public class ListTripsUseCase {
                     .collect(Collectors.toMap(entry -> entry.getTrip().getTripID(), Function.identity(), (existing, replacement) -> replacement));
 
             boolean includeBilling = true;
-            entries = trips.stream()
+            entries = orderedTrips.stream()
                     .map(trip -> toHistoryEntry(trip, ledgerEntriesByTripId.get(trip.getTripID()), includeBilling))
                     .toList();
         }
@@ -97,6 +99,24 @@ public class ListTripsUseCase {
         boolean hasNext = safePage < totalPages - 1;
         boolean hasPrevious = safePage > 0;
         return new TripHistoryPage(entries, safePage, safePageSize, totalCount, totalPages, hasNext, hasPrevious);
+    }
+
+    private List<Trip> sortTripsLatestFirst(List<Trip> trips) {
+        if (trips == null || trips.isEmpty()) {
+            return List.of();
+        }
+        Comparator<Trip> comparator = Comparator
+                .comparing(
+                        Trip::getEndTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                )
+                .thenComparing(
+                        Trip::getStartTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                );
+        return trips.stream()
+                .sorted(comparator)
+                .toList();
     }
 
     private TripHistoryEntry toHistoryEntry(Trip trip, LedgerEntry ledgerEntry, boolean includeBilling) {
