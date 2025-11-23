@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -150,13 +151,17 @@ public class TripController {
     }
 
     @GetMapping
-    public List<ListTripsUseCase.TripHistoryEntry> listTrips(
+    public ListTripsUseCase.TripHistoryPage listTrips(
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(name = "bikeType", required = false) String bikeTypeValue) {
+            @RequestParam(name = "bikeType", required = false) String bikeTypeValue,
+            @RequestParam(name = "tripId", required = false) String tripId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "pageSize", defaultValue = "8") int pageSize) {
         User currentUser = requireAuthenticatedUser();
+        String effectiveRole = resolveEffectiveRole(currentUser);
         Bike.BikeType bikeType = null;
         if (bikeTypeValue != null && !bikeTypeValue.isBlank()) {
             try {
@@ -165,7 +170,16 @@ public class TripController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid bikeType value: " + bikeTypeValue);
             }
         }
-        return listTripsUseCase.execute(currentUser, startTime, endTime, bikeType);
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0.");
+        }
+        final int maxPageSize = 50;
+        if (pageSize <= 0 || pageSize > maxPageSize) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "pageSize must be between 1 and " + maxPageSize + ".");
+        }
+        return listTripsUseCase.execute(currentUser, startTime, endTime, bikeType, page, pageSize, tripId, effectiveRole);
     }
 
     @GetMapping("/{tripId}")
@@ -177,7 +191,8 @@ public class TripController {
     @GetMapping("/last-completed")
     public TripSummaryResponse getLastCompletedTrip() {
         User currentUser = requireAuthenticatedUser();
-        if (!"RIDER".equalsIgnoreCase(currentUser.getRole())) {
+        String effectiveRole = resolveEffectiveRole(currentUser);
+        if (!"RIDER".equalsIgnoreCase(effectiveRole)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Trip summary is available to riders only.");
         }
         GetLastCompletedTripSummaryUseCase.TripSummary summary =
@@ -239,11 +254,25 @@ public class TripController {
     }
 
     private boolean isOperator(User requester) {
-        if (requester == null || requester.getRole() == null) {
+        String role = resolveEffectiveRole(requester);
+        if (role == null) {
             return false;
         }
-        String role = requester.getRole().toUpperCase();
-        return "OPERATOR".equals(role) || "ADMIN".equals(role);
+        String normalized = role.toUpperCase();
+        return "OPERATOR".equals(normalized) || "ADMIN".equals(normalized);
+    }
+
+    private String resolveEffectiveRole(User user) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null) {
+            for (GrantedAuthority authority : auth.getAuthorities()) {
+                String value = authority != null ? authority.getAuthority() : null;
+                if (value != null && value.startsWith("ROLE_") && value.length() > 5) {
+                    return value.substring(5);
+                }
+            }
+        }
+        return user != null ? user.getRole() : null;
     }
 
     public record StartTripRequest(

@@ -1604,14 +1604,7 @@ export default function DashboardPage() {
         )}
       </section>
 
-      {auth.effectiveRole === "OPERATOR" ? (
-        <section>
-          <h2>Ride history</h2>
-          <p>Billing history is available to riders only.</p>
-        </section>
-      ) : (
-        <RideHistory token={auth.token} isOperator={false} />
-      )}
+      <RideHistory token={auth.token} isOperator={auth.effectiveRole === "OPERATOR"} />
 
       <section>
         <h2>Event console</h2>

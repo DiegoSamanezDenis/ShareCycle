@@ -59,15 +59,21 @@ class ListTripsUseCaseTest {
     @Test
     @Transactional
     void correctTripSearch() {
-        List<ListTripsUseCase.TripHistoryEntry> returnedTrip = listTripsUseCase.execute(
+        ListTripsUseCase.TripHistoryPage returnedTrip = listTripsUseCase.execute(
                 testUser,
                 LocalDateTime.of(2000, 1, 1, 0, 0),
                 LocalDateTime.of(2100, 1, 1, 0, 0),
-                Bike.BikeType.E_BIKE
+                Bike.BikeType.E_BIKE,
+                0,
+                8,
+                null,
+                "RIDER"
         );
 
-        assertEquals(1, returnedTrip.size());
-        var entry = returnedTrip.get(0);
+        assertEquals(1, returnedTrip.entries().size());
+        assertEquals(1, returnedTrip.totalItems());
+        assertEquals(1, returnedTrip.totalPages());
+        var entry = returnedTrip.entries().get(0);
         assertEquals(testTrip.getTripID(), entry.tripId());
         assertEquals(testUser.getUserId(), entry.riderId());
         assertEquals("Test", entry.riderName());
@@ -77,13 +83,38 @@ class ListTripsUseCaseTest {
     @Test
     @Transactional
     void incorrectTripSearch() {
-        List<ListTripsUseCase.TripHistoryEntry> returnedTrip = listTripsUseCase.execute(
+        ListTripsUseCase.TripHistoryPage returnedTrip = listTripsUseCase.execute(
                 testUser,
                 LocalDateTime.of(1999, 1, 1, 0, 0),
                 LocalDateTime.of(1999, 2, 1, 0, 0),
-                Bike.BikeType.E_BIKE
+                Bike.BikeType.E_BIKE,
+                0,
+                8,
+                null,
+                "RIDER"
         );
-        assertTrue(returnedTrip.isEmpty());
+        assertTrue(returnedTrip.entries().isEmpty());
+        assertEquals(0, returnedTrip.totalItems());
+        assertEquals(0, returnedTrip.totalPages());
+    }
+
+    @Test
+    @Transactional
+    void filtersByTripIdSubstring() {
+        String partialId = testTrip.getTripID().toString().substring(0, 8);
+        ListTripsUseCase.TripHistoryPage returnedTrip = listTripsUseCase.execute(
+                testUser,
+                null,
+                null,
+                null,
+                0,
+                8,
+                partialId,
+                "RIDER"
+        );
+        assertEquals(1, returnedTrip.totalItems());
+        assertEquals(1, returnedTrip.entries().size());
+        assertEquals(testTrip.getTripID(), returnedTrip.entries().get(0).tripId());
     }
 
     private void createUser() {
