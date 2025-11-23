@@ -1,5 +1,6 @@
 package com.sharecycle.model.dto;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.sharecycle.domain.model.Station;
 
 import java.util.UUID;
@@ -68,10 +69,12 @@ public class StationSummaryDto {
         return capacity;
     }
 
+    @JsonProperty("eBikesDocked")
     public int getEBikesDocked() {
         return eBikesDocked;
     }
 
+    @JsonProperty("eBikesAvailable")
     public int getEBikesAvailable() {
         return eBikesAvailable;
     }

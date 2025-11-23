@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import type { FormEvent, JSX } from "react";
+import type { FormEvent } from "react";
 import { Map, Marker as PigeonMarker } from "pigeon-maps";
 
 import { Link } from "react-router-dom";
@@ -510,36 +510,13 @@ export default function DashboardPage() {
   );
 
   const statusLegend = useMemo<
-    ReadonlyArray<{ label: string; key?: keyof typeof statusColors; sample?: JSX.Element }>
+    ReadonlyArray<{ label: string; key: keyof typeof statusColors }>
   >(
     () => [
       { key: "EMPTY", label: "empty" },
       { key: "OCCUPIED", label: "occupied" },
       { key: "FULL", label: "full" },
       { key: "OUT_OF_SERVICE", label: "out of service" },
-      {
-        label: "has e-bike",
-        sample: (
-          <span
-            style={{
-              width: 18,
-              height: 18,
-              borderRadius: "50%",
-              background: "#22c55e",
-              position: "relative",
-              display: "inline-flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-              fontWeight: 700,
-              fontSize: 12,
-            }}
-            aria-label="E-bike indicator"
-          >
-            E
-          </span>
-        ),
-      },
     ],
     [],
   );
@@ -863,21 +840,41 @@ export default function DashboardPage() {
                 key={`${entry.label}-${index}`}
                 style={{ display: "inline-flex", alignItems: "center", gap: 6 }}
               >
-                {entry.sample ??
-                  (entry.key ? (
-                    <span
-                      style={{
-                        width: 18,
-                        height: 18,
-                        borderRadius: 3,
-                        background: statusColors[entry.key],
-                      }}
-                    />
-                  ) : null)}
+                <span
+                  style={{
+                    width: 18,
+                    height: 18,
+                    borderRadius: 3,
+                    background: statusColors[entry.key],
+                    border: "1px solid rgba(15,23,42,0.2)",
+                  }}
+                  aria-label={`${entry.label} station`}
+                />
                 {entry.label}
               </span>
             ))}
           </div>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "#4b5563" }}>
+            <span
+              style={{
+                width: 18,
+                height: 18,
+                borderRadius: "50%",
+                background: "#1f2937",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                color: "#fff",
+                fontWeight: 700,
+                fontSize: 10,
+              }}
+              aria-label="E-bike overlay indicator"
+              title="“E” overlays on any non-empty station marker when e-bikes are docked"
+            >
+              E
+            </span>
+            indicates e-bikes docked
+          </span>
         </div>
         <Map
           defaultCenter={[45.508, -73.587]}
