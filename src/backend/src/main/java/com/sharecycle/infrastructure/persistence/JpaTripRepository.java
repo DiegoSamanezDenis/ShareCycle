@@ -196,6 +196,8 @@ public class JpaTripRepository implements TripRepository {
                                   boolean countQuery) {
         StringBuilder queryStr = new StringBuilder(countQuery ? "SELECT COUNT(t) FROM JpaTripEntity t" : "SELECT t FROM JpaTripEntity t");
         List<String> predicates = new ArrayList<>();
+        predicates.add("t.endTime IS NOT NULL");
+        predicates.add("t.bike.status <> :maintenanceStatus");
         if (userId != null) {
             predicates.add("t.rider.userId = :userId");
         }
@@ -222,6 +224,7 @@ public class JpaTripRepository implements TripRepository {
                                        LocalDateTime startDate,
                                        LocalDateTime endDate,
                                        Bike.BikeType bikeType) {
+        query.setParameter("maintenanceStatus", Bike.BikeStatus.MAINTENANCE);
         if (userId != null) {
             query.setParameter("userId", userId);
         }
