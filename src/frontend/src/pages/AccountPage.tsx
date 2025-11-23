@@ -2,6 +2,8 @@ import { useEffect, useState } from "react";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import LoyaltyBadge from "../components/LoyaltyBadge";
+import AppShell from "../components/layout/AppShell";
+import PageSection from "../components/layout/PageSection";
 
 type AccountInfo = {
   userId: string;
@@ -42,78 +44,95 @@ export default function AccountPage() {
     void fetchAccount();
   }, [token, userId]);
 
-  if (loading) return <div style={centerStyle}>Loading account info...</div>;
-  if (error) return <div style={{ ...centerStyle, color: "#ef4444" }}>Error: {error}</div>;
-  if (!account) return <div style={centerStyle}>No account info found</div>;
-
   return (
-    <div style={pageStyle}>
-      <h1 style={titleStyle}>My Account</h1>
+    <AppShell
+      heading="My account"
+      subheading="View your subscription details, flex balance, and loyalty tier."
+    >
+      {loading ? (
+        <PageSection>
+          <p>Loading account info...</p>
+        </PageSection>
+      ) : error ? (
+        <PageSection>
+          <p role="alert" style={{ color: "var(--danger)" }}>
+            Error: {error}
+          </p>
+        </PageSection>
+      ) : !account ? (
+        <PageSection>
+          <p>No account info found.</p>
+        </PageSection>
+      ) : (
+        <>
+          <PageSection title="Profile">
+            <dl
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+                gap: "0.75rem",
+              }}
+            >
+              <div>
+                <dt style={{ fontWeight: 600, color: "var(--text-muted)" }}>Full name</dt>
+                <dd style={{ margin: 0 }}>{account.fullName}</dd>
+              </div>
+              <div>
+                <dt style={{ fontWeight: 600, color: "var(--text-muted)" }}>Username</dt>
+                <dd style={{ margin: 0 }}>{account.username}</dd>
+              </div>
+              <div>
+                <dt style={{ fontWeight: 600, color: "var(--text-muted)" }}>Email</dt>
+                <dd style={{ margin: 0 }}>{account.email}</dd>
+              </div>
+              <div>
+                <dt style={{ fontWeight: 600, color: "var(--text-muted)" }}>Role</dt>
+                <dd style={{ margin: 0 }}>{account.role}</dd>
+              </div>
+            </dl>
+          </PageSection>
 
-     <div style={{ ...cardStyle, color: "#000000" }}>
-  <h2 style={cardTitleStyle}>Profile</h2>
-  <p><strong>Full Name:</strong> {account.fullName}</p>
-  <p><strong>Username:</strong> {account.username}</p>
-  <p><strong>Email:</strong> {account.email}</p>
-  <p><strong>Role:</strong> {account.role}</p>
-</div>
-
-
-      <div style={cardStyle}>
-        <h2 style={cardTitleStyle}>Flex Balance</h2>
-        <p style={{ fontSize: 22, fontWeight: 600, color: "#1f2937" }}>
-          ${account.flexCredit.toFixed(2)}
-        </p>
-      </div>
-
-      <div style={cardStyle}>
-        <h2 style={cardTitleStyle}>Loyalty Tier</h2>
-        {token && userId && <LoyaltyBadge userId={account.userId} token={token} />}
-        <p style={{ marginTop: 8, fontSize: 14, color: "#555" }}>
-          Reason: {account.loyaltyReason || "No reason provided"}
-        </p>
-      </div>
-    </div>
+          <PageSection title="Balance & loyalty">
+            <div
+              style={{
+                display: "grid",
+                gridTemplateColumns: "repeat(auto-fit, minmax(240px, 1fr))",
+                gap: "1rem",
+              }}
+            >
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 16,
+                  padding: "1rem",
+                  background: "var(--surface-muted)",
+                }}
+              >
+                <h3 style={{ marginBottom: "0.35rem" }}>Flex balance</h3>
+                <p style={{ margin: 0, fontSize: 24, fontWeight: 600 }}>
+                  ${account.flexCredit.toFixed(2)}
+                </p>
+              </div>
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 16,
+                  padding: "1rem",
+                  background: "var(--surface-muted)",
+                }}
+              >
+                <h3 style={{ marginBottom: "0.35rem" }}>Loyalty tier</h3>
+                {token && userId && (
+                  <LoyaltyBadge userId={account.userId} token={token} />
+                )}
+                <p style={{ marginTop: 8, color: "var(--text-muted)" }}>
+                  Reason: {account.loyaltyReason || "No reason provided"}
+                </p>
+              </div>
+            </div>
+          </PageSection>
+        </>
+      )}
+    </AppShell>
   );
 }
-
-// Styles
-const pageStyle: React.CSSProperties = {
-  minHeight: "100vh",
-  background: "linear-gradient(135deg, #6589d0ff, #08152fff)", // soft gradient
-  padding: "40px 20px",
-  fontFamily: "'Segoe UI', Tahoma, Geneva, Verdana, sans-serif",
-};
-
-const titleStyle: React.CSSProperties = {
-  textAlign: "center",
-  fontSize: 32,
-  fontWeight: 700,
-  color: "#111827",
-  marginBottom: 30,
-};
-
-const cardStyle: React.CSSProperties = {
-  background: "#ffffffff",
-  padding: 24,
-  borderRadius: 12,
-  marginBottom: 20,
-  boxShadow: "0 6px 18px rgba(0, 0, 0, 0.08)",
-  transition: "transform 0.2s ease",
-};
-
-const cardTitleStyle: React.CSSProperties = {
-  fontSize: 20,
-  fontWeight: 600,
-  marginBottom: 12,
-  color: "#1f2937",
-};
-
-const centerStyle: React.CSSProperties = {
-  display: "flex",
-  justifyContent: "center",
-  alignItems: "center",
-  height: "60vh",
-  fontSize: 18,
-  color: "#374151",
-};

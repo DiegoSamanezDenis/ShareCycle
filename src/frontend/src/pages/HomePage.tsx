@@ -3,6 +3,8 @@ import { useEffect, useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import { apiRequest } from "../api/client";
 import type { FullnessCategory, StationSummary } from "../types/station";
+import AppShell from "../components/layout/AppShell";
+import PageSection from "../components/layout/PageSection";
 
 export default function HomePage() {
   const [stations, setStations] = useState<StationSummary[]>([]);
@@ -55,25 +57,87 @@ export default function HomePage() {
     }
   }
 
-  return (
-    <main>
-      <header>
-        <h1>ShareCycle</h1>
-        <p>
-          Find the perfect station, reserve your ride, and start exploring the
-          city.
-        </p>
-        <nav>
-          <Link to="/register">Create rider account</Link> ·{" "}
-          <Link to="/login">Sign in</Link> ·{" "}
-          <Link to="/dashboard">Go to dashboard</Link> ·{" "}
-          <Link to="/pricing">View pricing plans</Link>
-        </nav>
-      </header>
+  const heroActions = (
+    <>
+      <Link
+        to="/register"
+        style={{
+          borderRadius: 999,
+          padding: "0.65rem 1.4rem",
+          background: "var(--brand)",
+          color: "#fff",
+          fontWeight: 600,
+        }}
+      >
+        Create rider account
+      </Link>
+      <Link
+        to="/pricing"
+        style={{
+          borderRadius: 999,
+          padding: "0.65rem 1.4rem",
+          border: "1px solid var(--border)",
+          fontWeight: 600,
+          color: "var(--text)",
+        }}
+      >
+        View pricing plans
+      </Link>
+    </>
+  );
 
-      <section>
-        <h2>Explore Stations</h2>
-        <p>Guests can browse availability before signing in.</p>
+  const highlights = [
+    {
+      title: "Reserve remotely",
+      body: "Hold a bike for five minutes while you walk to the station.",
+    },
+    {
+      title: "Ride as rider or operator",
+      body: "Toggle roles to monitor the fleet, move bikes, and reset demos.",
+    },
+    {
+      title: "Track loyalty rewards",
+      body: "Earn tiered discounts and flex credit when you return bikes on time.",
+    },
+  ];
+
+  return (
+    <AppShell
+      heading="City rides made simple"
+      subheading="Browse stations, reserve a bike, and switch between rider and operator tools without leaving your browser."
+      actions={heroActions}
+    >
+      <PageSection>
+        <div
+          style={{
+            display: "grid",
+            gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+            gap: "1rem",
+          }}
+        >
+          {highlights.map((item) => (
+            <div
+              key={item.title}
+              style={{
+                border: "1px solid var(--border)",
+                borderRadius: 16,
+                padding: "1rem",
+                background: "var(--surface-muted)",
+              }}
+            >
+              <h3 style={{ marginBottom: "0.35rem", fontSize: "1.05rem" }}>
+                {item.title}
+              </h3>
+              <p style={{ margin: 0 }}>{item.body}</p>
+            </div>
+          ))}
+        </div>
+      </PageSection>
+
+      <PageSection
+        title="Explore stations"
+        description="Guests can browse availability before signing in. Tap any marker to preview status."
+      >
         {loading && <p>Loading stations…</p>}
         {error && <p role="alert">{error}</p>}
 
@@ -89,8 +153,8 @@ export default function HomePage() {
                 gap: 16,
                 alignItems: "center",
                 flexWrap: "wrap",
-                margin: "12px 0",
-                fontSize: 16,
+                margin: "0 0 16px",
+                fontSize: 15,
               }}
             >
               <strong>Legend:</strong>
@@ -124,64 +188,76 @@ export default function HomePage() {
                 ))}
               </div>
             </div>
-            <Map
-              defaultCenter={[45.508, -73.587]}
-              defaultZoom={13}
-              height={400}
-              provider={(x: number, y: number, z: number) =>
-                `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
-              }
+            <div
+              style={{
+                borderRadius: 16,
+                overflow: "hidden",
+                border: "1px solid var(--border)",
+              }}
             >
-              {stations.map((station) => {
-                const lat = Number.isFinite(station.latitude)
-                  ? station.latitude
-                  : 45.508;
-                const lng = Number.isFinite(station.longitude)
-                  ? station.longitude
-                  : -73.587;
-                const fullness = (station.fullnessCategory ??
-                  "UNKNOWN") as FullnessCategory;
-                const label = station.name ?? "Station";
-                return (
-                  <PigeonMarker
-                    key={station.stationId}
-                    width={64}
-                    anchor={[lat, lng]}
-                  >
-                    <div
-                      style={{ display: "flex", alignItems: "center", gap: 12 }}
+              <Map
+                defaultCenter={[45.508, -73.587]}
+                defaultZoom={13}
+                height={400}
+                provider={(x: number, y: number, z: number) =>
+                  `https://a.tile.openstreetmap.org/${z}/${x}/${y}.png`
+                }
+              >
+                {stations.map((station) => {
+                  const lat = Number.isFinite(station.latitude)
+                    ? station.latitude
+                    : 45.508;
+                  const lng = Number.isFinite(station.longitude)
+                    ? station.longitude
+                    : -73.587;
+                  const fullness = (station.fullnessCategory ??
+                    "UNKNOWN") as FullnessCategory;
+                  const label = station.name ?? "Station";
+                  return (
+                    <PigeonMarker
+                      key={station.stationId}
+                      width={64}
+                      anchor={[lat, lng]}
                     >
-                      <span
-                        aria-label={`Station fullness ${fullness.toLowerCase()}`}
-                        title={`${label} - ${fullness.toLowerCase()}`}
+                      <div
                         style={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: "50%",
-                          background: fullnessColors[fullness],
-                          border: "3px solid #fff",
-                          boxShadow: "0 0 0 3px rgba(0,0,0,0.25)",
-                        }}
-                      />
-                      <span
-                        style={{
-                          background: "rgba(255,255,255,0.92)",
-                          padding: "4px 8px",
-                          borderRadius: 8,
-                          fontSize: 15,
-                          fontWeight: 600,
+                          display: "flex",
+                          alignItems: "center",
+                          gap: 12,
                         }}
                       >
-                        {label}
-                      </span>
-                    </div>
-                  </PigeonMarker>
-                );
-              })}
-            </Map>
+                        <span
+                          aria-label={`Station fullness ${fullness.toLowerCase()}`}
+                          title={`${label} - ${fullness.toLowerCase()}`}
+                          style={{
+                            width: 32,
+                            height: 32,
+                            borderRadius: "50%",
+                            background: fullnessColors[fullness],
+                            border: "3px solid #fff",
+                            boxShadow: "0 0 0 3px rgba(0,0,0,0.25)",
+                          }}
+                        />
+                        <span
+                          style={{
+                            background: "rgba(255,255,255,0.92)",
+                            padding: "4px 8px",
+                            borderRadius: 8,
+                            fontSize: 15,
+                            fontWeight: 600,
+                          }}
+                        >
+                          {label}
+                        </span>
+                      </div>
+                    </PigeonMarker>
+                  );
+                })}
+              </Map>
+            </div>
           </>
         )}
-      </section>
-    </main>
+      </PageSection>
+    </AppShell>
   );
 }

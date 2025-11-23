@@ -3,6 +3,8 @@ import type { FormEvent } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { apiRequest } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import AppShell from "../components/layout/AppShell";
+import PageSection from "../components/layout/PageSection";
 
 type LoginResponse = {
   userId: string;
@@ -43,42 +45,69 @@ export default function LoginPage() {
     }
   };
 
+  const heroActions = (
+    <Link
+      to="/register"
+      style={{
+        borderRadius: 999,
+        padding: "0.6rem 1.4rem",
+        border: "1px solid var(--border)",
+        fontWeight: 600,
+        color: "var(--text)",
+      }}
+    >
+      Create account
+    </Link>
+  );
+
   return (
-    <main>
-      <h1>Sign in</h1>
-      <p>Enter your credentials to access the ShareCycle dashboard.</p>
-      <form onSubmit={handleSubmit} noValidate>
-        <label>
-          Username
-          <input
-            required
-            name="username"
-            value={username}
-            onChange={(event) => setUsername(event.target.value)}
-            disabled={submitting}
-            autoComplete="username"
-          />
-        </label>
-        <label>
-          Password
-          <input
-            required
-            type="password"
-            name="password"
-            value={password}
-            onChange={(event) => setPassword(event.target.value)}
-            disabled={submitting}
-            autoComplete="current-password"
-          />
-        </label>
-        <button type="submit" disabled={submitting}>
-          {submitting ? "Signing in…" : "Login"}
-        </button>
-      </form>
-      {error && <p role="alert">{error}</p>}
-      <p>
-        Don't have an account? <Link to="/register">Create one</Link>.
-      </p>
-    </main>
+    <AppShell
+      heading="Welcome back"
+      subheading="Enter your credentials to manage reservations, trips, and operator tools."
+      actions={heroActions}
+    >
+      <PageSection title="Sign in">
+        <form
+          onSubmit={handleSubmit}
+          noValidate
+          style={{ display: "grid", gap: "1rem", maxWidth: 420 }}
+        >
+          <label>
+            Username
+            <input
+              required
+              name="username"
+              value={username}
+              onChange={(event) => setUsername(event.target.value)}
+              disabled={submitting}
+              autoComplete="username"
+            />
+          </label>
+          <label>
+            Password
+            <input
+              required
+              type="password"
+              name="password"
+              value={password}
+              onChange={(event) => setPassword(event.target.value)}
+              disabled={submitting}
+              autoComplete="current-password"
+            />
+          </label>
+          <button type="submit" disabled={submitting}>
+            {submitting ? "Signing in…" : "Login"}
+          </button>
+          {error && (
+            <p role="alert" style={{ margin: 0, color: "var(--danger)" }}>
+              {error}
+            </p>
+          )}
+        </form>
+        <p style={{ marginTop: "1.5rem" }}>
+          New to ShareCycle? <Link to="/register">Create an account</Link>.
+        </p>
+      </PageSection>
+    </AppShell>
   );
 }

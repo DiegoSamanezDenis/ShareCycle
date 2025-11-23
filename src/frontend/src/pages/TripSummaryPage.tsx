@@ -1,9 +1,12 @@
 //src/pages/TripSummaryPage.tsx
 import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { apiRequest } from "../api/client";
 import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
+import AppShell from "../components/layout/AppShell";
+import PageSection from "../components/layout/PageSection";
 
 type PaymentStatus = "PAID" | "PENDING" | "NOT_REQUIRED" | "UNKNOWN";
 
@@ -43,6 +46,20 @@ export default function TripSummaryPage() {
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
 
+  function formatErrorMessage(rawMessage: string | null): string {
+    if (!rawMessage) {
+      return "Unable to load trip summary right now.";
+    }
+    const normalized = rawMessage.toLowerCase();
+    if (normalized.includes("not_found") || normalized.includes("no completed trips")) {
+      return "No completed trips found.";
+    }
+    if (normalized.includes("forbidden") || normalized.includes("riders only")) {
+      return "Trip summary is only available in rider mode.";
+    }
+    return "Unable to load trip summary right now.";
+  }
+
   useEffect(() => {
     if (!auth.token) return;
 
@@ -55,8 +72,8 @@ export default function TripSummaryPage() {
         });
         setTripSummary(response);
       } catch (err) {
-        const message = err instanceof Error ? err.message : "Unable to load trip summary.";
-        setError(message);
+        const message = err instanceof Error ? err.message : null;
+        setError(formatErrorMessage(message));
         setTripSummary(null);
       } finally {
         setLoading(false);
@@ -89,47 +106,104 @@ export default function TripSummaryPage() {
     }
   };
 
-  if (!auth.token) {
-    return <p>You need to sign in to view trip summary.</p>;
-  }
-
-  if (loading) return <p>Loading trip summary…</p>;
-
-  if (error) return <p role="alert">{error}</p>;
-
-  if (!tripSummary) return <p>No completed trips found.</p>;
+  const heroActions = !auth.token ? (
+    <Link
+      to="/login"
+      style={{
+        borderRadius: 999,
+        padding: "0.6rem 1.4rem",
+        background: "var(--brand)",
+        color: "#fff",
+        fontWeight: 600,
+      }}
+    >
+      Sign in
+    </Link>
+  ) : undefined;
 
   return (
-    <main>
-      <h1>Trip Summary</h1>
+    <AppShell
+      heading="Trip summary"
+      subheading="Review your last completed ride, pay outstanding balances, and confirm ledger status."
+      actions={heroActions}
+    >
+      {!auth.token ? (
+        <PageSection>
+          <p>You need to sign in to view your trip summary.</p>
+        </PageSection>
+      ) : (
+        <PageSection title="Latest receipt">
+          {loading && <p>Loading trip summary…</p>}
+          {error && !loading && <p role="alert">{error}</p>}
+          {!loading && !error && !tripSummary && <p>No completed trips found.</p>}
+          {!loading && !error && tripSummary && (
+            <>
+              <div
+                style={{
+                  display: "grid",
+                  gap: "0.35rem",
+                  marginBottom: "1rem",
+                  fontSize: "0.95rem",
+                }}
+              >
+                <div>
+                  Trip{" "}
+                  <strong>{tripSummary.tripId.slice(0, 8).toUpperCase()}</strong> ended at{" "}
+                  {new Date(tripSummary.endedAt).toLocaleString()}.
+                </div>
+                <div>Duration: {tripSummary.durationMinutes} minutes.</div>
+                <div>
+                  Ledger ID:{" "}
+                  {tripSummary.ledgerId
+                    ? tripSummary.ledgerId.slice(0, 8).toUpperCase()
+                    : "N/A"}
+                </div>
+                <div>Ledger status: {tripSummary.ledgerStatus ?? "PENDING"}</div>
+              </div>
 
-      <p>
-        Trip <strong>{tripSummary.tripId.slice(0, 8).toUpperCase()}</strong> ended at{" "}
-        {new Date(tripSummary.endedAt).toLocaleString()}.
-      </p>
-      <p>Duration: {tripSummary.durationMinutes} minutes.</p>
-      <p>Ledger ID: {tripSummary.ledgerId ? tripSummary.ledgerId.slice(0, 8).toUpperCase() : "—"}</p>
-      <p>Ledger status: {tripSummary.ledgerStatus ?? "PENDING"}</p>
+              <div
+                style={{
+                  border: "1px solid var(--border)",
+                  borderRadius: 16,
+                  padding: "1rem",
+                  background: "var(--surface-muted)",
+                }}
+              >
+                <h3 style={{ marginBottom: "0.75rem" }}>Charges</h3>
+                <div
+                  style={{
+                    display: "grid",
+                    gap: "0.4rem",
+                    fontSize: "0.95rem",
+                  }}
+                >
+                  <div>Base cost: ${tripSummary.baseCost.toFixed(2)}</div>
+                  <div>Time cost: ${tripSummary.timeCost.toFixed(2)}</div>
+                  <div>E-bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</div>
+                  <div style={{ fontWeight: 600 }}>
+                    Total: ${tripSummary.totalCost.toFixed(2)}
+                  </div>
+                </div>
+              </div>
 
-      <section>
-        <h2>Charges</h2>
-        <ul>
-          <li>Base cost: ${tripSummary.baseCost.toFixed(2)}</li>
-          <li>Time cost: ${tripSummary.timeCost.toFixed(2)}</li>
-          <li>E-Bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</li>
-          <li>
-            <strong>Total: ${tripSummary.totalCost.toFixed(2)}</strong>
-          </li>
-        </ul>
-      </section>
-
-      <p>Payment: {formatPaymentStatus(tripSummary.paymentStatus)}</p>
-      {tripSummary.paymentStatus === "PENDING" && tripSummary.ledgerId && (
-        <button type="button" onClick={handlePay} disabled={paying} style={{ marginTop: "0.5rem" }}>
-          {paying ? "Processing..." : "Pay now"}
-        </button>
+              <div style={{ marginTop: "1rem" }}>
+                <div>Payment: {formatPaymentStatus(tripSummary.paymentStatus)}</div>
+                {tripSummary.paymentStatus === "PENDING" && tripSummary.ledgerId && (
+                  <button
+                    type="button"
+                    onClick={handlePay}
+                    disabled={paying}
+                    style={{ marginTop: "0.5rem" }}
+                  >
+                    {paying ? "Processing..." : "Pay now"}
+                  </button>
+                )}
+                {paymentMessage && <p style={{ marginTop: "0.5rem" }}>{paymentMessage}</p>}
+              </div>
+            </>
+          )}
+        </PageSection>
       )}
-      {paymentMessage && <p>{paymentMessage}</p>}
-    </main>
+    </AppShell>
   );
 }

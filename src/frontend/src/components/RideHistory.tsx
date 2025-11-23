@@ -242,9 +242,7 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
   }, [historyEntries, selectedTripId]);
 
   return (
-    <section>
-      <h2>Ride History</h2>
-
+    <div>
       <form
         onSubmit={(event) => {
           event.preventDefault();
@@ -577,6 +575,6 @@ export default function RideHistory({ token, isOperator }: RideHistoryProps) {
           )}
         </>
       )}
-    </section>
+    </div>
   );
 }
