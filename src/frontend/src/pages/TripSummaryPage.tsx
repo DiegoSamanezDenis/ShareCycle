@@ -7,6 +7,7 @@ import type { LedgerStatus } from "../types/trip";
 import { payLedger } from "../api/payments";
 import AppShell from "../components/layout/AppShell";
 import PageSection from "../components/layout/PageSection";
+import RideHistory from "../components/RideHistory";
 
 type PaymentStatus = "PAID" | "PENDING" | "NOT_REQUIRED" | "UNKNOWN";
 
@@ -22,6 +23,8 @@ type TripSummaryResponse = {
   totalCost: number;
   ledgerStatus: LedgerStatus | null;
   paymentStatus: PaymentStatus;
+  discountRate: number;
+  discountAmount: number;
 };
 
 function formatPaymentStatus(status: PaymentStatus): string {
@@ -75,7 +78,7 @@ export default function TripSummaryPage() {
           method: "GET",
           token: auth.token,
         });
-        setCredit(creditResponse.amount); // save credit to state
+        setCredit(creditResponse.amount);
         setTripSummary(response);
       } catch (err) {
         const message = err instanceof Error ? err.message : null;
@@ -87,7 +90,7 @@ export default function TripSummaryPage() {
     };
 
     void fetchTripSummary();
-  }, [auth.token]);
+  }, [auth.token, auth.userId]);
 
   const handlePay = async () => {
     if (!tripSummary?.ledgerId) return;
@@ -129,7 +132,7 @@ export default function TripSummaryPage() {
 
   return (
     <AppShell
-      heading="Trip summary"
+      heading="Trip Summary"
       subheading="Review your last completed ride, pay outstanding balances, and confirm ledger status."
       actions={heroActions}
     >
@@ -138,79 +141,96 @@ export default function TripSummaryPage() {
           <p>You need to sign in to view your trip summary.</p>
         </PageSection>
       ) : (
-        <PageSection title="Latest receipt">
-          {loading && <p>Loading trip summary…</p>}
-          {error && !loading && <p role="alert">{error}</p>}
-          {!loading && !error && !tripSummary && <p>No completed trips found.</p>}
-          {!loading && !error && tripSummary && (
-            <>
-              <div
-                style={{
-                  display: "grid",
-                  gap: "0.35rem",
-                  marginBottom: "1rem",
-                  fontSize: "0.95rem",
-                }}
-              >
-                <div>
-                  Trip{" "}
-                  <strong>{tripSummary.tripId.slice(0, 8).toUpperCase()}</strong> ended at{" "}
-                  {new Date(tripSummary.endedAt).toLocaleString()}.
-                </div>
-                <div>Duration: {tripSummary.durationMinutes} minutes.</div>
-                <div>
-                  Ledger ID:{" "}
-                  {tripSummary.ledgerId
-                    ? tripSummary.ledgerId.slice(0, 8).toUpperCase()
-                    : "N/A"}
-                </div>
-                <div>Ledger status: {tripSummary.ledgerStatus ?? "PENDING"}</div>
-              </div>
-
-              <div
-                style={{
-                  border: "1px solid var(--border)",
-                  borderRadius: 16,
-                  padding: "1rem",
-                  background: "var(--surface-muted)",
-                }}
-              >
-                <h3 style={{ marginBottom: "0.75rem" }}>Charges</h3>
+        <>
+          <PageSection title="Latest receipt">
+            {loading && <p>Loading trip summary…</p>}
+            {error && !loading && <p role="alert">{error}</p>}
+            {!loading && !error && !tripSummary && <p>No completed trips found.</p>}
+            {!loading && !error && tripSummary && (
+              <>
                 <div
                   style={{
                     display: "grid",
-                    gap: "0.4rem",
+                    gap: "0.35rem",
+                    marginBottom: "1rem",
                     fontSize: "0.95rem",
                   }}
                 >
-                  <div>Base cost: ${tripSummary.baseCost.toFixed(2)}</div>
-                  <div>Time cost: ${tripSummary.timeCost.toFixed(2)}</div>
-                  <div>E-bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</div>
-                  <div>Total: ${tripSummary.totalCost.toFixed(2)}</div>
-                  <div>Available flex credit: ${credit.toFixed(2)}</div>
-                  <div style={{ fontWeight: 600 }}>
-                    Amount to pay: ${(tripSummary.totalCost - credit).toFixed(2)}
+                  <div>
+                    Trip{" "}
+                    <strong>{tripSummary.tripId.slice(0, 8).toUpperCase()}</strong> ended at{" "}
+                    {new Date(tripSummary.endedAt).toLocaleString()}.
+                  </div>
+                  <div>Duration: {tripSummary.durationMinutes} minutes.</div>
+                  <div>
+                    Ledger ID:{" "}
+                    {tripSummary.ledgerId
+                      ? tripSummary.ledgerId.slice(0, 8).toUpperCase()
+                      : "N/A"}
+                  </div>
+                  <div>Ledger status: {tripSummary.ledgerStatus ?? "PENDING"}</div>
+                </div>
+
+                <div
+                  style={{
+                    border: "1px solid var(--border)",
+                    borderRadius: 16,
+                    padding: "1rem",
+                    background: "var(--surface-muted)",
+                  }}
+                >
+                  <h3 style={{ marginBottom: "0.75rem" }}>Charges</h3>
+                  <div
+                    style={{
+                      display: "grid",
+                      gap: "0.4rem",
+                      fontSize: "0.95rem",
+                    }}
+                  >
+                    <div>Base cost: ${tripSummary.baseCost.toFixed(2)}</div>
+                    {tripSummary.discountRate > 0 && (
+                      <div>
+                        Loyalty discount ({Math.round(tripSummary.discountRate * 100)}%): -$
+                        {tripSummary.discountAmount.toFixed(2)}
+                      </div>
+                    )}
+                    <div>Time cost: ${tripSummary.timeCost.toFixed(2)}</div>
+                    {tripSummary.eBikeSurcharge > 0 && (
+                      <div>E-bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</div>
+                    )}
+                    <div>Total: ${tripSummary.totalCost.toFixed(2)}</div>
+                    <div>Available flex credit: ${credit.toFixed(2)}</div>
+                    <div style={{ fontWeight: 600 }}>
+                      Amount to pay: ${(tripSummary.totalCost - credit).toFixed(2)}
+                    </div>
                   </div>
                 </div>
-              </div>
 
-              <div style={{ marginTop: "1rem" }}>
-                <div>Payment: {formatPaymentStatus(tripSummary.paymentStatus)}</div>
-                {tripSummary.paymentStatus === "PENDING" && tripSummary.ledgerId && (
-                  <button
-                    type="button"
-                    onClick={handlePay}
-                    disabled={paying}
-                    style={{ marginTop: "0.5rem" }}
-                  >
-                    {paying ? "Processing..." : "Pay now"}
-                  </button>
-                )}
-                {paymentMessage && <p style={{ marginTop: "0.5rem" }}>{paymentMessage}</p>}
-              </div>
-            </>
-          )}
-        </PageSection>
+                <div style={{ marginTop: "1rem" }}>
+                  <div>Payment: {formatPaymentStatus(tripSummary.paymentStatus)}</div>
+                  {tripSummary.paymentStatus === "PENDING" && tripSummary.ledgerId && (
+                    <button
+                      type="button"
+                      onClick={handlePay}
+                      disabled={paying}
+                      style={{ marginTop: "0.5rem" }}
+                    >
+                      {paying ? "Processing..." : "Pay now"}
+                    </button>
+                  )}
+                  {paymentMessage && <p style={{ marginTop: "0.5rem" }}>{paymentMessage}</p>}
+                </div>
+              </>
+            )}
+          </PageSection>
+
+          <PageSection
+            title="Ride history"
+            description="Filter, search, and inspect past trips."
+          >
+            <RideHistory token={auth.token} isOperator={auth.effectiveRole === "OPERATOR"} />
+          </PageSection>
+        </>
       )}
     </AppShell>
   );

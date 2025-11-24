@@ -9,7 +9,6 @@ import { resetSystem } from "../api/system";
 import { useAuth } from "../auth/AuthContext";
 import EventConsole from "../components/EventConsole";
 import LoyaltyBadge from "../components/LoyaltyBadge";
-import RideHistory from "../components/RideHistory";
 import styles from "./TripReceipt.module.css";
 import type { DockSummary, StationDetails, StationSummary } from "../types/station";
 import { RoleToggle } from "../components/RoleToggle";
@@ -531,20 +530,18 @@ export default function DashboardPage() {
 
   const heroActions = (
     <>
-      {auth.effectiveRole === "RIDER" && (
-        <Link
-          to="/trip-summary"
-          style={{
-            borderRadius: 999,
-            padding: "0.6rem 1.3rem",
-            border: "1px solid var(--border)",
-            fontWeight: 600,
-            color: "var(--text)",
-          }}
-        >
-          Trip summary
-        </Link>
-      )}
+      <Link
+        to="/trip-summary"
+        style={{
+          borderRadius: 999,
+          padding: "0.6rem 1.3rem",
+          border: "1px solid var(--border)",
+          fontWeight: 600,
+          color: "var(--text)",
+        }}
+      >
+        Trip summary
+      </Link>
       <Link
         to="/account"
         style={{
@@ -1167,14 +1164,23 @@ export default function DashboardPage() {
                       ${tripCompletion.baseCost.toFixed(2)}
                     </span>
                   </div>
-                  {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
-                    <div className={styles.billItem}>
-                      <span className={styles.billItemLabel}>Loyalty Discount: </span>
-                      <span className={styles.billItemValue}>
-                        {Math.round(tripCompletion.discountRate * 100)}% (-${(tripCompletion.discountAmount ?? 0).toFixed(2)})
-                      </span>
-                    </div>
-                  )}
+                  {(() => {
+                    const hasDiscount =
+                      typeof tripCompletion.discountRate === "number" &&
+                      tripCompletion.discountRate > 0;
+                    if (!hasDiscount) {
+                      return null;
+                    }
+                    return (
+                      <div className={styles.billItem}>
+                        <span className={styles.billItemLabel}>Loyalty Discount: </span>
+                        <span className={styles.billItemValue}>
+                          {Math.round(tripCompletion.discountRate * 100)}% (-$
+                          {(tripCompletion.discountAmount ?? 0).toFixed(2)})
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className={styles.billItem}>
                     <span className={styles.billItemLabel}>Time Cost:</span>
                     <span className={styles.billItemValue}>
@@ -1190,9 +1196,8 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
-                {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
-                  <p>Loyalty discount applied</p>
-                )}
+                {typeof tripCompletion.discountRate === "number" &&
+                  tripCompletion.discountRate > 0 && <p>Loyalty discount applied</p>}
                 <div className={styles.billItem}>
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
@@ -1696,17 +1701,10 @@ export default function DashboardPage() {
         )}
       </PageSection>
 
-      <PageSection
-        title="Ride history"
-        description="Filter, search, and inspect past trips."
-      >
-        <RideHistory token={auth.token} isOperator={auth.effectiveRole === "OPERATOR"} />
-      </PageSection>
-
-      <PageSection
-        title="Event console"
-        description="Live feed of backend events streamed from the service."
-      >
+     <PageSection
+       title="Event console"
+       description="Live feed of backend events streamed from the service."
+     >
         <EventConsole token={auth.token} />
       </PageSection>
     </AppShell>

@@ -389,7 +389,9 @@ public class TripController {
             double eBikeSurcharge,
             double totalCost,
             LedgerEntry.LedgerStatus ledgerStatus,
-            String paymentStatus
+            String paymentStatus,
+            double discountRate,
+            double discountAmount
     ) {
         static TripSummaryResponse from(GetLastCompletedTripSummaryUseCase.TripSummary summary,
                                         String paymentStatus) {
@@ -404,7 +406,9 @@ public class TripController {
                     summary.eBikeSurcharge(),
                     summary.totalCost(),
                     summary.ledgerStatus(),
-                    paymentStatus
+                    paymentStatus,
+                    summary.discountRate(),
+                    summary.discountAmount()
             );
         }
     }
