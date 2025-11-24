@@ -29,7 +29,6 @@ export function AppShell({ heading, subheading, actions, children }: AppShellPro
       path: "/trip-summary",
       label: "Trip Summary",
       requiresAuth: true,
-      requiresRole: "RIDER",
     },
     { path: "/pricing", label: "Pricing" },
     { path: "/account", label: "Account", requiresAuth: true },
