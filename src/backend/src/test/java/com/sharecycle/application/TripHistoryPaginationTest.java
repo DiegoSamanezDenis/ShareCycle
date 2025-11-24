@@ -26,7 +26,7 @@ import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
-import com.sharecycle.infrastructure.persistence.JpaBikeRepository;
+import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.infrastructure.persistence.JpaTripRepository;
 import com.sharecycle.infrastructure.persistence.JpaUserRepository;
 
