@@ -1193,9 +1193,17 @@ export default function DashboardPage() {
                 {tripCompletion.discountRate && tripCompletion.discountRate > 0 && (
                   <p>Loyalty discount applied</p>
                 )}
-                <div className={styles.totalRow}>
+                <div className={styles.billItem}>
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
+                </div>
+                <div className={styles.billItem}>
+                  <span>Available credit:</span>
+                  <span>${credit.toFixed(2)}</span>
+                </div>
+                <div className={styles.totalRow}>
+                  <span>Amount to pay:</span>
+                  <span>${(tripCompletion.totalCost-credit).toFixed(2)}</span>
                 </div>
                 <div className={styles.receiptRow}>
                   <span className={styles.receiptLabel}>Payment:</span>
@@ -1320,6 +1328,9 @@ export default function DashboardPage() {
             </div>
             <div className={styles.feedbackTotal}>
               Available Flex Credit: ${credit.toFixed(2)}
+            </div>
+            <div className={styles.feedbackTotal}>
+              Amount to pay: ${(tripCompletion.totalCost - credit).toFixed(2)}
             </div>
             <div className={styles.feedbackRow}>
               Payment: {formatPaymentStatus(tripCompletion.paymentStatus)}

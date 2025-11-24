@@ -45,6 +45,7 @@ export default function TripSummaryPage() {
   const [loading, setLoading] = useState(true);
   const [paying, setPaying] = useState(false);
   const [paymentMessage, setPaymentMessage] = useState<string | null>(null);
+  const [credit, setCredit] = useState<number>(0);
 
   function formatErrorMessage(rawMessage: string | null): string {
     if (!rawMessage) {
@@ -70,6 +71,11 @@ export default function TripSummaryPage() {
         const response = await apiRequest<TripSummaryResponse>("/trips/last-completed", {
           token: auth.token,
         });
+        const creditResponse = await apiRequest<{ amount: number }>(`/auth/credit?userId=${auth.userId}`, {
+          method: "GET",
+          token: auth.token,
+        });
+        setCredit(creditResponse.amount); // save credit to state
         setTripSummary(response);
       } catch (err) {
         const message = err instanceof Error ? err.message : null;
@@ -180,8 +186,10 @@ export default function TripSummaryPage() {
                   <div>Base cost: ${tripSummary.baseCost.toFixed(2)}</div>
                   <div>Time cost: ${tripSummary.timeCost.toFixed(2)}</div>
                   <div>E-bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</div>
+                  <div>Total: ${tripSummary.totalCost.toFixed(2)}</div>
+                  <div>Available flex credit: ${credit.toFixed(2)}</div>
                   <div style={{ fontWeight: 600 }}>
-                    Total: ${tripSummary.totalCost.toFixed(2)}
+                    Amount to pay: ${(tripSummary.totalCost - credit).toFixed(2)}
                   </div>
                 </div>
               </div>
