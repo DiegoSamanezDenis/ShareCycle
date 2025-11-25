@@ -165,5 +165,17 @@ public class BmsFacadeStationDetailsTest {
         assertThat(details.canStartTrip()).isFalse();
         assertThat(details.canReturn()).isFalse();
     }
+
+    @Test
+    void stationDetailsExposeBikeTypePerDock() {
+        Station station = buildStationWithOneBike();
+        station.getDocks().get(0).getOccupiedBike().setType(Bike.BikeType.E_BIKE);
+        when(stationRepository.findById(station.getId())).thenReturn(station);
+
+        StationDetailsDto details = bmsFacade.getStationDetails(station.getId(), null);
+
+        assertThat(details.docks()).isNotEmpty();
+        assertThat(details.docks().get(0).bikeType()).isEqualTo(Bike.BikeType.E_BIKE);
+    }
     
 }

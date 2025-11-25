@@ -34,6 +34,13 @@ public class GetLastCompletedTripSummaryUseCase {
         double surcharge = bill != null ? bill.getEBikeSurcharge() : 0.0;
         double total = bill != null ? bill.getTotalCost() : 0.0;
         LedgerEntry.LedgerStatus status = ledgerEntry != null ? ledgerEntry.getLedgerStatus() : null;
+        double discountRate = 0.0;
+        double discountAmount = 0.0;
+        if (ledgerEntry != null && ledgerEntry.getTrip() != null) {
+            discountRate = ledgerEntry.getTrip().getAppliedDiscountRate();
+        }
+        double preDiscountTotal = bill != null ? bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() : 0.0;
+        discountAmount = bill != null ? Math.max(0.0, preDiscountTotal - bill.getTotalCost()) : 0.0;
 
         return new TripSummary(
                 trip.getTripID(),
@@ -45,7 +52,9 @@ public class GetLastCompletedTripSummaryUseCase {
                 time,
                 surcharge,
                 total,
-                status
+                status,
+                discountRate,
+                discountAmount
         );
     }
 
@@ -59,6 +68,8 @@ public class GetLastCompletedTripSummaryUseCase {
             double timeCost,
             double eBikeSurcharge,
             double totalCost,
-            LedgerEntry.LedgerStatus ledgerStatus
+            LedgerEntry.LedgerStatus ledgerStatus,
+            double discountRate,
+            double discountAmount
     ) { }
 }

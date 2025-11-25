@@ -11,6 +11,7 @@ import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -32,36 +33,89 @@ public class ListTripsUseCase {
     }
 
 
-    public List<TripHistoryEntry> execute(User user,
-                                          LocalDateTime startTime,
-                                          LocalDateTime endTime,
-                                          Bike.BikeType bikeType) {
-        String role = user.getRole();
+    public TripHistoryPage execute(User user,
+                                   LocalDateTime startTime,
+                                   LocalDateTime endTime,
+                                   Bike.BikeType bikeType,
+                                   int page,
+                                   int pageSize,
+                                   String tripIdQueryRaw,
+                                   String effectiveRoleValue) {
+        String role = effectiveRoleValue != null ? effectiveRoleValue : user.getRole();
+        int safePage = Math.max(0, page);
+        int safePageSize = Math.max(1, pageSize);
+        String tripIdQuery = tripIdQueryRaw != null ? tripIdQueryRaw.trim().toLowerCase() : null;
+        boolean hasTripIdFilter = tripIdQuery != null && !tripIdQuery.isEmpty();
         List<Trip> trips;
+        long totalCount;
         boolean riderRequest = "RIDER".equalsIgnoreCase(role);
-        if (!riderRequest) {
-            logger.info("User is an operator, finding all trips");
-            trips = jpaTripRepository.findAllWithFilter(startTime, endTime, bikeType);
+        if (hasTripIdFilter) {
+            logger.info("Applying tripId filter to trip history search");
+            List<Trip> scopedTrips;
+            if (!riderRequest) {
+                scopedTrips = jpaTripRepository.findAllWithFilter(startTime, endTime, bikeType);
+            } else {
+                scopedTrips = jpaTripRepository.findAllByUserIdWithFilter(user.getUserId(), startTime, endTime, bikeType);
+            }
+            List<Trip> filtered = scopedTrips.stream()
+                    .filter(trip -> trip.getTripID() != null && trip.getTripID().toString().toLowerCase().contains(tripIdQuery))
+                    .toList();
+            totalCount = filtered.size();
+            int fromIndex = Math.min(safePage * safePageSize, filtered.size());
+            int toIndex = Math.min(fromIndex + safePageSize, filtered.size());
+            trips = filtered.subList(fromIndex, toIndex);
         } else {
-            logger.info("User is a rider, finding all trips by this rider");
-            trips = jpaTripRepository.findAllByUserIdWithFilter(user.getUserId(), startTime, endTime, bikeType);
+            if (!riderRequest) {
+                logger.info("User is an operator, finding all trips");
+                trips = jpaTripRepository.findAllWithFilterPaged(startTime, endTime, bikeType, safePage, safePageSize);
+                totalCount = jpaTripRepository.countAllWithFilter(startTime, endTime, bikeType);
+            } else {
+                logger.info("User is a rider, finding all trips by this rider");
+                trips = jpaTripRepository.findAllByUserIdWithFilterPaged(user.getUserId(), startTime, endTime, bikeType, safePage, safePageSize);
+                totalCount = jpaTripRepository.countAllByUserIdWithFilter(user.getUserId(), startTime, endTime, bikeType);
+            }
         }
 
-        if (trips.isEmpty()) {
+        List<Trip> orderedTrips = sortTripsLatestFirst(trips);
+        List<TripHistoryEntry> entries;
+        if (orderedTrips.isEmpty()) {
+            entries = List.of();
+        } else {
+            Map<UUID, LedgerEntry> ledgerEntriesByTripId = ledgerEntryRepository.findAllByTripIds(
+                            orderedTrips.stream()
+                                    .map(Trip::getTripID)
+                                    .toList())
+                    .stream()
+                    .filter(entry -> entry.getTrip() != null && entry.getTrip().getTripID() != null)
+                    .collect(Collectors.toMap(entry -> entry.getTrip().getTripID(), Function.identity(), (existing, replacement) -> replacement));
+
+            boolean includeBilling = true;
+            entries = orderedTrips.stream()
+                    .map(trip -> toHistoryEntry(trip, ledgerEntriesByTripId.get(trip.getTripID()), includeBilling))
+                    .toList();
+        }
+
+        int totalPages = safePageSize <= 0 ? 0 : (int) Math.ceil(totalCount / (double) safePageSize);
+        boolean hasNext = safePage < totalPages - 1;
+        boolean hasPrevious = safePage > 0;
+        return new TripHistoryPage(entries, safePage, safePageSize, totalCount, totalPages, hasNext, hasPrevious);
+    }
+
+    private List<Trip> sortTripsLatestFirst(List<Trip> trips) {
+        if (trips == null || trips.isEmpty()) {
             return List.of();
         }
-
-        Map<UUID, LedgerEntry> ledgerEntriesByTripId = ledgerEntryRepository.findAllByTripIds(
-                        trips.stream()
-                                .map(Trip::getTripID)
-                                .toList())
-                .stream()
-                .filter(entry -> entry.getTrip() != null && entry.getTrip().getTripID() != null)
-                .collect(Collectors.toMap(entry -> entry.getTrip().getTripID(), Function.identity(), (existing, replacement) -> replacement));
-
-        boolean includeBilling = true;
+        Comparator<Trip> comparator = Comparator
+                .comparing(
+                        Trip::getEndTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                )
+                .thenComparing(
+                        Trip::getStartTime,
+                        Comparator.nullsLast(Comparator.reverseOrder())
+                );
         return trips.stream()
-                .map(trip -> toHistoryEntry(trip, ledgerEntriesByTripId.get(trip.getTripID()), includeBilling))
+                .sorted(comparator)
                 .toList();
     }
 
@@ -105,6 +159,17 @@ public class ListTripsUseCase {
             double totalCost,
             UUID ledgerId,
             LedgerEntry.LedgerStatus ledgerStatus
+    ) {
+    }
+
+    public record TripHistoryPage(
+            List<TripHistoryEntry> entries,
+            int page,
+            int pageSize,
+            long totalItems,
+            int totalPages,
+            boolean hasNext,
+            boolean hasPrevious
     ) {
     }
 }

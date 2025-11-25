@@ -18,6 +18,16 @@ export type TripHistoryEntry = {
   ledgerStatus: LedgerStatus;
 };
 
+export type TripHistoryPage = {
+  entries: TripHistoryEntry[];
+  page: number;
+  pageSize: number;
+  totalItems: number;
+  totalPages: number;
+  hasNext: boolean;
+  hasPrevious: boolean;
+};
+
 export type TripBillBreakdown = {
   baseCost: number;
   timeCost: number;

@@ -4,18 +4,31 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
-import com.sharecycle.domain.event.*;
-import com.sharecycle.domain.model.*;
-import com.sharecycle.infrastructure.persistence.JpaUserRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.sharecycle.domain.DefaultPricingPlans;
 import com.sharecycle.domain.MonthlySubscriberStrategy;
 import com.sharecycle.domain.PayAsYouGoStrategy;
 import com.sharecycle.domain.TripBuilder;
+import com.sharecycle.domain.event.BillIssuedEvent;
+import com.sharecycle.domain.event.DomainEventPublisher;
+import com.sharecycle.domain.event.FlexCreditAddedEvent;
+import com.sharecycle.domain.event.StationStatusChangedEvent;
+import com.sharecycle.domain.event.TripEndedEvent;
+import com.sharecycle.domain.model.Bike;
+import com.sharecycle.domain.model.Bill;
+import com.sharecycle.domain.model.Dock;
+import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.PricingPlan;
+import com.sharecycle.domain.model.Reservation;
+import com.sharecycle.domain.model.Rider;
+import com.sharecycle.domain.model.Station;
+import com.sharecycle.domain.model.Trip;
+import com.sharecycle.domain.model.User;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaDockRepository;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
@@ -23,6 +36,9 @@ import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.PricingStrategyRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
 import com.sharecycle.domain.repository.TripRepository;
+import com.sharecycle.infrastructure.persistence.JpaUserRepository;
+import com.sharecycle.domain.model.LoyaltyTier;
+import com.sharecycle.domain.repository.JpaLoyaltyRepository;
 
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +55,7 @@ public class EndTripAndBillUseCase {
     private final JpaBikeRepository bikeRepository;
     private final ReservationRepository reservationRepository;
     private final JpaUserRepository userRepository;
+    private final JpaLoyaltyRepository loyaltyRepository;
     
     private final PayAsYouGoStrategy payAsYouGoStrategy;
     private final MonthlySubscriberStrategy monthlySubscriberStrategy;
@@ -50,7 +67,9 @@ public class EndTripAndBillUseCase {
                                  JpaStationRepository stationRepository,
                                  JpaDockRepository dockRepository,
                                  JpaBikeRepository bikeRepository,
-                                 ReservationRepository reservationRepository, JpaUserRepository userRepository) {
+                                 ReservationRepository reservationRepository, 
+                                 JpaUserRepository userRepository,
+                                 JpaLoyaltyRepository loyaltyRepository) {
         this.eventPublisher = eventPublisher;
         this.tripRepository = tripRepository;
         this.ledgerEntryRepository = ledgerEntryRepository;
@@ -59,6 +78,7 @@ public class EndTripAndBillUseCase {
         this.bikeRepository = bikeRepository;
         this.reservationRepository = reservationRepository;
         this.userRepository = userRepository;
+        this.loyaltyRepository = loyaltyRepository;
         this.payAsYouGoStrategy = new PayAsYouGoStrategy();
         this.monthlySubscriberStrategy = new MonthlySubscriberStrategy();
     }
@@ -69,7 +89,9 @@ public class EndTripAndBillUseCase {
                                  JpaLedgerEntryRepository ledgerEntryRepository,
                                  JpaStationRepository stationRepository,
                                  JpaBikeRepository bikeRepository,
-                                 ReservationRepository reservationRepository, JpaUserRepository userRepository) {
+                                 ReservationRepository reservationRepository, 
+                                 JpaUserRepository userRepository,
+                                 JpaLoyaltyRepository loyaltyRepository) {
         this(eventPublisher, tripRepository, ledgerEntryRepository, stationRepository,
                 new JpaDockRepository() {
                     @Override public void save(Dock dock) { }
@@ -77,7 +99,7 @@ public class EndTripAndBillUseCase {
                     @Override public List<Dock> findAll() { return List.of(); }
                     @Override public int clearBikeFromAllDocks(UUID bikeId) { return 0; }
                 },
-                bikeRepository, reservationRepository, userRepository);
+                bikeRepository, reservationRepository, userRepository, loyaltyRepository);
     }
 
     @Transactional(noRollbackFor = StationFullException.class)
@@ -103,9 +125,9 @@ public class EndTripAndBillUseCase {
         validate(managedTrip, managedEndStation);
 
         // Reconcile bike status if needed to ensure trip can end cleanly
-        if (tripBike.getStatus() != Bike.BikeStatus.ON_TRIP) {
-            logger.warn("Bike status {} inconsistent with active trip; reconciling to ON_TRIP", tripBike.getStatus());
-            tripBike.setStatus(Bike.BikeStatus.ON_TRIP);
+        if (!tripBike.isOnTrip()) {
+            logger.warn("Bike status {} inconsistent with active trip; reconciling via checkout", tripBike.getStatus());
+            tripBike.checkout();
         }
 
         LocalDateTime endTime = LocalDateTime.now();
@@ -132,7 +154,6 @@ public class EndTripAndBillUseCase {
 
         // Update the bike's status now that it is docked
         tripBike.completeTrip();
-        tripBike.setStatus(Bike.BikeStatus.AVAILABLE);
         tripBike.setReservationExpiry(null);
         tripBike.setCurrentStation(managedEndStation);
         bikeRepository.save(tripBike);
@@ -151,6 +172,28 @@ public class EndTripAndBillUseCase {
         tripRepository.save(editedTrip);
         eventPublisher.publish(new TripEndedEvent(editedTrip.getTripID()));
 
+        double discountRate = 0.0;
+        try {
+            LoyaltyTier tier = loyaltyRepository != null && editedTrip.getRider() != null ?
+                    loyaltyRepository.findCurrentTier(editedTrip.getRider().getUserId()) : LoyaltyTier.ENTRY;
+                    
+            switch (tier) {
+                case GOLD : discountRate = 0.15;
+                break;
+                case SILVER : discountRate = 0.10;
+                break;
+                case BRONZE : discountRate =0.05;
+                break;
+                default : discountRate = 0.0;
+            }
+        
+        } catch (Exception e) {
+            logger.warn("Failed to determine loyalty tier", e);
+            discountRate = 0.0;
+        }
+
+        editedTrip.setAppliedDiscountRate(discountRate);
+
         // SELECT PRICING STRATEGY based on rider plan
         PricingPlan.PlanType planType = resolvePlanType(editedTrip.getRider());
         PricingStrategyRepository strategy = selectStrategy(planType);
@@ -158,11 +201,15 @@ public class EndTripAndBillUseCase {
         String planName = planType.name();
         
         // Calculate bill using strategy
-        Bill bill = strategy.calculate(editedTrip, pricingPlan);
+        Bill bill = strategy.calculate(editedTrip, pricingPlan, editedTrip.getAppliedDiscountRate());
 
         // Create and persist ledger entry
         LedgerEntry ledgerEntry = new LedgerEntry(editedTrip.getRider(), editedTrip, bill, planName);
         ledgerEntryRepository.save(ledgerEntry);
+
+        discountRate = editedTrip.getAppliedDiscountRate();
+        double preDiscountTotal = bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge();
+        double discountAmount = Math.max(0.0, preDiscountTotal - bill.getTotalCost());
 
         // Publish BillIssued for UI/history
         eventPublisher.publish(new BillIssuedEvent(
@@ -175,7 +222,9 @@ public class EndTripAndBillUseCase {
                 bill.getTimeCost(),
                 bill.getEBikeSurcharge(),
                 bill.getTotalCost(),
-                planName
+                planName,
+                discountRate,
+                discountAmount
         ));
 
         //Check and add flex credit

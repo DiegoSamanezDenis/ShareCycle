@@ -1,47 +1,51 @@
 package com.sharecycle.application;
 
-import com.sharecycle.domain.model.PricingPlan;
-import com.sharecycle.domain.model.Rider;
-import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.service.SessionStore;
+import com.sharecycle.ui.LoginController;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
-import org.springframework.boot.test.context.SpringBootTest;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import org.mockito.MockitoAnnotations;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.bcrypt.BCrypt;
-import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 
 import java.util.UUID;
 
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-@SpringBootTest
-@AutoConfigureMockMvc
-@ActiveProfiles("test")
 class LoginControllerTest {
 
-    @Autowired
     private MockMvc mockMvc;
 
-    @Autowired
-    private UserRepository userRepository;
+    @Mock
+    private LoginUseCase loginUseCase;
+
+    @Mock
+    private SessionStore sessionStore;
+
+    @InjectMocks
+    private LoginController loginController;
 
     private String username;
 
     @BeforeEach
     void setUp() {
-        username = "loginuser-" + UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String email = username + "@example.com";
-        String hashed = BCrypt.hashpw("password123", BCrypt.gensalt());
-        Rider rider = new Rider("Login User", "Addr", email, username, hashed, "tok", PricingPlan.PlanType.PAY_AS_YOU_GO);
-        userRepository.save(rider);
+        MockitoAnnotations.openMocks(this);
+        mockMvc = MockMvcBuilders.standaloneSetup(loginController).build();
+        username = "loginuser";
     }
 
     @Test
     void loginReturns200() throws Exception {
+        // Correct constructor with UUID, username, email, token
+        LoginUseCase.LoginResponse mockResponse =
+                new LoginUseCase.LoginResponse(UUID.randomUUID(), username, "user@example.com", "dummyToken");
+        when(loginUseCase.execute(username, "password123")).thenReturn(mockResponse);
+
         String body = "{\n" +
                 "  \"username\": \"" + username + "\",\n" +
                 "  \"password\": \"password123\"\n" +
@@ -51,5 +55,12 @@ class LoginControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk());
+    }
+
+    @Test
+    void logoutReturns204() throws Exception {
+        mockMvc.perform(post("/api/auth/logout")
+                        .header("Authorization", "Bearer dummyToken"))
+                .andExpect(status().isNoContent());
     }
 }

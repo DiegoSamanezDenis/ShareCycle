@@ -9,9 +9,10 @@ public class PayAsYouGoStrategy implements PricingStrategyRepository {
     private static final double DEFAULT_BASE_COST = 0.0;
     private static final double DEFAULT_PER_MINUTE_RATE = 6.0; // $0.10 per second demo rate
     private static final double DEFAULT_EBIKE_SURCHARGE_PER_MINUTE = 0.60; // $0.01 per second
+    private static final double OPERATOR_DISCOUNT_RATE = 0.20; // 20% discount for operators
 
     @Override
-    public Bill calculate(Trip trip, PricingPlan plan) {
+    public Bill calculate(Trip trip, PricingPlan plan, double discountRate) {
         int minutes = trip.getDurationMinutes();
         double perMinuteRate = plan != null ? plan.getPerMinuteRate() : DEFAULT_PER_MINUTE_RATE;
         double baseCost = plan != null ? plan.getBaseCost() : DEFAULT_BASE_COST;
@@ -24,6 +25,20 @@ public class PayAsYouGoStrategy implements PricingStrategyRepository {
         if (trip.getBike().getType() == Bike.BikeType.E_BIKE) {
             eBikeSurcharge = minutes * eBikeSurchargeRate;
         }
+
+        // Apply operator discount if rider is an operator
+        if (trip.getRider() != null && "OPERATOR".equals(trip.getRider().getRole())) {
+            baseCost = baseCost * (1 - OPERATOR_DISCOUNT_RATE);
+            timeCost = timeCost * (1 - OPERATOR_DISCOUNT_RATE);
+            eBikeSurcharge = eBikeSurcharge * (1 - OPERATOR_DISCOUNT_RATE);
+        }
+
+        // Apply loyalty/discount perks last so they stack with operator discounts
+        double normalizedDiscountRate = Math.min(1.0, Math.max(0.0, discountRate));
+        double loyaltyMultiplier = 1.0 - normalizedDiscountRate;
+        baseCost = baseCost * loyaltyMultiplier;
+        timeCost = timeCost * loyaltyMultiplier;
+        eBikeSurcharge = eBikeSurcharge * loyaltyMultiplier;
 
         return new Bill(baseCost, timeCost, eBikeSurcharge);
     }

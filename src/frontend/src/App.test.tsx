@@ -1,8 +1,8 @@
 import { render, screen } from "@testing-library/react";
 import { createMemoryRouter, RouterProvider } from "react-router-dom";
+import { AuthProvider } from "./auth/AuthContext";
 import { appConfig } from "./config/env";
 import { routes } from "./routes";
-import { AuthProvider } from "./auth/AuthContext";
 
 function renderWithProviders(router: ReturnType<typeof createMemoryRouter>) {
   render(

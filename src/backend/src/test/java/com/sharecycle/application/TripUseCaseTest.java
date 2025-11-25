@@ -8,6 +8,8 @@ import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
 import org.springframework.test.context.ActiveProfiles;
 
 import com.sharecycle.domain.model.Bike;
@@ -22,6 +24,8 @@ import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.domain.repository.UserRepository;
+import com.sharecycle.service.payment.PaymentException;
+import com.sharecycle.service.payment.PaymentGateway;
 
 import jakarta.transaction.Transactional;
 
@@ -29,21 +33,44 @@ import jakarta.transaction.Transactional;
 @ActiveProfiles("test")
 public class TripUseCaseTest {
 
+    /**
+     * Test-only override of PaymentGateway.
+     * Ensures exactly ONE PaymentGateway bean exists during tests.
+     */
+    @TestConfiguration
+    static class PaymentGatewayTestConfig {
+
+        @Bean
+        public PaymentGateway paymentGateway() {
+            return new PaymentGateway() {
+                @Override
+                public boolean capture(double amount, String riderToken) throws PaymentException {
+                    return true; // always succeed
+                }
+
+                @Override
+                public String createPaymentToken(com.sharecycle.domain.model.User user) throws PaymentException {
+                    return "dummy-token"; // stub token
+                }
+            };
+        }
+    }
+
     @Autowired
     private StartTripUseCase startTripUseCase;
 
     @Autowired
     private EndTripAndBillUseCase endTripAndBillUseCase;
-    
+
     @Autowired
     private TripRepository tripRepository;
-    
+
     @Autowired
     private UserRepository userRepository;
-    
+
     @Autowired
     private JpaLedgerEntryRepository ledgerEntryRepository;
-    
+
     @Autowired
     private JpaStationRepository stationRepository;
 
@@ -56,6 +83,7 @@ public class TripUseCaseTest {
     @Test
     @Transactional
     void test() {
+
         Rider rider = createRider();
         rider.setRole("RIDER");
         userRepository.save(rider);
@@ -75,9 +103,10 @@ public class TripUseCaseTest {
         Bike bikeForTrip = managedStartStation.getFirstDockWithBike().getOccupiedBike();
 
         // Assertion before trip start
+        LocalDateTime tripStart = LocalDateTime.now().minusMinutes(10);
         Trip trip = startTripUseCase.execute(
                 UUID.randomUUID(),
-                LocalDateTime.now(),
+                tripStart,
                 0,
                 rider,
                 bikeForTrip,
@@ -89,10 +118,25 @@ public class TripUseCaseTest {
         Dock updatedStartDock = updatedStartStation.getDocks().getFirst();
         Bike updatedBike = bikeRepository.findById(updatedTrip.getBike().getId());
 
-        // Assertion during trip
+        // Assertions during trip
         assertThat(updatedStartStation.getBikesDocked()).isEqualTo(startBikeDockedNumber - 1);
         assertThat(updatedStartDock.getStatus()).isEqualTo(Dock.DockStatus.EMPTY);
         assertThat(updatedBike.getStatus()).isEqualTo(Bike.BikeStatus.ON_TRIP);
+
+        // Manually move startTime back by 70 seconds for billing test
+        try {
+            var field = Trip.class.getDeclaredField("startTime");
+            field.setAccessible(true);
+            field.set(updatedTrip, updatedTrip.getStartTime().minusSeconds(70));
+        } catch (Exception e) {
+            throw new RuntimeException(e);
+        }
+
+        tripRepository.save(updatedTrip);
+        entityManager.flush();
+        entityManager.clear();
+
+        updatedTrip = tripRepository.findById(trip.getTripID());
 
         Station endStation = new Station();
         endStation.setName("End Station");
@@ -102,6 +146,7 @@ public class TripUseCaseTest {
         endStation.markActive();
         endStation.addEmptyDocks(1);
         stationRepository.save(endStation);
+
         Station managedEndStation = stationRepository.findById(endStation.getId());
         int endBikeDockedNumber = managedEndStation.getBikesDocked();
 
@@ -110,29 +155,33 @@ public class TripUseCaseTest {
         entityManager.flush();
         entityManager.clear();
 
-        updatedTrip = tripRepository.findById(trip.getTripID()); // Should be the same tripId
+        updatedTrip = tripRepository.findById(trip.getTripID());
         Station updatedEndStation = stationRepository.findById(updatedTrip.getEndStation().getId());
         Dock updatedEndDock = updatedEndStation.getDocks().getFirst();
         updatedBike = updatedTrip.getBike();
 
-        //After trip assertions
+        // After trip assertions
         assertThat(updatedEndStation.getBikesDocked()).isEqualTo(endBikeDockedNumber + 1);
         assertThat(updatedEndDock.getStatus()).isEqualTo(Dock.DockStatus.OCCUPIED);
         assertThat(updatedBike.getStatus()).isEqualTo(Bike.BikeStatus.AVAILABLE);
 
-        // Ledger
         LedgerEntry updatedLedgerEntry = ledgerEntryRepository.findById(ledgerEntry.getLedgerId());
 
         assertThat(updatedLedgerEntry.getTrip().getTripID()).isEqualTo(updatedTrip.getTripID());
         assertThat(updatedLedgerEntry.getBill()).isNotNull();
         assertThat(updatedLedgerEntry.getBill().getTotalCost()).isGreaterThan(0);
         assertThat(updatedLedgerEntry.getLedgerStatus()).isEqualTo(LedgerEntry.LedgerStatus.PENDING);
-
     }
 
     private Rider createRider() {
-        return new Rider("Rider", "Rider","Rider", "Rider", "Rider", "Rider", PricingPlan.PlanType.PAY_AS_YOU_GO);
+        return new Rider(
+                "Rider",
+                "Rider",
+                "Rider",
+                "Rider",
+                "Rider",
+                "Rider",
+                PricingPlan.PlanType.PAY_AS_YOU_GO
+        );
     }
-
-
 }

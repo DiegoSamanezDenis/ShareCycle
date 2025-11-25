@@ -1,18 +1,22 @@
 package com.sharecycle.infrastructure.persistence;
 
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
+
+import org.springframework.stereotype.Repository;
+
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.TripRepository;
 import com.sharecycle.infrastructure.persistence.jpa.JpaTripEntity;
 import com.sharecycle.infrastructure.persistence.jpa.MapperContext;
+
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.PersistenceContext;
+import jakarta.persistence.TypedQuery;
 import jakarta.transaction.Transactional;
-import org.springframework.stereotype.Repository;
-
-import java.time.LocalDateTime;
-import java.util.List;
-import java.util.UUID;
 
 @Repository
 @Transactional
@@ -23,7 +27,7 @@ public class JpaTripRepository implements TripRepository {
 
     @Override
     public void save(Trip trip) {
-        MapperContext context = new MapperContext();
+        MapperContext context = new MapperContext(entityManager);
         JpaTripEntity entity = JpaTripEntity.fromDomain(trip, context);
         // Upsert by trip_id
         entityManager.merge(entity);
@@ -122,9 +126,81 @@ public class JpaTripRepository implements TripRepository {
 
     @Override
     public List<Trip> findAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
-        StringBuilder queryStr = new StringBuilder("SELECT t FROM JpaTripEntity t");
-        var predicates = new java.util.ArrayList<String>();
+        return fetchTrips(null, startDate, endDate, bikeType, null, null);
+    }
 
+    @Override
+    public List<Trip> findAllWithFilterPaged(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType, int page, int pageSize) {
+        return fetchTrips(null, startDate, endDate, bikeType, page, pageSize);
+    }
+
+    @Override
+    public long countAllWithFilter(LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        return countTrips(null, startDate, endDate, bikeType);
+    }
+
+    @Override
+    public List<Trip> findAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        return fetchTrips(userId, startDate, endDate, bikeType, null, null);
+    }
+
+    @Override
+    public List<Trip> findAllByUserIdWithFilterPaged(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType, int page, int pageSize) {
+        return fetchTrips(userId, startDate, endDate, bikeType, page, pageSize);
+    }
+
+    @Override
+    public long countAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
+        return countTrips(userId, startDate, endDate, bikeType);
+    }
+
+    // clearAssociationsForTrip removed to avoid nulling rider/bike which breaks toDomain
+
+    // archiveTrip removed; not part of repository interface
+
+    private List<Trip> fetchTrips(UUID userId,
+                                  LocalDateTime startDate,
+                                  LocalDateTime endDate,
+                                  Bike.BikeType bikeType,
+                                  Integer page,
+                                  Integer pageSize) {
+        String queryStr = buildTripQuery(userId, startDate, endDate, bikeType, false);
+        TypedQuery<JpaTripEntity> query = entityManager.createQuery(queryStr, JpaTripEntity.class);
+        applyFilterParameters(query, userId, startDate, endDate, bikeType);
+        if (page != null && pageSize != null) {
+            int safePage = Math.max(0, page);
+            int safePageSize = Math.max(1, pageSize);
+            query.setFirstResult(safePage * safePageSize);
+            query.setMaxResults(safePageSize);
+        }
+        MapperContext context = new MapperContext();
+        return query.getResultList().stream()
+                .map(entity -> entity.toDomain(context))
+                .toList();
+    }
+
+    private long countTrips(UUID userId,
+                            LocalDateTime startDate,
+                            LocalDateTime endDate,
+                            Bike.BikeType bikeType) {
+        String queryStr = buildTripQuery(userId, startDate, endDate, bikeType, true);
+        TypedQuery<Long> query = entityManager.createQuery(queryStr, Long.class);
+        applyFilterParameters(query, userId, startDate, endDate, bikeType);
+        return query.getSingleResult();
+    }
+
+    private String buildTripQuery(UUID userId,
+                                  LocalDateTime startDate,
+                                  LocalDateTime endDate,
+                                  Bike.BikeType bikeType,
+                                  boolean countQuery) {
+        StringBuilder queryStr = new StringBuilder(countQuery ? "SELECT COUNT(t) FROM JpaTripEntity t" : "SELECT t FROM JpaTripEntity t");
+        List<String> predicates = new ArrayList<>();
+        predicates.add("t.endTime IS NOT NULL");
+        predicates.add("t.bike.status <> :maintenanceStatus");
+        if (userId != null) {
+            predicates.add("t.rider.userId = :userId");
+        }
         if (bikeType != null) {
             predicates.add("t.bike.type = :bikeType");
         }
@@ -134,13 +210,24 @@ public class JpaTripRepository implements TripRepository {
         if (endDate != null) {
             predicates.add("t.endTime <= :endDate");
         }
-
         if (!predicates.isEmpty()) {
             queryStr.append(" WHERE ").append(String.join(" AND ", predicates));
         }
+        if (!countQuery) {
+            queryStr.append(" ORDER BY CASE WHEN t.endTime IS NULL THEN 1 ELSE 0 END, t.endTime DESC, t.startTime DESC");
+        }
+        return queryStr.toString();
+    }
 
-        var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class);
-
+    private void applyFilterParameters(TypedQuery<?> query,
+                                       UUID userId,
+                                       LocalDateTime startDate,
+                                       LocalDateTime endDate,
+                                       Bike.BikeType bikeType) {
+        query.setParameter("maintenanceStatus", Bike.BikeStatus.MAINTENANCE);
+        if (userId != null) {
+            query.setParameter("userId", userId);
+        }
         if (bikeType != null) {
             query.setParameter("bikeType", bikeType);
         }
@@ -150,46 +237,5 @@ public class JpaTripRepository implements TripRepository {
         if (endDate != null) {
             query.setParameter("endDate", endDate);
         }
-
-        return query.getResultList().stream()
-                .map(entity -> entity.toDomain(new MapperContext()))
-                .toList();
     }
-    @Override
-    public List<Trip> findAllByUserIdWithFilter(UUID userId, LocalDateTime startDate, LocalDateTime endDate, Bike.BikeType bikeType) {
-        StringBuilder queryStr = new StringBuilder(
-                "SELECT t FROM JpaTripEntity t WHERE t.rider.userId = :userId"
-        );
-
-        if (bikeType != null) {
-            queryStr.append(" AND t.bike.type = :bikeType");
-        }
-        if (startDate != null) {
-            queryStr.append(" AND t.startTime >= :startDate");
-        }
-        if (endDate != null) {
-            queryStr.append(" AND t.endTime <= :endDate");
-        }
-
-        var query = entityManager.createQuery(queryStr.toString(), JpaTripEntity.class)
-                .setParameter("userId", userId);
-
-        if (bikeType != null) {
-            query.setParameter("bikeType", bikeType);
-        }
-        if (startDate != null) {
-            query.setParameter("startDate", startDate);
-        }
-        if (endDate != null) {
-            query.setParameter("endDate", endDate);
-        }
-
-        return query.getResultList().stream()
-                .map(entity -> entity.toDomain(new MapperContext()))
-                .toList();
-    }
-
-    // clearAssociationsForTrip removed to avoid nulling rider/bike which breaks toDomain
-
-    // archiveTrip removed; not part of repository interface
 }

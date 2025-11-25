@@ -5,12 +5,17 @@ import java.util.Comparator;
 import java.util.List;
 import java.util.UUID;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.LedgerEntry;
+import com.sharecycle.domain.model.Operator;
 import com.sharecycle.domain.model.Reservation;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
@@ -28,6 +33,7 @@ import com.sharecycle.model.dto.StationSummaryDto;
 @Service
 public class BmsFacade {
 
+    private static final Logger logger = LoggerFactory.getLogger(BmsFacade.class);
     private static final double FULL_STATION_COURTESY_CREDIT = 1.00d;
     private static final String FULL_STATION_CREDIT_DESCRIPTION = "Credit issued because the destination station was full.";
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
@@ -78,7 +84,21 @@ public class BmsFacade {
     @Transactional
     public com.sharecycle.domain.model.Reservation reserveBike(UUID riderId, UUID stationId, UUID bikeId, int expiresAfterMinutes) {
         User user = userRepository.findById(riderId);
-        if (!(user instanceof Rider rider)) {
+        Rider rider;
+        if (user instanceof Rider r) {
+            rider = r;
+        } else if (user instanceof Operator) {
+            // Check if operator has ROLE_RIDER authority (set by SessionAuthenticationFilter when in RIDER mode)
+            Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+            boolean hasRiderRole = auth != null && auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_RIDER"));
+            if (hasRiderRole) {
+                // Convert operator in RIDER mode to Rider
+                rider = new Rider(user);
+            } else {
+                throw new IllegalStateException("User must be a rider to reserve bikes.");
+            }
+        } else {
             throw new IllegalStateException("User must be a rider to reserve bikes.");
         }
         Station station = requireStation(stationId);
@@ -93,12 +113,34 @@ public class BmsFacade {
                           UUID stationId,
                           LocalDateTime startTime) {
         User user = userRepository.findById(riderId);
-        if (!(user instanceof Rider rider)) {
+        logger.info("startTrip - User type: {}, User role: {}", user.getClass().getSimpleName(), user.getRole());
+        
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null) {
+            logger.info("startTrip - Authentication principal: {}", auth.getPrincipal());
+            logger.info("startTrip - Authorities: {}", auth.getAuthorities());
+        } else {
+            logger.warn("startTrip - No authentication in SecurityContext");
+        }
+        
+        // Validate effective role
+        if (user instanceof Rider) {
+            // Already a rider, good to go
+        } else if (user instanceof Operator) {
+            // Check if operator has ROLE_RIDER authority (set by SessionAuthenticationFilter when in RIDER mode)
+            boolean hasRiderRole = auth != null && auth.getAuthorities().stream()
+                    .anyMatch(a -> a.getAuthority().equals("ROLE_RIDER"));
+            logger.info("startTrip - Operator hasRiderRole: {}", hasRiderRole);
+            if (!hasRiderRole) {
+                throw new IllegalStateException("User must be a rider to start a trip.");
+            }
+        } else {
             throw new IllegalStateException("User must be a rider to start a trip.");
         }
+        
         Bike bike = requireBike(bikeId);
         Station station = requireStation(stationId);
-        return startTripUseCase.execute(tripId, startTime != null ? startTime : LocalDateTime.now(), 0, rider, bike, station);
+        return startTripUseCase.execute(tripId, startTime != null ? startTime : LocalDateTime.now(), 0, user, bike, station);
     }
 
     @Transactional(noRollbackFor = StationFullException.class)
@@ -361,7 +403,8 @@ public class BmsFacade {
                 .map(dock -> new StationDetailsDto.DockDto(
                         dock.getId(),
                         dock.getStatus(),
-                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getId() : null
+                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getId() : null,
+                        dock.getOccupiedBike() != null ? dock.getOccupiedBike().getType() : null
                 ))
                 .toList();
         boolean isOperator = false;

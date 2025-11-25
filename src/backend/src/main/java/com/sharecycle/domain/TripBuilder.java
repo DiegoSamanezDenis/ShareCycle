@@ -16,6 +16,7 @@ public class TripBuilder {
     private LocalDateTime startTime;
     private LocalDateTime endTime;
     private Station endStation;
+    private double appliedDiscountRate = 0.0;
 
     public TripBuilder() {
     }
@@ -28,6 +29,7 @@ public class TripBuilder {
         startTime = trip.getStartTime();
         endTime = trip.getEndTime();
         endStation = trip.getEndStation();
+        appliedDiscountRate = trip.getAppliedDiscountRate();
    }
 
     public void start(Rider rider, Station startStation, Bike bike, LocalDateTime startTime) {
@@ -42,7 +44,9 @@ public class TripBuilder {
     }
     public Trip build()
     {
-        return new Trip(getTripId(),getStartTime(),getEndTime(),getRider(), getBike(),getStartStation(),getEndStation());
+        Trip t = new Trip(getTripId(),getStartTime(),getEndTime(),getRider(), getBike(),getStartStation(),getEndStation());
+        t.setAppliedDiscountRate(this.appliedDiscountRate);
+        return t;
     }
 
     @Override
@@ -111,5 +115,13 @@ public class TripBuilder {
 
     public void setRider(Rider rider) {
         this.rider = rider;
+    }
+
+    public double getAppliedDiscountRate() {
+        return appliedDiscountRate;
+    }
+
+    public void setAppliedDiscountRate(double appliedDiscountRate) {
+        this.appliedDiscountRate = appliedDiscountRate;
     }
 }

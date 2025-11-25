@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -88,6 +89,13 @@ public class TripController {
             Bill bill = ledgerEntry.getBill();
             LedgerEntry.LedgerStatus ledgerStatus = ledgerEntry.getLedgerStatus();
             String paymentStatus = derivePaymentStatus(ledgerStatus, bill != null ? bill.getTotalCost() : 0.0);
+            double discountRate = 0.0;
+            double discountAmount = 0.0;
+            if (ledgerEntry.getTrip() != null) {
+                discountRate = ledgerEntry.getTrip().getAppliedDiscountRate();
+            }
+            double preDiscount = bill != null ? bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() : 0.0;
+            discountAmount = bill != null ? Math.max(0.0, preDiscount - bill.getTotalCost()) : 0.0;
             return TripCompletionResponse.completed(
                     updatedTrip.getTripID(),
                     updatedTrip.getEndStation() != null ? updatedTrip.getEndStation().getId() : null,
@@ -99,7 +107,9 @@ public class TripController {
                     bill != null ? bill.getEBikeSurcharge() : 0.0,
                     bill != null ? bill.getTotalCost() : 0.0,
                     ledgerStatus,
-                    paymentStatus
+                    paymentStatus,
+                    discountRate,
+                    discountAmount
             );
         }
 
@@ -141,13 +151,17 @@ public class TripController {
     }
 
     @GetMapping
-    public List<ListTripsUseCase.TripHistoryEntry> listTrips(
+    public ListTripsUseCase.TripHistoryPage listTrips(
             @RequestParam(name = "startTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime startTime,
             @RequestParam(name = "endTime", required = false)
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime endTime,
-            @RequestParam(name = "bikeType", required = false) String bikeTypeValue) {
+            @RequestParam(name = "bikeType", required = false) String bikeTypeValue,
+            @RequestParam(name = "tripId", required = false) String tripId,
+            @RequestParam(name = "page", defaultValue = "0") int page,
+            @RequestParam(name = "pageSize", defaultValue = "8") int pageSize) {
         User currentUser = requireAuthenticatedUser();
+        String effectiveRole = resolveEffectiveRole(currentUser);
         Bike.BikeType bikeType = null;
         if (bikeTypeValue != null && !bikeTypeValue.isBlank()) {
             try {
@@ -156,7 +170,16 @@ public class TripController {
                 throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Invalid bikeType value: " + bikeTypeValue);
             }
         }
-        return listTripsUseCase.execute(currentUser, startTime, endTime, bikeType);
+        if (page < 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "page must be greater than or equal to 0.");
+        }
+        final int maxPageSize = 50;
+        if (pageSize <= 0 || pageSize > maxPageSize) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_REQUEST,
+                    "pageSize must be between 1 and " + maxPageSize + ".");
+        }
+        return listTripsUseCase.execute(currentUser, startTime, endTime, bikeType, page, pageSize, tripId, effectiveRole);
     }
 
     @GetMapping("/{tripId}")
@@ -168,7 +191,8 @@ public class TripController {
     @GetMapping("/last-completed")
     public TripSummaryResponse getLastCompletedTrip() {
         User currentUser = requireAuthenticatedUser();
-        if (!"RIDER".equalsIgnoreCase(currentUser.getRole())) {
+        String effectiveRole = resolveEffectiveRole(currentUser);
+        if (!"RIDER".equalsIgnoreCase(effectiveRole)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN, "Trip summary is available to riders only.");
         }
         GetLastCompletedTripSummaryUseCase.TripSummary summary =
@@ -230,11 +254,25 @@ public class TripController {
     }
 
     private boolean isOperator(User requester) {
-        if (requester == null || requester.getRole() == null) {
+        String role = resolveEffectiveRole(requester);
+        if (role == null) {
             return false;
         }
-        String role = requester.getRole().toUpperCase();
-        return "OPERATOR".equals(role) || "ADMIN".equals(role);
+        String normalized = role.toUpperCase();
+        return "OPERATOR".equals(normalized) || "ADMIN".equals(normalized);
+    }
+
+    private String resolveEffectiveRole(User user) {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth != null && auth.getAuthorities() != null) {
+            for (GrantedAuthority authority : auth.getAuthorities()) {
+                String value = authority != null ? authority.getAuthority() : null;
+                if (value != null && value.startsWith("ROLE_") && value.length() > 5) {
+                    return value.substring(5);
+                }
+            }
+        }
+        return user != null ? user.getRole() : null;
     }
 
     public record StartTripRequest(
@@ -270,7 +308,9 @@ public class TripController {
             String paymentStatus,
             String message,
             Credit credit,
-            List<StationSuggestion> suggestions
+            List<StationSuggestion> suggestions,
+            Double discountRate,
+            Double discountAmount
     ) {
         public static TripCompletionResponse completed(UUID tripId,
                                                        UUID endStationId,
@@ -282,7 +322,9 @@ public class TripController {
                                                        Double eBikeSurcharge,
                                                        Double totalCost,
                                                        LedgerEntry.LedgerStatus ledgerStatus,
-                                                       String paymentStatus) {
+                                                       String paymentStatus,
+                                                       Double discountRate,
+                                                       Double discountAmount) {
             return new TripCompletionResponse(
                     "COMPLETED",
                     tripId,
@@ -298,7 +340,9 @@ public class TripController {
                     paymentStatus,
                     "Trip completed successfully.",
                     null,
-                    List.of()
+                    List.of(),
+                    discountRate,
+                    discountAmount
             );
         }
 
@@ -322,7 +366,10 @@ public class TripController {
                     null,
                     message,
                     credit,
-                    suggestions
+                    suggestions,
+                    null,
+                    null
+                                                
             );
         }
 
@@ -342,7 +389,9 @@ public class TripController {
             double eBikeSurcharge,
             double totalCost,
             LedgerEntry.LedgerStatus ledgerStatus,
-            String paymentStatus
+            String paymentStatus,
+            double discountRate,
+            double discountAmount
     ) {
         static TripSummaryResponse from(GetLastCompletedTripSummaryUseCase.TripSummary summary,
                                         String paymentStatus) {
@@ -357,7 +406,9 @@ public class TripController {
                     summary.eBikeSurcharge(),
                     summary.totalCost(),
                     summary.ledgerStatus(),
-                    paymentStatus
+                    paymentStatus,
+                    summary.discountRate(),
+                    summary.discountAmount()
             );
         }
     }

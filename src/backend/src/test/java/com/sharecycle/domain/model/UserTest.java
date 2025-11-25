@@ -18,7 +18,8 @@ class UserTest {
                 "hash123", "USER", "token123", LocalDateTime.now(), LocalDateTime.now(), 0.0);
     }
 
-    @Test
+    }
+        @Test
     void testGettersSetters() {
         user.setFullName("Alice");
         assertEquals("Alice", user.getFullName());

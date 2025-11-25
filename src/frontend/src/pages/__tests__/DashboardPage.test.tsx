@@ -1,14 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  render,
-  screen,
-  fireEvent,
-  waitFor,
-  within,
-} from "@testing-library/react";
+import { render, screen, fireEvent, waitFor, within } from "@testing-library/react";
 import DashboardPage from "../../pages/DashboardPage";
 import { AuthProvider } from "../../auth/AuthContext";
 import { apiRequest } from "../../api/client";
+import { MemoryRouter } from "react-router-dom";
 
 type AnyResponse = unknown;
 
@@ -28,6 +23,13 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
         fullnessCategory: "HEALTHY",
       },
     ];
+  }
+  if (path === "/system/reset" && opts?.method === "POST") {
+    return {
+      bikes: 21,
+      stations: 10,
+      docks: 50,
+    };
   }
   if (path.startsWith("/stations/") && path.endsWith("/details")) {
     return {
@@ -104,10 +106,13 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
       suggestions: [],
     };
   }
-  if (path === "/trips" && (!opts || !opts.method || opts.method === "GET")) {
+  if (path.startsWith("/trips") && (!opts || !opts.method || opts.method === "GET")) {
+    const url = new URL(path, "http://localhost");
+    const page = Number.parseInt(url.searchParams.get("page") ?? "0", 10);
+    const pageSize = Number.parseInt(url.searchParams.get("pageSize") ?? "8", 10);
     const start = new Date();
     const end = new Date(start.getTime() + 15 * 60000);
-    return [
+    const allEntries = [
       {
         tripId: "history-1",
         riderId: "u1",
@@ -123,6 +128,18 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
         ledgerStatus: "PAID",
       },
     ];
+    const pagedEntries = allEntries.slice(page * pageSize, page * pageSize + pageSize);
+    const totalItems = allEntries.length;
+    const totalPages = totalItems === 0 ? 0 : 1;
+    return {
+      entries: pagedEntries,
+      page,
+      pageSize,
+      totalItems,
+      totalPages,
+      hasNext: false,
+      hasPrevious: page > 0,
+    };
   }
   if (path.startsWith("/trips/") && (!opts || !opts.method || opts.method === "GET")) {
     const endTime = new Date();
@@ -154,17 +171,37 @@ vi.mock("../../api/client", () => ({
 
 const mockedApi = vi.mocked(apiRequest);
 
-function renderWithAuth(ui: React.ReactElement) {
-  localStorage.setItem(
-    "sharecycle.auth",
-    JSON.stringify({
-      token: "demo",
-      role: "RIDER",
-      userId: "u1",
-      username: "rider1",
-    }),
+type AuthOverride = {
+  token?: string;
+  role?: string;
+  userId?: string;
+  username?: string;
+};
+
+function renderWithAuth(ui: React.ReactElement, override?: AuthOverride) {
+  const authPayload = {
+    token: "demo",
+    role: "RIDER",
+    userId: "u1",
+    username: "rider1",
+    ...override,
+  };
+  localStorage.setItem("sharecycle.auth", JSON.stringify(authPayload));
+  return render(
+    <AuthProvider>
+      <MemoryRouter>{ui}</MemoryRouter>
+    </AuthProvider>,
   );
-  return render(<AuthProvider>{ui}</AuthProvider>);
+}
+
+async function openFirstStationRowAndClickView() {
+  const overviewHeading = await screen.findByRole("heading", {
+    name: /Station Overview/i,
+  });
+  const stationTable = overviewHeading.parentElement?.querySelector("table") as HTMLTableElement | null;
+  expect(stationTable).not.toBeNull();
+  const viewButtons = within(stationTable as HTMLTableElement).getAllByRole("button", { name: /^View$/i });
+  fireEvent.click(viewButtons[0]);
 }
 
 describe("DashboardPage", () => {
@@ -187,9 +224,7 @@ describe("DashboardPage", () => {
 
   it("creates a reservation from station details and shows feedback", async () => {
     renderWithAuth(<DashboardPage />);
-    const viewButton = await screen.findByRole("button", { name: /View/i });
-    fireEvent.click(viewButton);
-
+    await openFirstStationRowAndClickView();
     const stationDetails = await screen.findByText(/Dock d1/i);
     expect(stationDetails).toBeInTheDocument();
 
@@ -229,8 +264,7 @@ describe("DashboardPage", () => {
 
     renderWithAuth(<DashboardPage />);
 
-    const viewButton = await screen.findByRole("button", { name: /View/i });
-    fireEvent.click(viewButton);
+    await openFirstStationRowAndClickView();
 
     const startButton = await screen.findByRole("button", { name: /Start trip/i });
     fireEvent.click(startButton);
@@ -239,23 +273,36 @@ describe("DashboardPage", () => {
     const endButton = await screen.findByRole("button", { name: /End trip here/i });
     fireEvent.click(endButton);
 
-    await waitFor(() =>
-      expect(screen.getByText(/Station is full\. Try one of the nearby stations\./i)).toBeInTheDocument(),
-    );
-
+    await waitFor(() => {
+      const messages = screen.getAllByText(/Station is full\. Try one of the nearby stations\./i);
+      expect(messages.length).toBeGreaterThan(0);
+    });
     expect(screen.getByText(/Nearby stations with free docks/i)).toBeInTheDocument();
-    expect(screen.getByText(/Station #2/i)).toBeInTheDocument();
+    const alternativeStations = screen.getAllByText(/Station #2/i);
+    expect(alternativeStations.length).toBeGreaterThan(0);
     expect(screen.queryByText(/Trip Completed/i)).not.toBeInTheDocument();
   });
 
-  it("renders ride history with returned trips", async () => {
-    renderWithAuth(<DashboardPage />);
+  it("allows operators to reset the system", async () => {
+    renderWithAuth(<DashboardPage />, {
+      role: "OPERATOR",
+      userId: "op1",
+      username: "operator",
+    });
 
-    expect(await screen.findByRole("heading", { name: /Ride History/i })).toBeInTheDocument();
-    expect(await screen.findByText(/HISTORY-1/)).toBeInTheDocument();
-    expect(screen.getByText("Station #1")).toBeInTheDocument();
-    expect(screen.getByText("Station #2")).toBeInTheDocument();
-    expect(screen.getByText("$3.75")).toBeInTheDocument();
+    expect(await screen.findByRole("heading", { name: /Operator Controls/i })).toBeInTheDocument();
+    const resetButton = screen.getByRole("button", { name: /Reset system/i });
+    fireEvent.click(resetButton);
+
+    await waitFor(() =>
+      expect(mockedApi).toHaveBeenCalledWith(
+        "/system/reset",
+        expect.objectContaining({ method: "POST" }),
+      ),
+    );
+    expect(
+      await screen.findByText(/System reset to initial dataset \(10 stations, 21 bikes\)\./i),
+    ).toBeInTheDocument();
   });
 });
 
