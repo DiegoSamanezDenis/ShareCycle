@@ -1,5 +1,7 @@
 package com.sharecycle.application;
 
+import com.sharecycle.domain.event.BikeStatusChangedEvent;
+import com.sharecycle.domain.event.TripStartedEvent;
 import java.time.LocalDateTime;
 import java.util.UUID;
 
@@ -100,7 +102,6 @@ public class StartTripUseCase {
         managedBike.setReservationExpiry(null);
         // Persist station and bike state before inserting trip row to keep UI and DB in sync
         stationRepository.save(managedStartStation);
-        bikeRepository.save(managedBike);
 
         // Check if station became empty after undocking and trigger rebalance alert
         if (managedStartStation.getAvailableBikeCount() == 0 && !managedStartStation.isOutOfService()) {
@@ -129,6 +130,8 @@ public class StartTripUseCase {
             reservationRepository.save(activeReservation);
             managedBike.setReservationExpiry(null);
         }
+
+        bikeRepository.save(managedBike);
 
         eventPublisher.publish(new TripStartedEvent(trip.getTripID(), trip.getStartTime(), trip.getEndTime(), trip.getDurationMinutes(),
                 riderForDomain, managedBike, managedStartStation, null));
