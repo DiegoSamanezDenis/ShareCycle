@@ -4,7 +4,6 @@ import com.sharecycle.domain.event.DomainEventPublisher;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Rider;
 import com.sharecycle.domain.model.Station;
-import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.repository.JpaBikeRepository;
 import com.sharecycle.domain.repository.JpaStationRepository;
 import com.sharecycle.domain.repository.ReservationRepository;
@@ -21,9 +20,9 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
-import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 class StartTripUseCaseGuardTest {
@@ -61,8 +60,8 @@ class StartTripUseCaseGuardTest {
         Bike bike = buildBike();
         Station station = buildStation(bike);
 
-        when(userRepository.findById(rider.getUserId())).thenReturn(rider);
-        when(tripRepository.riderHasActiveTrip(rider.getUserId())).thenReturn(true);
+        lenient().when(userRepository.findById(rider.getUserId())).thenReturn(rider);
+        lenient().when(tripRepository.riderHasActiveTrip(rider.getUserId())).thenReturn(true);
 
         assertThatThrownBy(() -> useCase.execute(
                 UUID.randomUUID(),
@@ -74,7 +73,7 @@ class StartTripUseCaseGuardTest {
         )).isInstanceOf(IllegalStateException.class)
                 .hasMessageContaining("active trip");
 
-        verify(tripRepository, never()).save(any(Trip.class));
+        verify(tripRepository, never()).save(any());
     }
 
     @Test
@@ -84,11 +83,11 @@ class StartTripUseCaseGuardTest {
         bike.setStatus(Bike.BikeStatus.RESERVED);
         Station station = buildStation(bike);
 
-        when(userRepository.findById(rider.getUserId())).thenReturn(rider);
-        when(tripRepository.riderHasActiveTrip(rider.getUserId())).thenReturn(false);
-        when(bikeRepository.findById(bike.getId())).thenReturn(bike);
-        when(stationRepository.findByIdForUpdate(station.getId())).thenReturn(station);
-        when(reservationRepository.findByRiderId(rider.getUserId())).thenReturn(null);
+        lenient().when(userRepository.findById(rider.getUserId())).thenReturn(rider);
+        lenient().when(tripRepository.riderHasActiveTrip(rider.getUserId())).thenReturn(false);
+        lenient().when(bikeRepository.findById(bike.getId())).thenReturn(bike);
+        lenient().when(stationRepository.findByIdForUpdate(station.getId())).thenReturn(station);
+        lenient().when(reservationRepository.findByRiderId(rider.getUserId())).thenReturn(null);
 
         assertThatThrownBy(() -> useCase.execute(
                 UUID.randomUUID(),

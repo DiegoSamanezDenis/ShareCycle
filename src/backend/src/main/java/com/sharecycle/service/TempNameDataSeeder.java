@@ -6,6 +6,7 @@ import com.sharecycle.application.RegisterOperatorUseCase;
 import com.sharecycle.application.RegisterRiderUseCase;
 import com.sharecycle.domain.model.*;
 import com.sharecycle.domain.repository.*;
+import com.sharecycle.infrastructure.persistence.JpaLoyaltyRepositoryImpl;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.event.ApplicationReadyEvent;
@@ -39,13 +40,14 @@ public class TempNameDataSeeder {
     private final RegisterRiderUseCase registerRiderUseCase;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final JpaLoyaltyRepositoryImpl jpaLoyaltyRepositoryImpl;
 
     public TempNameDataSeeder(JpaBikeRepository bikeRepository,
                               JpaStationRepository stationRepository,
                               UserRepository userRepository,
                               TripRepository tripRepository,
                               RegisterOperatorUseCase registerOperatorUseCase,
-                              RegisterRiderUseCase registerRiderUseCase, ReservationRepository reservationRepository) {
+                              RegisterRiderUseCase registerRiderUseCase, ReservationRepository reservationRepository, JpaLoyaltyRepositoryImpl jpaLoyaltyRepositoryImpl) {
         this.bikeRepository = bikeRepository;
         this.stationRepository = stationRepository;
         this.userRepository = userRepository;
@@ -53,6 +55,7 @@ public class TempNameDataSeeder {
         this.registerOperatorUseCase = registerOperatorUseCase;
         this.registerRiderUseCase = registerRiderUseCase;
         this.reservationRepository = reservationRepository;
+        this.jpaLoyaltyRepositoryImpl = jpaLoyaltyRepositoryImpl;
     }
 
     @EventListener(ApplicationReadyEvent.class)
@@ -70,6 +73,8 @@ public class TempNameDataSeeder {
         createPreBronzeRider();
         createPreSilverRider();
         createPreGoldRider();
+        downgradeGoldtoSilver();
+        downgradeGoldtoBronze();
     }
 
     private void loadBikes() {
@@ -178,12 +183,12 @@ public class TempNameDataSeeder {
     }
 
     private void createPreGoldRider() {
-        String username = "gold_hopeful";
+        String username = "gold_rider";
         if (userRepository.existsByUsername(username)) return;
 
         RegisterRiderUseCase.RegistrationResult result = registerRiderUseCase.register(
                 "Gold Hopeful", "789 Gold Rd", "gold@sharecycle.com",
-                username, "password", "tok_gold", "PAY_AS_YOU_GO"
+                username, "password", "pm_card_visa", "PAY_AS_YOU_GO"
         );
         UUID userId = result.userId();
 
@@ -202,6 +207,61 @@ public class TempNameDataSeeder {
         seedTrips(userId, 4, LocalDateTime.now().minusHours(4));
 
         logger.info(">>> SEEDED PRE-GOLD: 12 weeks of history + 5 trips TODAY.");
+    }
+
+    private void downgradeGoldtoSilver(){
+        String username = "gold_to_silver";
+        if (userRepository.existsByUsername(username)) return;
+
+        RegisterRiderUseCase.RegistrationResult result = registerRiderUseCase.register(
+                "Gold to Silver", "101 Change Ln", "goldtosilver@sharecycle.com",
+                username, "password", "pm_card_visa", "PAY_AS_YOU_GO"
+        );
+
+        UUID userId = result.userId();
+
+        // 1. Reservations: Enough for Gold (10)
+        seedReservations(userId, 10);
+
+        // 2. Recent History: Strong (6 trips/week for last 2 months)
+        seedTrips(userId, 6, LocalDateTime.now().minusMonths(1));
+        seedTrips(userId, 6, LocalDateTime.now().minusMonths(2));
+
+        // 3. THE TRICK: The "Oldest" Week
+
+        // Set timestamp to 3 months ago + 15 seconds buffer
+        LocalDateTime edgeOfWindow = LocalDateTime.now().minusMonths(3).plusSeconds(90);
+
+        seedTrips(userId, 6, edgeOfWindow);
+
+        logger.info(">>> SEEDED GOLD->SILVER TIME BOMB: User 'gold_to_bronze' will lose Gold status in ~90 seconds.");
+    }
+
+    private void downgradeGoldtoBronze() {
+        String username = "gold_to_bronze";
+        if (userRepository.existsByUsername(username)) return;
+
+        RegisterRiderUseCase.RegistrationResult result = registerRiderUseCase.register(
+                "Bronze Fall", "1 Cliff Edge", "goldtobronze@sharecycle.com",
+                username, "password", "pm_card_visa", "PAY_AS_YOU_GO"
+        );
+        UUID userId = result.userId();
+
+        // 1. Reservations: 6 (Just enough for Silver/Gold)
+        seedReservations(userId, 6);
+
+        // 2. Recent History: Strong
+        seedTrips(userId, 6, LocalDateTime.now().minusMonths(1));
+        seedTrips(userId, 6, LocalDateTime.now().minusMonths(2));
+
+        // 3. THE TIME BOMB (Month -3)
+        // We place 6 trips exactly at the 3-month cutoff + 90 seconds buffer.
+        // RIGHT NOW: They are inside the window. (User has 3 months of history -> Gold)
+        // IN 90 SECS: They fall out. (User has 2 months of history -> Fails Silver -> Bronze)
+        LocalDateTime edgeOfWindow = LocalDateTime.now().minusMonths(3).plusSeconds(90);
+        seedTrips(userId, 6, edgeOfWindow);
+
+        logger.info(">>> SEEDED GOLD->BRONZE TIME BOMB: User 'gold_to_bronze' will drop to Bronze in ~90 seconds.");
     }
 
     private void seedTrips(UUID userId, int count, LocalDateTime startDate) {
