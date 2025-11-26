@@ -27,6 +27,7 @@ import com.sharecycle.application.ListTripsUseCase;
 import com.sharecycle.application.PaymentUseCase;
 import com.sharecycle.domain.repository.JpaLedgerEntryRepository;
 import com.sharecycle.domain.model.Bill;
+import com.sharecycle.domain.model.BillUtils;
 import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.Trip;
 import com.sharecycle.domain.model.User;
@@ -94,8 +95,7 @@ public class TripController {
             if (ledgerEntry.getTrip() != null) {
                 discountRate = ledgerEntry.getTrip().getAppliedDiscountRate();
             }
-            double preDiscount = bill != null ? bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() : 0.0;
-            discountAmount = bill != null ? Math.max(0.0, preDiscount - bill.getTotalCost()) : 0.0;
+            discountAmount = BillUtils.loyaltyDiscountAmount(bill, discountRate);
             double flexCreditApplied = bill != null ? bill.getFlexCreditApplied() : 0.0;
             return TripCompletionResponse.completed(
                     updatedTrip.getTripID(),

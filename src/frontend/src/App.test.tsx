@@ -17,9 +17,7 @@ describe("App routing", () => {
     const router = createMemoryRouter(routes, { initialEntries: ["/"] });
     renderWithProviders(router);
 
-    expect(
-      screen.getByRole("heading", { name: /sharecycle/i }),
-    ).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /city rides made simple/i })).toBeInTheDocument();
   });
 
   it("renders the not found page for unknown routes", () => {

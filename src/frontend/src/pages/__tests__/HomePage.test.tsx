@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen, waitFor } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
 import HomePage from "../HomePage";
+import { AuthProvider } from "../../auth/AuthContext";
 
 vi.mock("../../api/client", () => {
   return {
@@ -30,9 +31,11 @@ describe("HomePage", () => {
 
   it("renders map legend and loads stations for guests", async () => {
     render(
-      <MemoryRouter>
-        <HomePage />
-      </MemoryRouter>,
+      <AuthProvider>
+        <MemoryRouter>
+          <HomePage />
+        </MemoryRouter>
+      </AuthProvider>,
     );
 
     await waitFor(() =>

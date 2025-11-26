@@ -24,6 +24,7 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
       paymentStatus: "PENDING",
       discountRate: 0.1,
       discountAmount: 0.45,
+      flexCreditApplied: 0,
     };
   }
   if (path.startsWith("/auth/credit")) {
@@ -122,8 +123,8 @@ describe("TripSummaryPage ride history", () => {
     renderWithAuth();
 
     const historyHeading = await screen.findByRole("heading", { name: /Ride History/i });
-    const historyTable = historyHeading.parentElement?.querySelector("table") as HTMLTableElement | null;
-    expect(historyTable).not.toBeNull();
+    const historySection = historyHeading.closest("section") as HTMLElement;
+    const historyTable = within(historySection).getByRole("table");
     const historyRegion = within(historyTable as HTMLTableElement);
     expect(historyRegion.getByText(/HISTORY-/i)).toBeInTheDocument();
     expect(historyRegion.getByText("Station #1")).toBeInTheDocument();
@@ -181,9 +182,10 @@ describe("TripSummaryPage ride history", () => {
     const nextButton = within(historySection).getByRole("button", { name: /^Next$/i });
     expect(nextButton).toBeEnabled();
     fireEvent.click(nextButton);
-    await waitFor(() =>
-      expect(within(historySection).getByText(/Station 10/i)).toBeInTheDocument(),
-    );
+    await waitFor(() => {
+      const matches = within(historySection).getAllByText(/Station 10/i);
+      expect(matches.length).toBeGreaterThan(0);
+    });
     const prevButton = within(historySection).getByRole("button", { name: /^Prev$/i });
     expect(prevButton).toBeEnabled();
   });
@@ -196,8 +198,8 @@ describe("TripSummaryPage ride history", () => {
     });
 
     const historyHeading = await screen.findByRole("heading", { name: /Ride History/i });
-    const historyTable = historyHeading.parentElement?.querySelector("table") as HTMLTableElement;
-    expect(historyTable).toBeTruthy();
+    const historySection = historyHeading.closest("section") as HTMLElement;
+    const historyTable = within(historySection).getByRole("table");
     const headerCells = within(historyTable as HTMLTableElement).getAllByRole("columnheader");
     expect(headerCells.some((cell) => cell.textContent === "Rider")).toBe(true);
   });

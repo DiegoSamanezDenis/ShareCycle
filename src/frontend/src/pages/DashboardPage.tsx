@@ -16,6 +16,7 @@ import type { LedgerStatus } from "../types/trip";
 import TierNotificationToast from "../components/TierNotificationToast";
 import AppShell from "../components/layout/AppShell";
 import PageSection from "../components/layout/PageSection";
+import { computePreDiscountAmount } from "../utils/billing";
 
 type ReservationResponse = {
   reservationId: string;
@@ -415,7 +416,15 @@ export default function DashboardPage() {
   const [loadingStationDetails, setLoadingStationDetails] = useState(false);
   const [stationDetailsError, setStationDetailsError] = useState<string | null>(null);
   const [credit, setCredit] = useState<number>(0); 
-  
+
+  const currentDiscountRate =
+    tripCompletion && typeof tripCompletion.discountRate === "number"
+      ? tripCompletion.discountRate
+      : 0;
+  const currentFlexCreditApplied =
+    tripCompletion && typeof tripCompletion.flexCreditApplied === "number"
+      ? tripCompletion.flexCreditApplied
+      : 0;
 
   const loadStationDetails = useCallback(
     async (stationId: string) => {
@@ -1170,52 +1179,81 @@ export default function DashboardPage() {
                     {tripCompletion.durationMinutes} minutes
                   </span>
                 </div>
-                <div className={styles.billBreakdown}>
-                  <div className={styles.billBreakdownTitle}>Bill Breakdown</div>
-                  <div className={styles.billItem}>
-                    <span className={styles.billItemLabel}>Base Cost:</span>
-                    <span className={styles.billItemValue}>
-                      ${tripCompletion.baseCost.toFixed(2)}
-                    </span>
-                  </div>
-                  {(() => {
-                    const hasDiscount =
-                      typeof tripCompletion.discountRate === "number" &&
-                      tripCompletion.discountRate > 0;
-                    if (!hasDiscount) {
-                      return null;
-                    }
-                    return (
+                {(() => {
+                  const discountRate = currentDiscountRate;
+                  const hasDiscount = discountRate > 0;
+                  const baseCostBeforeDiscount = computePreDiscountAmount(
+                    tripCompletion.baseCost,
+                    discountRate,
+                  );
+                  const timeCostBeforeDiscount = computePreDiscountAmount(
+                    tripCompletion.timeCost,
+                    discountRate,
+                  );
+                  const eBikeCostBeforeDiscount = computePreDiscountAmount(
+                    tripCompletion.eBikeSurcharge,
+                    discountRate,
+                  );
+                  const discountedSubtotal =
+                    tripCompletion.baseCost +
+                    tripCompletion.timeCost +
+                    tripCompletion.eBikeSurcharge;
+                  return (
+                    <div className={styles.billBreakdown}>
+                      <div className={styles.billBreakdownTitle}>Bill Breakdown</div>
                       <div className={styles.billItem}>
-                        <span className={styles.billItemLabel}>Loyalty Discount: </span>
+                        <span className={styles.billItemLabel}>
+                          Base Cost{hasDiscount ? " (before loyalty)" : ""}:
+                        </span>
                         <span className={styles.billItemValue}>
-                          {Math.round(tripCompletion.discountRate * 100)}% (-$
-                          {(tripCompletion.discountAmount ?? 0).toFixed(2)})
+                          ${baseCostBeforeDiscount.toFixed(2)}
                         </span>
                       </div>
-                    );
-                  })()}
-                  <div className={styles.billItem}>
-                    <span className={styles.billItemLabel}>Time Cost:</span>
-                    <span className={styles.billItemValue}>
-                      ${tripCompletion.timeCost.toFixed(2)}
-                    </span>
-                  </div>
-                  {tripCompletion.eBikeSurcharge > 0 && (
-                    <div className={styles.billItem}>
-                      <span className={styles.billItemLabel}>E-Bike Surcharge:</span>
-                      <span className={styles.billItemValue}>
-                        ${tripCompletion.eBikeSurcharge.toFixed(2)}
-                      </span>
+                      <div className={styles.billItem}>
+                        <span className={styles.billItemLabel}>
+                          Time Cost{hasDiscount ? " (before loyalty)" : ""}:
+                        </span>
+                        <span className={styles.billItemValue}>
+                          ${timeCostBeforeDiscount.toFixed(2)}
+                        </span>
+                      </div>
+                      {eBikeCostBeforeDiscount > 0 && (
+                        <div className={styles.billItem}>
+                          <span className={styles.billItemLabel}>
+                            E-Bike Surcharge{hasDiscount ? " (before loyalty)" : ""}:
+                          </span>
+                          <span className={styles.billItemValue}>
+                            ${eBikeCostBeforeDiscount.toFixed(2)}
+                          </span>
+                        </div>
+                      )}
+                      {hasDiscount && (
+                        <>
+                          <div className={styles.billItem}>
+                            <span className={styles.billItemLabel}>Loyalty Discount:</span>
+                            <span className={styles.billItemValue}>
+                              {Math.round(discountRate * 100)}% (-$
+                              {(tripCompletion.discountAmount ?? 0).toFixed(2)})
+                            </span>
+                          </div>
+                          <div className={styles.billItem}>
+                            <span className={styles.billItemLabel}>
+                              Ride cost after loyalty:
+                            </span>
+                            <span className={styles.billItemValue}>
+                              ${discountedSubtotal.toFixed(2)}
+                            </span>
+                          </div>
+                        </>
+                      )}
                     </div>
-                  )}
-                </div>
+                  );
+                })()}
                 <div className={styles.billItem}>
                   <span>Flex credit applied:</span>
-                  <span>${tripCompletion.flexCreditApplied.toFixed(2)}</span>
+                  <span>${currentFlexCreditApplied.toFixed(2)}</span>
                 </div>
-                {typeof tripCompletion.discountRate === "number" &&
-                  tripCompletion.discountRate > 0 && <p>Loyalty discount applied</p>}
+                {currentDiscountRate > 0 && <p>Loyalty discount applied</p>}
                 <div className={styles.totalRow}>
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
@@ -1331,15 +1369,33 @@ export default function DashboardPage() {
               Duration: {tripCompletion.durationMinutes} minutes
             </div>
             <div className={styles.feedbackRow}>
-              Base: ${tripCompletion.baseCost.toFixed(2)} + Time: $
-              {tripCompletion.timeCost.toFixed(2)} - Discount: $
-              {(tripCompletion.discountAmount ?? 0).toFixed(2)}
-              {tripCompletion.eBikeSurcharge > 0 && (
-                <span> + E-Bike: ${tripCompletion.eBikeSurcharge.toFixed(2)}</span>
-              )}
+              {(() => {
+                const baseCostBeforeDiscount = computePreDiscountAmount(
+                  tripCompletion.baseCost,
+                  currentDiscountRate,
+                );
+                const timeCostBeforeDiscount = computePreDiscountAmount(
+                  tripCompletion.timeCost,
+                  currentDiscountRate,
+                );
+                const eBikeCostBeforeDiscount = computePreDiscountAmount(
+                  tripCompletion.eBikeSurcharge,
+                  currentDiscountRate,
+                );
+                return (
+                  <>
+                    Base: ${baseCostBeforeDiscount.toFixed(2)} + Time: $
+                    {timeCostBeforeDiscount.toFixed(2)} - Discount: $
+                    {(tripCompletion.discountAmount ?? 0).toFixed(2)}
+                    {eBikeCostBeforeDiscount > 0 && (
+                      <span> + E-Bike: ${eBikeCostBeforeDiscount.toFixed(2)}</span>
+                    )}
+                  </>
+                );
+              })()}
             </div>
             <div className={styles.feedbackRow}>
-              Flex credit applied: ${tripCompletion.flexCreditApplied.toFixed(2)}
+              Flex credit applied: ${currentFlexCreditApplied.toFixed(2)}
             </div>
             <div className={styles.feedbackTotal}>
               Total Charge: ${tripCompletion.totalCost.toFixed(2)}

@@ -8,6 +8,7 @@ import { payLedger } from "../api/payments";
 import AppShell from "../components/layout/AppShell";
 import PageSection from "../components/layout/PageSection";
 import RideHistory from "../components/RideHistory";
+import { computePreDiscountAmount } from "../utils/billing";
 
 type PaymentStatus = "PAID" | "PENDING" | "NOT_REQUIRED" | "UNKNOWN";
 
@@ -75,12 +76,19 @@ export default function TripSummaryPage() {
         const response = await apiRequest<TripSummaryResponse>("/trips/last-completed", {
           token: auth.token,
         });
-        const creditResponse = await apiRequest<{ amount: number }>(`/auth/credit?userId=${auth.userId}`, {
-          method: "GET",
-          token: auth.token,
-        });
-        setCredit(creditResponse.amount);
         setTripSummary(response);
+        try {
+          const creditResponse = await apiRequest<{ amount: number }>(
+            `/auth/credit?userId=${auth.userId}`,
+            {
+              method: "GET",
+              token: auth.token,
+            },
+          );
+          setCredit(creditResponse.amount);
+        } catch {
+          // Ignore credit errors so the receipt still renders
+        }
       } catch (err) {
         const message = err instanceof Error ? err.message : null;
         setError(formatErrorMessage(message));
@@ -147,81 +155,125 @@ export default function TripSummaryPage() {
             {loading && <p>Loading trip summary…</p>}
             {error && !loading && <p role="alert">{error}</p>}
             {!loading && !error && !tripSummary && <p>No completed trips found.</p>}
-            {!loading && !error && tripSummary && (
-              <>
-                <div
-                  style={{
-                    display: "grid",
-                    gap: "0.35rem",
-                    marginBottom: "1rem",
-                    fontSize: "0.95rem",
-                  }}
-                >
-                  <div>
-                    Trip{" "}
-                    <strong>{tripSummary.tripId.slice(0, 8).toUpperCase()}</strong> ended at{" "}
-                    {new Date(tripSummary.endedAt).toLocaleString()}.
-                  </div>
-                  <div>Duration: {tripSummary.durationMinutes} minutes.</div>
-                  <div>
-                    Ledger ID:{" "}
-                    {tripSummary.ledgerId
-                      ? tripSummary.ledgerId.slice(0, 8).toUpperCase()
-                      : "N/A"}
-                  </div>
-                  <div>Ledger status: {tripSummary.ledgerStatus ?? "PENDING"}</div>
-                </div>
-
-                <div
-                  style={{
-                    border: "1px solid var(--border)",
-                    borderRadius: 16,
-                    padding: "1rem",
-                    background: "var(--surface-muted)",
-                  }}
-                >
-                  <h3 style={{ marginBottom: "0.75rem" }}>Charges</h3>
-                  <div
-                    style={{
-                      display: "grid",
-                      gap: "0.4rem",
-                      fontSize: "0.95rem",
-                    }}
-                  >
-                    <div>Base cost: ${tripSummary.baseCost.toFixed(2)}</div>
-                    {tripSummary.discountRate > 0 && (
-                      <div>
-                        Loyalty discount ({Math.round(tripSummary.discountRate * 100)}%): -$
-                        {tripSummary.discountAmount.toFixed(2)}
-                      </div>
-                    )}
-                    <div>Time cost: ${tripSummary.timeCost.toFixed(2)}</div>
-                    {tripSummary.eBikeSurcharge > 0 && (
-                      <div>E-bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</div>
-                    )}
-                    <div>Flex credit applied: ${tripSummary.flexCreditApplied.toFixed(2)}</div>
-                    <div style={{ fontWeight: 600 }}>
-                      Amount to pay: ${tripSummary.totalCost.toFixed(2)}
-                    </div>
-                  </div>
-                </div>
-
-                <div style={{ marginTop: "1rem" }}>
-                  <div>Payment: {formatPaymentStatus(tripSummary.paymentStatus)}</div>
-                  {tripSummary.paymentStatus === "PENDING" && tripSummary.ledgerId && (
-                    <button
-                      type="button"
-                      onClick={handlePay}
-                      disabled={paying}
-                      style={{ marginTop: "0.5rem" }}
+            {!loading &&
+              !error &&
+              tripSummary &&
+              (() => {
+                const tripIdLabel =
+                  typeof tripSummary.tripId === "string"
+                    ? tripSummary.tripId.slice(0, 8).toUpperCase()
+                    : "N/A";
+                const endedAtLabel = tripSummary.endedAt
+                  ? new Date(tripSummary.endedAt).toLocaleString()
+                  : "Unknown";
+                const durationLabel = Number.isFinite(tripSummary.durationMinutes)
+                  ? tripSummary.durationMinutes
+                  : 0;
+                const ledgerIdLabel =
+                  typeof tripSummary.ledgerId === "string"
+                    ? tripSummary.ledgerId.slice(0, 8).toUpperCase()
+                    : "N/A";
+                const ledgerStatusLabel = tripSummary.ledgerStatus ?? "PENDING";
+                const paymentStatus = tripSummary.paymentStatus ?? "UNKNOWN";
+                const baseCost = Number.isFinite(tripSummary.baseCost) ? tripSummary.baseCost : 0;
+                const timeCost = Number.isFinite(tripSummary.timeCost) ? tripSummary.timeCost : 0;
+                const eBikeSurcharge = Number.isFinite(tripSummary.eBikeSurcharge)
+                  ? tripSummary.eBikeSurcharge
+                  : 0;
+                const totalCost = Number.isFinite(tripSummary.totalCost)
+                  ? tripSummary.totalCost
+                  : 0;
+                const discountRate =
+                  typeof tripSummary.discountRate === "number" ? tripSummary.discountRate : 0;
+                const discountAmount =
+                  typeof tripSummary.discountAmount === "number" ? tripSummary.discountAmount : 0;
+                const flexCreditApplied =
+                  typeof tripSummary.flexCreditApplied === "number"
+                    ? tripSummary.flexCreditApplied
+                    : 0;
+                const baseBeforeDiscount = computePreDiscountAmount(baseCost, discountRate);
+                const timeBeforeDiscount = computePreDiscountAmount(timeCost, discountRate);
+                const eBikeBeforeDiscount = computePreDiscountAmount(eBikeSurcharge, discountRate);
+                const discountedSubtotal = baseCost + timeCost + eBikeSurcharge;
+                return (
+                  <>
+                    <div
+                      style={{
+                        display: "grid",
+                        gap: "0.35rem",
+                        marginBottom: "1rem",
+                        fontSize: "0.95rem",
+                      }}
                     >
-                      {paying ? "Processing..." : "Pay now"}
-                    </button>
-                  )}
-                  {paymentMessage && <p style={{ marginTop: "0.5rem" }}>{paymentMessage}</p>}
-                </div>
-              </>
-            )}
+                      <div>
+                        Trip <strong>{tripIdLabel}</strong> ended at {endedAtLabel}.
+                      </div>
+                      <div>Duration: {durationLabel} minutes.</div>
+                      <div>Ledger ID: {ledgerIdLabel}</div>
+                      <div>Ledger status: {ledgerStatusLabel}</div>
+                    </div>
+
+                    <div
+                      style={{
+                        border: "1px solid var(--border)",
+                        borderRadius: 16,
+                        padding: "1rem",
+                        background: "var(--surface-muted)",
+                      }}
+                    >
+                      <h3 style={{ marginBottom: "0.75rem" }}>Charges</h3>
+                      <div
+                        style={{
+                          display: "grid",
+                          gap: "0.4rem",
+                          fontSize: "0.95rem",
+                        }}
+                      >
+                        <div>
+                          Base cost{discountRate > 0 ? " (before loyalty)" : ""}: $
+                          {baseBeforeDiscount.toFixed(2)}
+                        </div>
+                        <div>
+                          Time cost{discountRate > 0 ? " (before loyalty)" : ""}: $
+                          {timeBeforeDiscount.toFixed(2)}
+                        </div>
+                        {eBikeBeforeDiscount > 0 && (
+                          <div>
+                            E-bike surcharge{discountRate > 0 ? " (before loyalty)" : ""}: $
+                            {eBikeBeforeDiscount.toFixed(2)}
+                          </div>
+                        )}
+                        {discountRate > 0 && (
+                          <>
+                            <div>
+                              Loyalty discount ({Math.round(discountRate * 100)}%): -$
+                              {discountAmount.toFixed(2)}
+                            </div>
+                            <div>Ride cost after loyalty: ${discountedSubtotal.toFixed(2)}</div>
+                          </>
+                        )}
+                        <div>Flex credit applied: ${flexCreditApplied.toFixed(2)}</div>
+                        <div style={{ fontWeight: 600 }}>Amount to pay: ${totalCost.toFixed(2)}</div>
+                      </div>
+                    </div>
+
+                    <div style={{ marginTop: "1rem" }}>
+                      <div>Payment: {formatPaymentStatus(paymentStatus)}</div>
+                      {tripSummary.paymentStatus === "PENDING" && tripSummary.ledgerId && (
+                        <button
+                          type="button"
+                          onClick={handlePay}
+                          disabled={paying}
+                          style={{ marginTop: "0.5rem" }}
+                        >
+                          {paying ? "Processing..." : "Pay now"}
+                        </button>
+                      )}
+                      {paymentMessage && <p style={{ marginTop: "0.5rem" }}>{paymentMessage}</p>}
+                    </div>
+                  </>
+                );
+              })()}
           </PageSection>
 
           <PageSection

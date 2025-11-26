@@ -40,6 +40,27 @@ vi.mock("../../api/client", () => {
       if (path === "/public/events") {
         return [];
       }
+      if (path.startsWith("/auth/credit")) {
+        return { amount: 0 };
+      }
+      if (path.startsWith("/trips/last-completed")) {
+        return {
+          tripId: "t1",
+          endStationId: "s1",
+          endedAt: new Date().toISOString(),
+          durationMinutes: 5,
+          ledgerId: "l1",
+          baseCost: 0.5,
+          timeCost: 1.5,
+          eBikeSurcharge: 0,
+          totalCost: 2.0,
+          ledgerStatus: "PAID",
+          paymentStatus: "PAID",
+          discountRate: 0,
+          discountAmount: 0,
+          flexCreditApplied: 0,
+        };
+      }
       if (path.startsWith("/stations/") && path.endsWith("/details")) {
         return {
           stationId: "s1",

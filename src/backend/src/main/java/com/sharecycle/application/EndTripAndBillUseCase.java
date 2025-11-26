@@ -17,6 +17,7 @@ import com.sharecycle.domain.PayAsYouGoStrategy;
 import com.sharecycle.domain.TripBuilder;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Bill;
+import com.sharecycle.domain.model.BillUtils;
 import com.sharecycle.domain.model.Dock;
 import com.sharecycle.domain.model.LedgerEntry;
 import com.sharecycle.domain.model.PricingPlan;
@@ -216,8 +217,7 @@ public class EndTripAndBillUseCase {
         ledgerEntryRepository.save(ledgerEntry);
 
         discountRate = editedTrip.getAppliedDiscountRate();
-        double preDiscountTotal = bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge();
-        double discountAmount = Math.max(0.0, preDiscountTotal - bill.getTotalCost());
+        double discountAmount = BillUtils.loyaltyDiscountAmount(bill, discountRate);
 
         // Publish BillIssued for UI/history
         eventPublisher.publish(new BillIssuedEvent(

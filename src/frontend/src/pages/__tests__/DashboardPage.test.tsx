@@ -102,6 +102,11 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
       timeCost: 1.5,
       eBikeSurcharge: 0.5,
       totalCost: 2.5,
+      discountRate: 0.1,
+      discountAmount: 0.25,
+      flexCreditApplied: 0.0,
+      paymentStatus: "PAID",
+      ledgerStatus: "PAID",
       message: "Trip completed successfully.",
       suggestions: [],
     };
@@ -162,6 +167,9 @@ async function defaultApiImplementation(path: string, opts?: RequestInit): Promi
       ledgerStatus: "PAID",
     };
   }
+  if (path.startsWith("/auth/credit")) {
+    return { amount: 0 };
+  }
   return undefined;
 }
 
@@ -198,9 +206,11 @@ async function openFirstStationRowAndClickView() {
   const overviewHeading = await screen.findByRole("heading", {
     name: /Station Overview/i,
   });
-  const stationTable = overviewHeading.parentElement?.querySelector("table") as HTMLTableElement | null;
-  expect(stationTable).not.toBeNull();
-  const viewButtons = within(stationTable as HTMLTableElement).getAllByRole("button", { name: /^View$/i });
+  const overviewSection = overviewHeading.closest("section") as HTMLElement;
+  const stationTable = within(overviewSection).getByRole("table");
+  const viewButtons = within(stationTable as HTMLTableElement).getAllByRole("button", {
+    name: /^View$/i,
+  });
   fireEvent.click(viewButtons[0]);
 }
 
@@ -216,10 +226,10 @@ describe("DashboardPage", () => {
     const overviewHeading = await screen.findByRole("heading", {
       name: /Station Overview/i,
     });
-    const table = overviewHeading.parentElement?.querySelector("table") as HTMLTableElement;
-    expect(table).toBeTruthy();
+    const overviewSection = overviewHeading.closest("section") as HTMLElement;
+    const table = within(overviewSection).getByRole("table");
     expect(within(table).getByText("Station #1")).toBeInTheDocument();
-    expect(screen.getByRole("heading", { name: /City Map/i })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /Live network/i })).toBeInTheDocument();
   });
 
   it("creates a reservation from station details and shows feedback", async () => {

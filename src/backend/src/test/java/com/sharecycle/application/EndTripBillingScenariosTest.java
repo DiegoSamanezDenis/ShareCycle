@@ -100,6 +100,7 @@ class EndTripBillingScenariosTest {
         when(stationRepository.findByIdForUpdate(destination.getId())).thenReturn(destination);
         when(reservationRepository.findByRiderId(rider.getUserId())).thenReturn(null);
         when(loyaltyRepository.findCurrentTier(rider.getUserId())).thenReturn(LoyaltyTier.BRONZE);
+        when(userRepository.findById(rider.getUserId())).thenReturn(rider);
 
         LedgerEntry returnedLedger = useCase.execute(trip, destination);
 
@@ -123,7 +124,8 @@ class EndTripBillingScenariosTest {
         assertThat(bill.getBaseCost()).isZero();
         assertThat(bill.getEBikeSurcharge()).isZero();
         assertThat(bill.getTimeCost()).isCloseTo(expectedTimeCost, within(1e-6));
-        assertThat(bill.getTotalCost()).isEqualTo(bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge());
+        assertThat(bill.getTotalCost())
+                .isEqualTo(bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() - bill.getFlexCreditApplied());
         assertThat(returnedLedger.getLedgerId()).isEqualTo(savedLedger.getLedgerId());
 
         verify(bikeRepository).save(bikeCaptor.capture());
@@ -139,7 +141,7 @@ class EndTripBillingScenariosTest {
         assertThat(billIssuedEvent.totalCost()).isEqualTo(bill.getTotalCost());
         assertThat(billIssuedEvent.pricingPlan()).isEqualTo(savedLedger.getPricingPlan());
 
-        verify(userRepository, never()).save(any());
+        verify(userRepository).save(rider);
     }
 
     @Test
@@ -172,11 +174,14 @@ class EndTripBillingScenariosTest {
         double expectedSurcharge = durationMinutes * eBikeRate * discountMultiplier;
         assertThat(bill.getTimeCost()).isCloseTo(expectedTimeCost, within(1e-6));
         assertThat(bill.getEBikeSurcharge()).isCloseTo(expectedSurcharge, within(1e-6));
-        assertThat(bill.getTotalCost()).isEqualTo(bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge());
+        assertThat(bill.getTotalCost())
+                .isEqualTo(bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() - bill.getFlexCreditApplied());
 
         double expectedCredit = Math.floor(bill.getTotalCost() * 0.05 * 100) / 100.0;
-        assertThat(rider.getFlexCredit()).isEqualTo(2.0 + expectedCredit);
-        verify(userRepository).save(rider);
+        assertThat(rider.getFlexCredit())
+                .as("Existing credit is consumed before new credit is awarded")
+                .isEqualTo(expectedCredit);
+        verify(userRepository, times(2)).save(rider);
 
         verify(eventPublisher, atLeastOnce()).publish(eventCaptor.capture());
         FlexCreditAddedEvent creditEvent = eventCaptor.getAllValues().stream()
