@@ -198,7 +198,8 @@ public class BmsFacade {
                 0.0,
                 0.0,
                 0.0,
-                -FULL_STATION_COURTESY_CREDIT
+                -FULL_STATION_COURTESY_CREDIT,
+                0.0
         );
 
         String stationLabel = blockedStation.getName() != null ? blockedStation.getName() : "the station";

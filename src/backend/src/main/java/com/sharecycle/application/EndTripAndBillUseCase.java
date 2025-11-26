@@ -4,6 +4,7 @@ import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
 
+import com.sharecycle.domain.event.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -14,11 +15,6 @@ import com.sharecycle.domain.DefaultPricingPlans;
 import com.sharecycle.domain.MonthlySubscriberStrategy;
 import com.sharecycle.domain.PayAsYouGoStrategy;
 import com.sharecycle.domain.TripBuilder;
-import com.sharecycle.domain.event.BillIssuedEvent;
-import com.sharecycle.domain.event.DomainEventPublisher;
-import com.sharecycle.domain.event.FlexCreditAddedEvent;
-import com.sharecycle.domain.event.StationStatusChangedEvent;
-import com.sharecycle.domain.event.TripEndedEvent;
 import com.sharecycle.domain.model.Bike;
 import com.sharecycle.domain.model.Bill;
 import com.sharecycle.domain.model.Dock;
@@ -176,7 +172,7 @@ public class EndTripAndBillUseCase {
         try {
             LoyaltyTier tier = loyaltyRepository != null && editedTrip.getRider() != null ?
                     loyaltyRepository.findCurrentTier(editedTrip.getRider().getUserId()) : LoyaltyTier.ENTRY;
-                    
+
             switch (tier) {
                 case GOLD : discountRate = 0.15;
                 break;
@@ -203,6 +199,18 @@ public class EndTripAndBillUseCase {
         // Calculate bill using strategy
         Bill bill = strategy.calculate(editedTrip, pricingPlan, editedTrip.getAppliedDiscountRate());
 
+        // Applied accumulated credit
+        bill.setFlexCreditApplied(currentTrip.getRider().getFlexCredit());
+        bill.recalculateTotalCost();
+
+        // Deduct user credit
+        User managedUser = userRepository.findById(currentTrip.getRider().getUserId());
+        managedUser.deductFlexCredit(currentTrip.getRider().getFlexCredit());
+        userRepository.save(managedUser);
+
+        // Publish flex credit deduction
+        eventPublisher.publish(new FlexCreditDeductedEvent(editedTrip.getRider().getUserId(), bill.getFlexCreditApplied()));
+
         // Create and persist ledger entry
         LedgerEntry ledgerEntry = new LedgerEntry(editedTrip.getRider(), editedTrip, bill, planName);
         ledgerEntryRepository.save(ledgerEntry);
@@ -224,10 +232,11 @@ public class EndTripAndBillUseCase {
                 bill.getTotalCost(),
                 planName,
                 discountRate,
-                discountAmount
+                discountAmount,
+                bill.getFlexCreditApplied()
         ));
 
-        //Check and add flex credit
+        //Check and add flex credit (This is done after applying the credit, ensure no )
         double endStationRequiredFreeDock = 0.75; //75% of the docks is empty after finish docking
         double creditPercentage = 0.05; // Give you 5% credit back
         if (endStation.getFreeDockCount() > endStation.getCapacity()*endStationRequiredFreeDock) {

@@ -65,6 +65,7 @@ type TripCompletionSuccess = {
   message: string;
   discountRate?: number;
   discountAmount?: number;
+  flexCreditApplied?: number;
 };
 
 type TripCompletionBlocked = {
@@ -604,6 +605,25 @@ export default function DashboardPage() {
     writeActiveTripToStorage(auth.userId, tripResult);
   }, [auth.userId, tripResult]);
 
+  useEffect(() => {
+    const fetchCredit = async () => {
+      try {
+        const creditResponse = await apiRequest<{ amount: number }>(
+            `/auth/credit?userId=${auth.userId}`,
+            {
+              method: "GET",
+              token: auth.token,
+            }
+        );
+        setCredit(creditResponse.amount);
+      } catch (error) {
+        console.error("Failed to fetch credit", error);
+      }
+    };
+
+    fetchCredit(); // call the async function
+  }, [auth.userId, tripCompletion]);
+
   if (!auth.token || !auth.role || !auth.userId) {
     return (
       <AppShell
@@ -738,12 +758,6 @@ export default function DashboardPage() {
         body: JSON.stringify({ stationId }),
       });
       if (response.status === "COMPLETED") {
-        const creditResponse = await apiRequest<{ amount: number }>(`/auth/credit?userId=${auth.userId}`, {
-          method: "GET",
-          token: auth.token,
-        });
-        console.log("Credit after trip completion:", creditResponse.amount);
-        setCredit(creditResponse.amount); // save credit to state
         setTripCompletion(response);
         setReturnBlock(null);
         setTripResult(null);
@@ -1196,19 +1210,15 @@ export default function DashboardPage() {
                     </div>
                   )}
                 </div>
+                <div className={styles.billItem}>
+                  <span>Flex credit applied:</span>
+                  <span>${tripCompletion.flexCreditApplied.toFixed(2)}</span>
+                </div>
                 {typeof tripCompletion.discountRate === "number" &&
                   tripCompletion.discountRate > 0 && <p>Loyalty discount applied</p>}
-                <div className={styles.billItem}>
+                <div className={styles.totalRow}>
                   <span>Total:</span>
                   <span>${tripCompletion.totalCost.toFixed(2)}</span>
-                </div>
-                <div className={styles.billItem}>
-                  <span>Available credit:</span>
-                  <span>${credit.toFixed(2)}</span>
-                </div>
-                <div className={styles.totalRow}>
-                  <span>Amount to pay:</span>
-                  <span>${(tripCompletion.totalCost-credit).toFixed(2)}</span>
                 </div>
                 <div className={styles.receiptRow}>
                   <span className={styles.receiptLabel}>Payment:</span>
@@ -1328,14 +1338,11 @@ export default function DashboardPage() {
                 <span> + E-Bike: ${tripCompletion.eBikeSurcharge.toFixed(2)}</span>
               )}
             </div>
+            <div className={styles.feedbackRow}>
+              Flex credit applied: ${tripCompletion.flexCreditApplied.toFixed(2)}
+            </div>
             <div className={styles.feedbackTotal}>
               Total Charge: ${tripCompletion.totalCost.toFixed(2)}
-            </div>
-            <div className={styles.feedbackTotal}>
-              Available Flex Credit: ${credit.toFixed(2)}
-            </div>
-            <div className={styles.feedbackTotal}>
-              Amount to pay: ${(tripCompletion.totalCost - credit).toFixed(2)}
             </div>
             <div className={styles.feedbackRow}>
               Payment: {formatPaymentStatus(tripCompletion.paymentStatus)}

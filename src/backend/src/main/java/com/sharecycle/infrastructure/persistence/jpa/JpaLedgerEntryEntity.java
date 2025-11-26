@@ -65,12 +65,15 @@ public class JpaLedgerEntryEntity {
     @Column(name = "timestamp", nullable = false)
     private LocalDateTime timestamp;
 
+    @Column(name = "flex_credit_applied")
+    private double flexCreditApplied;
+
     public JpaLedgerEntryEntity() {
     }
 
     private JpaLedgerEntryEntity(LedgerEntry ledgerEntry, MapperContext context) {
         this.ledgerId = ledgerEntry.getLedgerId();
-        this.user = (JpaUserEntity) JpaUserEntity.fromDomain(ledgerEntry.getUser());
+        this.user = JpaUserEntity.fromDomain(ledgerEntry.getUser());
         if (ledgerEntry.getTrip() != null) {
             this.trip = JpaTripEntity.fromDomain(ledgerEntry.getTrip(), context);
         }
@@ -85,6 +88,7 @@ public class JpaLedgerEntryEntity {
             this.timeCost = bill.getTimeCost();
             this.eBikeSurcharge = bill.getEBikeSurcharge();
             this.totalCost = bill.getTotalCost();
+            this.flexCreditApplied = bill.getFlexCreditApplied();
         }
         this.timestamp = ledgerEntry.getTimestamp();
     }
@@ -111,7 +115,8 @@ public class JpaLedgerEntryEntity {
         baseCost,
         timeCost,
         eBikeSurcharge,
-        totalCost
+        totalCost,
+        flexCreditApplied
     );
         LedgerEntry ledgerEntry = new LedgerEntry(
                 ledgerId,
@@ -169,5 +174,13 @@ public class JpaLedgerEntryEntity {
 
     public LocalDateTime getTimestamp() {
         return timestamp;
+    }
+
+    public double getFlexCreditApplied() {
+        return flexCreditApplied;
+    }
+
+    public void setFlexCreditApplied(double flexCreditApplied) {
+        this.flexCreditApplied = flexCreditApplied;
     }
 }

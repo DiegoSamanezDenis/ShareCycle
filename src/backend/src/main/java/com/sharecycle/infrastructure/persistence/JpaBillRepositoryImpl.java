@@ -118,7 +118,8 @@ public class JpaBillRepositoryImpl implements JpaBillRepository {
                 entity.getBaseCost(),
                 entity.getTimeCost(),
                 entity.getEBikeSurcharge(),
-                entity.getTotalCost()
+                entity.getTotalCost(),
+                entity.getFlexCreditApplied()
         );
     }
 }
