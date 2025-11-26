@@ -25,6 +25,7 @@ type TripSummaryResponse = {
   paymentStatus: PaymentStatus;
   discountRate: number;
   discountAmount: number;
+  flexCreditApplied: number;
 };
 
 function formatPaymentStatus(status: PaymentStatus): string {
@@ -198,10 +199,9 @@ export default function TripSummaryPage() {
                     {tripSummary.eBikeSurcharge > 0 && (
                       <div>E-bike surcharge: ${tripSummary.eBikeSurcharge.toFixed(2)}</div>
                     )}
-                    <div>Total: ${tripSummary.totalCost.toFixed(2)}</div>
-                    <div>Available flex credit: ${credit.toFixed(2)}</div>
+                    <div>Flex credit applied: ${tripSummary.flexCreditApplied.toFixed(2)}</div>
                     <div style={{ fontWeight: 600 }}>
-                      Amount to pay: ${(tripSummary.totalCost - credit).toFixed(2)}
+                      Amount to pay: ${tripSummary.totalCost.toFixed(2)}
                     </div>
                   </div>
                 </div>

@@ -126,7 +126,7 @@ class ResetSystemUseCaseTest {
         );
         reservationRepository.save(reservation);
 
-        Bill bill = new Bill(UUID.randomUUID(), LocalDateTime.now(), 1.0, 0.5, 0.0, 1.5);
+        Bill bill = new Bill(UUID.randomUUID(), LocalDateTime.now(), 1.0, 0.5, 0.0, 1.5, 0.0);
         LedgerEntry ledgerEntry = new LedgerEntry(rider, trip, bill, "PAYG");
         ledgerEntryRepository.save(ledgerEntry);
     }

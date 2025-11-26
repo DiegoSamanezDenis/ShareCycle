@@ -41,7 +41,7 @@ public class GetLastCompletedTripSummaryUseCase {
         }
         double preDiscountTotal = bill != null ? bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() : 0.0;
         discountAmount = bill != null ? Math.max(0.0, preDiscountTotal - bill.getTotalCost()) : 0.0;
-
+        double flexCreditApplied = bill != null ? bill.getFlexCreditApplied() : 0.0;
         return new TripSummary(
                 trip.getTripID(),
                 trip.getEndStation() != null ? trip.getEndStation().getId() : null,
@@ -54,7 +54,8 @@ public class GetLastCompletedTripSummaryUseCase {
                 total,
                 status,
                 discountRate,
-                discountAmount
+                discountAmount,
+                flexCreditApplied
         );
     }
 
@@ -70,6 +71,7 @@ public class GetLastCompletedTripSummaryUseCase {
             double totalCost,
             LedgerEntry.LedgerStatus ledgerStatus,
             double discountRate,
-            double discountAmount
+            double discountAmount,
+            double flexCreditApplied
     ) { }
 }

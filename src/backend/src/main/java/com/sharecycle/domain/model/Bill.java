@@ -10,6 +10,7 @@ public class Bill {
     private double baseCost;
     private double timeCost;
     private double eBikeSurcharge;
+    private double flexCreditApplied;
 
     public Bill() {
         this.billId = UUID.randomUUID();
@@ -29,13 +30,15 @@ public class Bill {
                 double baseCost,
                 double timeCost,
                 double eBikeSurcharge,
-                double totalCost) {
+                double totalCost,
+                double flexCreditApplied) {
         this.billId = billId == null ? UUID.randomUUID() : billId;
         this.computedAt = computedAt == null ? LocalDateTime.now() : computedAt;
         this.baseCost = baseCost;
         this.timeCost = timeCost;
         this.eBikeSurcharge = eBikeSurcharge;
         this.totalCost = totalCost;
+        this.flexCreditApplied = flexCreditApplied;
     }
 
     public UUID getBillId() {
@@ -60,5 +63,16 @@ public class Bill {
 
     public double getEBikeSurcharge() {
         return eBikeSurcharge;
+    }
+
+    public double getFlexCreditApplied() { return flexCreditApplied; }
+
+    public void setFlexCreditApplied(double flexCreditApplied) {
+        this.flexCreditApplied = flexCreditApplied;
+        this.recalculateTotalCost();
+    }
+
+    public void recalculateTotalCost() { //Used after flex credit is applied
+        this.totalCost = baseCost + timeCost + eBikeSurcharge - flexCreditApplied;
     }
 }

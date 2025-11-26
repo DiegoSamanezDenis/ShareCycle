@@ -61,14 +61,6 @@ public class PaymentUseCase {
             return entry;
         }
 
-        // Use flex credit before actually paying
-        // Get back the overflow amount if too much money
-        double flexCreditInitial = rider.getFlexCredit();
-        totalAmount = rider.deductFlexCredit(totalAmount);
-        double amountDeducted = flexCreditInitial - rider.getFlexCredit();
-        userRepository.save(rider);
-        eventPublisher.publish(new FlexCreditDeductedEvent(rider.getUserId(), amountDeducted));
-
         if (totalAmount < MIN_STRIPE_AMOUNT_CAD) {
             logger.info("Ledger {} total {} below Stripe minimum, marking paid without capture",
                     entry.getLedgerId(), totalAmount);

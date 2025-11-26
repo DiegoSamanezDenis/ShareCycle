@@ -15,7 +15,8 @@ public record BillIssuedEvent(
         double totalCost,
         String pricingPlan,
         double discountRate,
-        double discountAmount
+        double discountAmount,
+        double flexCreditApplied
 ) implements DomainEvent {
     @Override
     public LocalDateTime occurredAt() {

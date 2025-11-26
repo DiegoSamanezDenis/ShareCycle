@@ -58,7 +58,7 @@ class BillTest {
         assertThat(b2.getTimeCost()).isEqualTo(20);
         assertThat(b2.getEBikeSurcharge()).isEqualTo(5);
 
-        Bill b3 = new Bill(null, null, 5, 5, 5, 15);
+        Bill b3 = new Bill(null, null, 5, 5, 5, 15,0);
         assertThat(b3.getTotalCost()).isEqualTo(15);
         assertThat(b3.getBillId()).isNotNull();
         assertThat(b3.getComputedAt()).isNotNull();

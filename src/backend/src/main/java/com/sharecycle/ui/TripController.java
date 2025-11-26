@@ -96,6 +96,7 @@ public class TripController {
             }
             double preDiscount = bill != null ? bill.getBaseCost() + bill.getTimeCost() + bill.getEBikeSurcharge() : 0.0;
             discountAmount = bill != null ? Math.max(0.0, preDiscount - bill.getTotalCost()) : 0.0;
+            double flexCreditApplied = bill != null ? bill.getFlexCreditApplied() : 0.0;
             return TripCompletionResponse.completed(
                     updatedTrip.getTripID(),
                     updatedTrip.getEndStation() != null ? updatedTrip.getEndStation().getId() : null,
@@ -109,7 +110,8 @@ public class TripController {
                     ledgerStatus,
                     paymentStatus,
                     discountRate,
-                    discountAmount
+                    discountAmount,
+                    flexCreditApplied
             );
         }
 
@@ -310,7 +312,8 @@ public class TripController {
             Credit credit,
             List<StationSuggestion> suggestions,
             Double discountRate,
-            Double discountAmount
+            Double discountAmount,
+            Double flexCreditApplied
     ) {
         public static TripCompletionResponse completed(UUID tripId,
                                                        UUID endStationId,
@@ -324,7 +327,8 @@ public class TripController {
                                                        LedgerEntry.LedgerStatus ledgerStatus,
                                                        String paymentStatus,
                                                        Double discountRate,
-                                                       Double discountAmount) {
+                                                       Double discountAmount,
+                                                       Double flexCreditApplied) {
             return new TripCompletionResponse(
                     "COMPLETED",
                     tripId,
@@ -342,7 +346,8 @@ public class TripController {
                     null,
                     List.of(),
                     discountRate,
-                    discountAmount
+                    discountAmount,
+                    flexCreditApplied
             );
         }
 
@@ -368,8 +373,8 @@ public class TripController {
                     credit,
                     suggestions,
                     null,
+                    null,
                     null
-                                                
             );
         }
 
@@ -391,7 +396,8 @@ public class TripController {
             LedgerEntry.LedgerStatus ledgerStatus,
             String paymentStatus,
             double discountRate,
-            double discountAmount
+            double discountAmount,
+            double flexCreditApplied
     ) {
         static TripSummaryResponse from(GetLastCompletedTripSummaryUseCase.TripSummary summary,
                                         String paymentStatus) {
@@ -408,7 +414,8 @@ public class TripController {
                     summary.ledgerStatus(),
                     paymentStatus,
                     summary.discountRate(),
-                    summary.discountAmount()
+                    summary.discountAmount(),
+                    summary.flexCreditApplied()
             );
         }
     }
